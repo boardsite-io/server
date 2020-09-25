@@ -1,12 +1,12 @@
 package main
 
 import (
-    "net/http"
+	"net/http"
 
-    "boardsite/api/board"
+	"boardsite/api/session"
 )
 
 func main() {
-    http.HandleFunc("/api/board", board.ServeBoard)
-    http.ListenAndServe(":8000", nil)
+	http.HandleFunc("/api/board", session.ServeBoard)
+	http.ListenAndServe(":8000", nil)
 }
