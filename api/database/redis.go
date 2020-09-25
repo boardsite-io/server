@@ -71,6 +71,8 @@ func (db *BoardDB) FetchAll() ([]*board.Position, error) {
 	reply, err := db.Conn.Do("GET", boardKey)
 	if err != nil {
 		return nil, err
+	} else if reply == nil {
+		return nil, nil
 	}
 
 	data := reply.([]byte)
