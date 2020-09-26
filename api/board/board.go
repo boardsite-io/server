@@ -1,8 +1,8 @@
 package board
 
 const (
-	SizeX    = 5
-	SizeY    = 5
+	SizeX    = 10
+	SizeY    = 10
 	NumBytes = 3
 )
 

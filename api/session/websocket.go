@@ -26,6 +26,11 @@ func checkOrigin(r *http.Request) bool {
 	return true
 }
 
+func closeHandler(code int, text string) error  {
+	fmt.Printf("Connection closed %d: %s\n", code, text)
+	return nil
+}
+
 // ServeBoard starts the websocket
 func ServeBoard(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -33,6 +38,9 @@ func ServeBoard(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err.Error())
 		return
 	}
+	defer conn.Close()
+
+	conn.SetCloseHandler(closeHandler)
 
 	// connect the database
 	db, err := database.NewConnection()
@@ -64,11 +72,13 @@ func ServeBoard(w http.ResponseWriter, r *http.Request) {
 		var dataReceived []board.Position
 
 		if err := conn.ReadJSON(&dataReceived); err != nil {
-			conn.WriteJSON(&errorStatus{Error: "JSON unmarshaling failed"})
-			continue
+			break
 		}
 
 		fmt.Printf("Data Received: %v\n", dataReceived)
 		db.Set(dataReceived)
 	}
+
+	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
+	fmt.Printf("Connection to %s closed by server\n", conn.RemoteAddr())
 }
