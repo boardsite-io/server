@@ -3,11 +3,18 @@ package session
 import (
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 
 	"boardsite/api/board"
 	"boardsite/api/database"
+)
+
+var (
+	boardUpdate = make(chan []board.Position)
+	clients     = make(map[string]*websocket.Conn)
+	mu          sync.Mutex
 )
 
 type errorStatus struct {
@@ -20,13 +27,40 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     checkOrigin,
 }
 
+func onClientConnect(conn *websocket.Conn) {
+	mu.Lock()
+	clients[conn.RemoteAddr().String()] = conn
+	mu.Unlock()
+	fmt.Println(conn.RemoteAddr().String() + " connected")
+}
+
+func onClientDisconnect(addr string) {
+	mu.Lock()
+	delete(clients, addr)
+	mu.Unlock()
+	fmt.Println(addr + " disconnected")
+}
+
+// Broadcaster Broadcasts board updates to all clients
+func Broadcaster() {
+	for {
+		msg := <-boardUpdate
+
+		mu.Lock()
+		for _, clientConn := range clients { // Send to all connected clients
+			clientConn.WriteJSON(&msg) // ignore error
+		}
+		mu.Unlock()
+	}
+}
+
 // For development purpose
 func checkOrigin(r *http.Request) bool {
 	_ = r
 	return true
 }
 
-func closeHandler(code int, text string) error  {
+func closeHandler(code int, text string) error {
 	fmt.Printf("Connection closed %d: %s\n", code, text)
 	return nil
 }
@@ -51,17 +85,14 @@ func ServeBoard(w http.ResponseWriter, r *http.Request) {
 	// close when we are done
 	defer db.Close()
 
-	fmt.Printf("%s connected.\n", conn.RemoteAddr())
+	onClientConnect(conn)
 
 	// send the data to client on connect
 	boardData, err := db.FetchAll()
 	if err != nil {
 		fmt.Println("Cannot retrieve board from database")
 		return
-	}
-
-	// if board does not exist, create it
-	if boardData == nil {
+	} else if boardData == nil { // if board does not exist, create it
 		db.Reset()
 		conn.WriteJSON(&[]board.Position{})
 	} else {
@@ -76,9 +107,15 @@ func ServeBoard(w http.ResponseWriter, r *http.Request) {
 		}
 
 		fmt.Printf("Data Received: %v\n", dataReceived)
+
+		// broadcast board values
+		boardUpdate <- dataReceived
+
+		// save to database
 		db.Set(dataReceived)
 	}
 
 	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
-	fmt.Printf("Connection to %s closed by server\n", conn.RemoteAddr())
+	//fmt.Printf("Connection to %s closed by server\n", conn.RemoteAddr())
+	onClientDisconnect(conn.RemoteAddr().String())
 }

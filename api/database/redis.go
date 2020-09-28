@@ -36,6 +36,11 @@ func (db *BoardDB) Reset() error {
 	// empty slice of board size
 	board := make([]byte, boardLen)
 
+	// default color 0xffffff
+	for i := range board {
+		board[i] = 0xff
+	}
+
 	_, err := db.Conn.Do("SET", boardKey, board)
 	return err
 }
@@ -49,7 +54,9 @@ func (db *BoardDB) Set(boardpos []board.Position) error {
 		binary.LittleEndian.PutUint32(b, pos.Value)
 
 		// store only boardValBytes least significant bytes
-		db.Conn.Send("SETRANGE", boardKey, db.getDBIndex(pos.X, pos.Y), b[:board.NumBytes])
+		if pos.X < board.SizeX && pos.Y < board.SizeY {
+			db.Conn.Send("SETRANGE", boardKey, db.getDBIndex(pos.X, pos.Y), b[:board.NumBytes])
+		}
 	}
 
 	if err := db.Conn.Flush(); err != nil {
@@ -84,8 +91,8 @@ func (db *BoardDB) FetchAll() ([]*board.Position, error) {
 			value |= uint32(data[i+j]) << (8 * j) // little endian
 		}
 
-		// only retrieve non-zero values
-		if value > 0 {
+		// only retrieve non-white (0xffffff) values
+		if value != 0xffffff {
 			boardpos = append(boardpos, &board.Position{Value: value, X: i / board.NumBytes % board.SizeX, Y: i / board.NumBytes / board.SizeX})
 		}
 	}
