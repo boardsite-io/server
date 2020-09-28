@@ -9,7 +9,7 @@ const (
 // Position Holds the position and value of pixels
 type Position struct {
 	Action string `json:"action"`
-	Value  uint32 `json:"value"`
+	Value  uint32 `json:"color"`
 	X      int    `json:"x"`
 	Y      int    `json:"y"`
 }
