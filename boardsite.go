@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	go session.DatabaseUpdater()
 	go session.Broadcaster()
 
 	http.HandleFunc("/api/board", session.ServeBoard)

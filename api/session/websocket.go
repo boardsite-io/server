@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	boardUpdate = make(chan []board.Position)
-	clients     = make(map[string]*websocket.Conn)
-	mu          sync.Mutex
+	boardUpdate    = make(chan []board.Position)
+	databaseUpdate = make(chan []board.Position)
+	clients        = make(map[string]*websocket.Conn)
+	mu             sync.Mutex
 )
 
 type errorStatus struct {
@@ -34,11 +35,12 @@ func onClientConnect(conn *websocket.Conn) {
 	fmt.Println(conn.RemoteAddr().String() + " connected")
 }
 
-func onClientDisconnect(addr string) {
+func onClientDisconnect(conn *websocket.Conn) {
 	mu.Lock()
-	delete(clients, addr)
+	delete(clients, conn.RemoteAddr().String())
 	mu.Unlock()
-	fmt.Println(addr + " disconnected")
+	fmt.Println(conn.RemoteAddr().String() + " disconnected")
+	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
 }
 
 // Broadcaster Broadcasts board updates to all clients
@@ -54,6 +56,27 @@ func Broadcaster() {
 	}
 }
 
+// DatabaseUpdater Updates database according to given position values
+func DatabaseUpdater() {
+	db, err := database.NewConnection()
+	if err != nil {
+		fmt.Println("Cannot connect database")
+		return
+	}
+	defer db.Close()
+
+	for {
+		board := <-databaseUpdate
+
+		if board[0].Action == "clear" {
+			db.Reset()
+			continue
+		}
+
+		db.Set(board)
+	}
+}
+
 // For development purpose
 func checkOrigin(r *http.Request) bool {
 	_ = r
@@ -63,6 +86,23 @@ func checkOrigin(r *http.Request) bool {
 func closeHandler(code int, text string) error {
 	fmt.Printf("Connection closed %d: %s\n", code, text)
 	return nil
+}
+
+func initBoard() (*database.BoardDB, []board.Position, error) {
+	db, err := database.NewConnection()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	data, err := db.FetchAll()
+	if err != nil {
+		return nil, nil, err
+	} else if data == nil { // if board does not exist, create it
+		db.Reset()
+		data = []board.Position{}
+	}
+
+	return db, data, nil
 }
 
 // ServeBoard starts the websocket
@@ -77,45 +117,34 @@ func ServeBoard(w http.ResponseWriter, r *http.Request) {
 	conn.SetCloseHandler(closeHandler)
 
 	// connect the database
-	db, err := database.NewConnection()
+	db, boardData, err := initBoard()
 	if err != nil {
-		fmt.Println("Cannot connect database")
+		fmt.Println("Cannot connect to database")
 		return
 	}
 	// close when we are done
 	defer db.Close()
 
-	onClientConnect(conn)
-
 	// send the data to client on connect
-	boardData, err := db.FetchAll()
-	if err != nil {
-		fmt.Println("Cannot retrieve board from database")
-		return
-	} else if boardData == nil { // if board does not exist, create it
-		db.Reset()
-		conn.WriteJSON(&[]board.Position{})
-	} else {
-		conn.WriteJSON(&boardData)
-	}
+	conn.WriteJSON(&boardData)
+
+	// on client connect/disconnect
+	onClientConnect(conn)
+	defer onClientDisconnect(conn)
 
 	for {
-		var dataReceived []board.Position
+		var data []board.Position
 
-		if err := conn.ReadJSON(&dataReceived); err != nil {
+		if err := conn.ReadJSON(&data); err != nil {
 			break
 		}
 
-		fmt.Printf("Data Received: %v\n", dataReceived)
+		fmt.Printf("Data Received: %v\n", data)
 
 		// broadcast board values
-		boardUpdate <- dataReceived
+		boardUpdate <- data
 
 		// save to database
-		db.Set(dataReceived)
+		databaseUpdate <- data
 	}
-
-	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
-	//fmt.Printf("Connection to %s closed by server\n", conn.RemoteAddr())
-	onClientDisconnect(conn.RemoteAddr().String())
 }

@@ -71,9 +71,9 @@ func (db *BoardDB) getDBIndex(x, y int) int {
 }
 
 // FetchAll Fetches all the values of the board from the DB
-func (db *BoardDB) FetchAll() ([]*board.Position, error) {
+func (db *BoardDB) FetchAll() ([]board.Position, error) {
 	// slice with max capacity
-	boardpos := make([]*board.Position, 0, boardLen)
+	boardpos := make([]board.Position, 0, boardLen)
 
 	reply, err := db.Conn.Do("GET", boardKey)
 	if err != nil {
@@ -93,7 +93,7 @@ func (db *BoardDB) FetchAll() ([]*board.Position, error) {
 
 		// only retrieve non-white (0xffffff) values
 		if value != 0xffffff {
-			boardpos = append(boardpos, &board.Position{Value: value, X: i / board.NumBytes % board.SizeX, Y: i / board.NumBytes / board.SizeX})
+			boardpos = append(boardpos, board.Position{Value: value, X: i / board.NumBytes % board.SizeX, Y: i / board.NumBytes / board.SizeX})
 		}
 	}
 
