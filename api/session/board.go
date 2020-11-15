@@ -1,0 +1,86 @@
+package session
+
+import (
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"net/http"
+
+	"boardsite/api/board"
+	"boardsite/api/database"
+
+	"github.com/gorilla/mux"
+)
+
+const (
+	letters  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	numBytes = 3
+)
+
+var (
+	// ActiveSession maps the session is to the SessionControl struct
+	ActiveSession = make(map[string]*board.SessionControl)
+)
+
+// CreateBoard creates a new board with parameters X and Y and redirects
+// to "/board/{id}" by setting a unique ID.
+func CreateBoard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		return
+	}
+
+	form := board.SetupForm{}
+	// TODO retrieve x,y from form
+	if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
+		return
+	}
+
+	id := make([]byte, 6)
+	// find available id
+	for {
+		for i := range id {
+			id[i] = letters[rand.Intn(len(letters))]
+		}
+
+		if ActiveSession[string(id)] == nil {
+			break
+		}
+	}
+	idstr := string(id)
+
+	fmt.Println(idstr)
+
+	db, err := database.NewConnection(idstr, form.X, form.Y, numBytes)
+	if err != nil {
+		return
+	}
+
+	// assign to SessionControl struct
+	ActiveSession[idstr] = board.NewSessionControl(idstr, form.X, form.Y, numBytes, db)
+
+	http.Redirect(w, r, "/board/"+string(id), http.StatusFound)
+}
+
+// ServeBoard starts the websocket based on route "/board/{id}"
+// if a session with {id} has been create, i.e. is active.
+func ServeBoard(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	// session does not exist
+	if ActiveSession[vars["id"]] == nil || !ActiveSession[vars["id"]].IsActive {
+		// TODO return status 404
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// upgrade to websocket protocol
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	onClientConnect(vars["id"], conn)
+	defer onClientDisconnect(vars["id"], conn)
+
+	InitWebsocket(vars["id"], conn)
+}

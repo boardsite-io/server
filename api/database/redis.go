@@ -8,22 +8,27 @@ import (
 	"boardsite/api/board"
 )
 
-const (
-	boardKey = "board_vals"
-	boardLen = board.NumBytes * board.SizeX * board.SizeY
-)
-
 // BoardDB Holds the connection to the DB
 type BoardDB struct {
-	Conn redis.Conn
+	SizeX, SizeY, NumBytes int
+	BoardLen               int
+	BoardKey               string
+	Conn                   redis.Conn
 }
 
 // NewConnection Sets up redis DB connection with credentials
-func NewConnection() (*BoardDB, error) {
+func NewConnection(sessionID string, x, y, numBytes int) (*BoardDB, error) {
 	// TODO parse from config
 	conn, err := redis.Dial("tcp", "localhost:6379")
 
-	return &BoardDB{Conn: conn}, err
+	return &BoardDB{
+		Conn:     conn,
+		SizeX:    x,
+		SizeY:    y,
+		NumBytes: numBytes,
+		BoardLen: numBytes * x * y,
+		BoardKey: sessionID,
+	}, err
 }
 
 // Close Closes connection to redis DB
@@ -34,14 +39,20 @@ func (db *BoardDB) Close() {
 // Reset Creates an new (empty) board
 func (db *BoardDB) Reset() error {
 	// empty slice of board size
-	board := make([]byte, boardLen)
+	board := make([]byte, db.BoardLen)
 
 	// default color 0xffffff
 	for i := range board {
 		board[i] = 0xff
 	}
 
-	_, err := db.Conn.Do("SET", boardKey, board)
+	_, err := db.Conn.Do("SET", db.BoardKey, board)
+	return err
+}
+
+// Clear clears the board from Redis
+func (db *BoardDB) Clear() error {
+	_, err := db.Conn.Do("DEL", db.BoardKey)
 	return err
 }
 
@@ -54,8 +65,8 @@ func (db *BoardDB) Set(boardpos []board.Position) error {
 		binary.LittleEndian.PutUint32(b, pos.Value)
 
 		// store only boardValBytes least significant bytes
-		if pos.X < board.SizeX && pos.Y < board.SizeY {
-			db.Conn.Send("SETRANGE", boardKey, db.getDBIndex(pos.X, pos.Y), b[:board.NumBytes])
+		if pos.X < db.SizeX && pos.Y < db.SizeY {
+			db.Conn.Send("SETRANGE", db.BoardKey, db.getDBIndex(pos.X, pos.Y), b[:db.NumBytes])
 		}
 	}
 
@@ -67,15 +78,15 @@ func (db *BoardDB) Set(boardpos []board.Position) error {
 }
 
 func (db *BoardDB) getDBIndex(x, y int) int {
-	return (board.SizeX*y + x) * board.NumBytes
+	return (db.SizeX*y + x) * db.NumBytes
 }
 
 // FetchAll Fetches all the values of the board from the DB
 func (db *BoardDB) FetchAll() ([]board.Position, error) {
 	// slice with max capacity
-	boardpos := make([]board.Position, 0, boardLen)
+	boardpos := make([]board.Position, 0, db.BoardLen)
 
-	reply, err := db.Conn.Do("GET", boardKey)
+	reply, err := db.Conn.Do("GET", db.BoardKey)
 	if err != nil {
 		return nil, err
 	} else if reply == nil {
@@ -84,16 +95,16 @@ func (db *BoardDB) FetchAll() ([]board.Position, error) {
 
 	data := reply.([]byte)
 
-	for i := 0; i < boardLen; i += board.NumBytes {
+	for i := 0; i < db.BoardLen; i += db.NumBytes {
 		// convert the board.NumBytes bytes to uint32
 		var value uint32
-		for j := 0; j < board.NumBytes; j++ {
+		for j := 0; j < db.NumBytes; j++ {
 			value |= uint32(data[i+j]) << (8 * j) // little endian
 		}
 
 		// only retrieve non-white (0xffffff) values
 		if value != 0xffffff {
-			boardpos = append(boardpos, board.Position{Value: value, X: i / board.NumBytes % board.SizeX, Y: i / board.NumBytes / board.SizeX})
+			boardpos = append(boardpos, board.Position{Value: value, X: i / db.NumBytes % db.SizeX, Y: i / db.NumBytes / db.SizeX})
 		}
 	}
 

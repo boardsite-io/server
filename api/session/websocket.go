@@ -3,19 +3,11 @@ package session
 import (
 	"fmt"
 	"net/http"
-	"sync"
 
 	"github.com/gorilla/websocket"
 
 	"boardsite/api/board"
 	"boardsite/api/database"
-)
-
-var (
-	boardUpdate    = make(chan []board.Position)
-	databaseUpdate = make(chan []board.Position)
-	clients        = make(map[string]*websocket.Conn)
-	mu             sync.Mutex
 )
 
 type errorStatus struct {
@@ -28,59 +20,43 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     checkOrigin,
 }
 
-func onClientConnect(conn *websocket.Conn) {
-	mu.Lock()
-	clients[conn.RemoteAddr().String()] = conn
-	mu.Unlock()
-	fmt.Println(conn.RemoteAddr().String() + " connected")
-}
-
-func onClientDisconnect(conn *websocket.Conn) {
-	mu.Lock()
-	delete(clients, conn.RemoteAddr().String())
-	mu.Unlock()
-	fmt.Println(conn.RemoteAddr().String() + " disconnected")
-	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
-}
-
-// Broadcaster Broadcasts board updates to all clients
-func Broadcaster() {
-	for {
-		msg := <-boardUpdate
-
-		mu.Lock()
-		for _, clientConn := range clients { // Send to all connected clients
-			clientConn.WriteJSON(&msg) // ignore error
-		}
-		mu.Unlock()
-	}
-}
-
-// DatabaseUpdater Updates database according to given position values
-func DatabaseUpdater() {
-	db, err := database.NewConnection()
-	if err != nil {
-		fmt.Println("Cannot connect database")
-		return
-	}
-	defer db.Close()
-
-	for {
-		board := <-databaseUpdate
-
-		if board[0].Action == "clear" {
-			db.Reset()
-			continue
-		}
-
-		db.Set(board)
-	}
-}
-
 // For development purpose
 func checkOrigin(r *http.Request) bool {
 	_ = r
 	return true
+}
+
+func onClientConnect(sessionID string, conn *websocket.Conn) {
+	ActiveSession[sessionID].Mu.Lock()
+
+	// add current remote connections to clients
+	ActiveSession[sessionID].NumClients++
+	ActiveSession[sessionID].Clients[conn.RemoteAddr().String()] = conn
+
+	ActiveSession[sessionID].Mu.Unlock()
+	fmt.Println(sessionID + "::" + conn.RemoteAddr().String() + " connected")
+}
+
+func onClientDisconnect(sessionID string, conn *websocket.Conn) {
+	ActiveSession[sessionID].Mu.Lock()
+
+	// remove current remote connection from clients
+	ActiveSession[sessionID].NumClients--
+	delete(ActiveSession[sessionID].Clients, conn.RemoteAddr().String())
+
+	ActiveSession[sessionID].Mu.Unlock()
+
+	// if session is empty after client disconnect
+	// the session needs to be set to inactive
+	if ActiveSession[sessionID].NumClients == 0 {
+		ActiveSession[sessionID].SetInactive()
+	}
+
+	fmt.Println(sessionID + "::" + conn.RemoteAddr().String() + " disconnected")
+	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
+
+	// close the websocket connection
+	conn.Close()
 }
 
 func closeHandler(code int, text string) error {
@@ -88,8 +64,13 @@ func closeHandler(code int, text string) error {
 	return nil
 }
 
-func initBoard() (*database.BoardDB, []board.Position, error) {
-	db, err := database.NewConnection()
+func initBoard(sessionID string) (*database.BoardDB, []board.Position, error) {
+	db, err := database.NewConnection(
+		sessionID,
+		ActiveSession[sessionID].SizeX,
+		ActiveSession[sessionID].SizeY,
+		ActiveSession[sessionID].NumBytes,
+	)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -105,19 +86,13 @@ func initBoard() (*database.BoardDB, []board.Position, error) {
 	return db, data, nil
 }
 
-// ServeBoard starts the websocket
-func ServeBoard(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer conn.Close()
+// InitWebsocket starts the websocket
+func InitWebsocket(sessionID string, conn *websocket.Conn) {
 
 	conn.SetCloseHandler(closeHandler)
 
 	// connect the database
-	db, boardData, err := initBoard()
+	db, boardData, err := initBoard(sessionID)
 	if err != nil {
 		fmt.Println("Cannot connect to database")
 		return
@@ -127,10 +102,6 @@ func ServeBoard(w http.ResponseWriter, r *http.Request) {
 
 	// send the data to client on connect
 	conn.WriteJSON(&boardData)
-
-	// on client connect/disconnect
-	onClientConnect(conn)
-	defer onClientDisconnect(conn)
 
 	for {
 		var data []board.Position
@@ -142,9 +113,9 @@ func ServeBoard(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Data Received: %v\n", data)
 
 		// broadcast board values
-		boardUpdate <- data
+		ActiveSession[sessionID].Board <- data
 
 		// save to database
-		databaseUpdate <- data
+		ActiveSession[sessionID].DBCache <- data
 	}
 }
