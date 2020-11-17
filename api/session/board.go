@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"time"
 
 	"boardsite/api/board"
 	"boardsite/api/database"
@@ -22,6 +23,10 @@ var (
 	ActiveSession = make(map[string]*board.SessionControl)
 )
 
+type createResponse struct {
+	ID string `json:"id"`
+}
+
 // CreateBoard creates a new board with parameters X and Y and redirects
 // to "/board/{id}" by setting a unique ID.
 func CreateBoard(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +40,7 @@ func CreateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rand.Seed(time.Now().UnixNano())
 	id := make([]byte, 6)
 	// find available id
 	for {
@@ -48,8 +54,6 @@ func CreateBoard(w http.ResponseWriter, r *http.Request) {
 	}
 	idstr := string(id)
 
-	fmt.Println(idstr)
-
 	db, err := database.NewConnection(idstr, form.X, form.Y, numBytes)
 	if err != nil {
 		return
@@ -58,7 +62,8 @@ func CreateBoard(w http.ResponseWriter, r *http.Request) {
 	// assign to SessionControl struct
 	ActiveSession[idstr] = board.NewSessionControl(idstr, form.X, form.Y, numBytes, db)
 
-	http.Redirect(w, r, "/board/"+string(id), http.StatusFound)
+	data := createResponse{ID: idstr}
+	json.NewEncoder(w).Encode(data)
 }
 
 // ServeBoard starts the websocket based on route "/board/{id}"
