@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
 	"boardsite/api/session"
@@ -18,6 +19,5 @@ func main() {
 	router.HandleFunc("/board/{id}", session.ServeBoard)
 	//http.HandleFunc("/api/board", session.ServeBoard)
 	//http.HandleFunc("/board/create", board.Create)
-	http.Handle("/", router)
-	http.ListenAndServe(":8000", nil)
+	http.ListenAndServe(":8000", handlers.CORS()(router))
 }
