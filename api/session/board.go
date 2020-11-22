@@ -37,11 +37,11 @@ func CreateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	form := board.SetupForm{}
 	// TODO retrieve x,y from form
-	if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
-		return
-	}
+	form := board.SetupForm{}
+	// if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
+	// 	return
+	// }
 
 	rand.Seed(time.Now().UnixNano())
 	id := make([]byte, 6)
