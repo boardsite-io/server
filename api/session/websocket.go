@@ -60,11 +60,6 @@ func onClientDisconnect(sessionID string, conn *websocket.Conn) {
 	conn.Close()
 }
 
-func closeHandler(code int, text string) error {
-	fmt.Printf("Connection closed %d: %s\n", code, text)
-	return nil
-}
-
 func initBoard(sessionID string) (*database.RedisDB, string, error) {
 	db, err := database.NewConnection(sessionID)
 	if err != nil {
@@ -77,9 +72,6 @@ func initBoard(sessionID string) (*database.RedisDB, string, error) {
 
 // InitWebsocket starts the websocket
 func InitWebsocket(sessionID string, conn *websocket.Conn) {
-
-	conn.SetCloseHandler(closeHandler)
-
 	// connect the database
 	db, boardData, err := initBoard(sessionID)
 	if err != nil {
@@ -100,18 +92,23 @@ func InitWebsocket(sessionID string, conn *websocket.Conn) {
 			if e := json.Unmarshal(data, &stroke); e != nil {
 				continue
 			}
-			fmt.Printf(sessionID+" :: Data Received from %s: %v\n", conn.RemoteAddr().String(), stroke)
+			fmt.Printf(sessionID+" :: Data Received from %s: %d stroke(s)\n",
+				conn.RemoteAddr().String(),
+				len(stroke),
+			)
 		} else {
 			break // socket closed
 		}
 
-		// broadcast board values
-		ActiveSession[sessionID].Broadcast <- &board.BroadcastData{
-			Origin:  conn.RemoteAddr().String(),
-			Content: stroke,
-		}
+		if strokeContent, err := json.Marshal(&stroke); err == nil {
+			// broadcast board values
+			ActiveSession[sessionID].Broadcast <- &board.BroadcastData{
+				Origin:  conn.RemoteAddr().String(),
+				Content: strokeContent,
+			}
 
-		// save to database
-		ActiveSession[sessionID].DBCache <- stroke
+			// save to database
+			ActiveSession[sessionID].DBCache <- stroke
+		}
 	}
 }

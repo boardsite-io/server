@@ -1,7 +1,6 @@
 package board
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -20,7 +19,7 @@ type Stroke struct {
 // BroadcastData holds data to be broadcasted and the origin
 type BroadcastData struct {
 	Origin  string
-	Content []Stroke
+	Content []byte
 }
 
 // SetupForm Form to setup a new board
@@ -81,13 +80,12 @@ func NewSessionControl(id string, x, y int, db DatabaseUpdater) *SessionControl 
 func (scb *SessionControl) broadcast() {
 	for scb.IsActive {
 		data := <-scb.Broadcast
-		msg, _ := json.Marshal(&data.Content)
 
 		scb.Mu.Lock()
 		for addr, clientConn := range scb.Clients { // Send to all connected clients
 			// except the origin, i.e. the initiator of message
 			if addr != data.Origin {
-				clientConn.WriteMessage(websocket.TextMessage, msg) // ignore error
+				clientConn.WriteMessage(websocket.TextMessage, data.Content) // ignore error
 			}
 		}
 		scb.Mu.Unlock()

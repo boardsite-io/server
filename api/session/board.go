@@ -26,6 +26,10 @@ type createResponse struct {
 	ID string `json:"id"`
 }
 
+type boardRequestData struct {
+	Action string `json:"action"`
+}
+
 // CreateBoard creates a new board with parameters X and Y and redirects
 // to "/board/{id}" by setting a unique ID.
 func CreateBoard(w http.ResponseWriter, r *http.Request) {
@@ -65,9 +69,9 @@ func CreateBoard(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(data)
 }
 
-// ServeBoard starts the websocket based on route "/board/{id}"
+// HandleBoardRequest starts the websocket based on route "/board/{id}"
 // if a session with {id} has been create, i.e. is active.
-func ServeBoard(w http.ResponseWriter, r *http.Request) {
+func HandleBoardRequest(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	// session does not exist
@@ -77,16 +81,38 @@ func ServeBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// upgrade to websocket protocol
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	onClientConnect(vars["id"], conn)
-	defer onClientDisconnect(vars["id"], conn)
+	if r.Method == "PUT" {
+		// modify session
+		data := boardRequestData{}
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-	InitWebsocket(vars["id"], conn)
+		if data.Action == "clear" {
+			clearSession(vars["id"])
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+	} else if r.Method == "GET" {
+		// upgrade to websocket protocol
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		onClientConnect(vars["id"], conn)
+		defer onClientDisconnect(vars["id"], conn)
+
+		InitWebsocket(vars["id"], conn)
+	}
+}
+
+func clearSession(sessionID string) {
+	ActiveSession[sessionID].DB.Clear()
+	ActiveSession[sessionID].Broadcast <- &board.BroadcastData{Content: []byte("[]")}
 }
 
 func closeSession(sessionID string) {
