@@ -10,13 +10,14 @@ import (
 
 // Stroke Holds the Stroke and value of pixels
 type Stroke struct {
-	ID        string  `json:"id"`
-	Type      string  `json:"type"`
-	Color     string  `json:"color"`
-	LineWidth float64 `json:"line_width"`
-	Position  []int   `json:"position"`
+	ID        string    `json:"id"`
+	Type      string    `json:"type"`
+	Color     string    `json:"color"`
+	LineWidth float64   `json:"line_width"`
+	Position  []float64 `json:"position"`
 }
 
+// BroadcastData holds data to be broadcasted and the origin
 type BroadcastData struct {
 	Origin  string
 	Content []Stroke
