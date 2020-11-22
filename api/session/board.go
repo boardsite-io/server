@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	letters  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	numBytes = 3
+	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 var (
@@ -54,13 +53,13 @@ func CreateBoard(w http.ResponseWriter, r *http.Request) {
 	}
 	idstr := string(id)
 
-	db, err := database.NewConnection(idstr, form.X, form.Y, numBytes)
+	db, err := database.NewConnection(idstr)
 	if err != nil {
 		return
 	}
 
 	// assign to SessionControl struct
-	ActiveSession[idstr] = board.NewSessionControl(idstr, form.X, form.Y, numBytes, db)
+	ActiveSession[idstr] = board.NewSessionControl(idstr, form.X, form.Y, db)
 
 	data := createResponse{ID: idstr}
 	json.NewEncoder(w).Encode(data)
@@ -88,4 +87,10 @@ func ServeBoard(w http.ResponseWriter, r *http.Request) {
 	defer onClientDisconnect(vars["id"], conn)
 
 	InitWebsocket(vars["id"], conn)
+}
+
+func closeSession(sessionID string) {
+	ActiveSession[sessionID].IsActive = false
+	ActiveSession[sessionID].DB.Clear()
+	delete(ActiveSession, sessionID)
 }

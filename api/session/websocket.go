@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -34,7 +35,7 @@ func onClientConnect(sessionID string, conn *websocket.Conn) {
 	ActiveSession[sessionID].Clients[conn.RemoteAddr().String()] = conn
 
 	ActiveSession[sessionID].Mu.Unlock()
-	fmt.Println(sessionID + "::" + conn.RemoteAddr().String() + " connected")
+	fmt.Println(sessionID + " :: " + conn.RemoteAddr().String() + " connected")
 }
 
 func onClientDisconnect(sessionID string, conn *websocket.Conn) {
@@ -49,10 +50,10 @@ func onClientDisconnect(sessionID string, conn *websocket.Conn) {
 	// if session is empty after client disconnect
 	// the session needs to be set to inactive
 	if ActiveSession[sessionID].NumClients == 0 {
-		ActiveSession[sessionID].SetInactive()
+		closeSession(sessionID)
 	}
 
-	fmt.Println(sessionID + "::" + conn.RemoteAddr().String() + " disconnected")
+	fmt.Println(sessionID + " :: " + conn.RemoteAddr().String() + " disconnected")
 	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
 
 	// close the websocket connection
@@ -64,26 +65,14 @@ func closeHandler(code int, text string) error {
 	return nil
 }
 
-func initBoard(sessionID string) (*database.BoardDB, []board.Position, error) {
-	db, err := database.NewConnection(
-		sessionID,
-		ActiveSession[sessionID].SizeX,
-		ActiveSession[sessionID].SizeY,
-		ActiveSession[sessionID].NumBytes,
-	)
+func initBoard(sessionID string) (*database.RedisDB, string, error) {
+	db, err := database.NewConnection(sessionID)
 	if err != nil {
-		return nil, nil, err
+		return nil, "", err
 	}
 
 	data, err := db.FetchAll()
-	if err != nil {
-		return nil, nil, err
-	} else if data == nil { // if board does not exist, create it
-		db.Reset()
-		data = []board.Position{}
-	}
-
-	return db, data, nil
+	return db, data, err
 }
 
 // InitWebsocket starts the websocket
@@ -101,21 +90,28 @@ func InitWebsocket(sessionID string, conn *websocket.Conn) {
 	defer db.Close()
 
 	// send the data to client on connect
-	conn.WriteJSON(&boardData)
+	conn.WriteMessage(websocket.TextMessage, []byte(boardData))
 
 	for {
-		var data []board.Position
+		var stroke []board.Stroke
 
-		if err := conn.ReadJSON(&data); err != nil {
-			break
+		if _, data, err := conn.ReadMessage(); err == nil {
+			// sanitize received data
+			if e := json.Unmarshal(data, &stroke); e != nil {
+				continue
+			}
+			fmt.Printf(sessionID+" :: Data Received from %s: %v\n", conn.RemoteAddr().String(), stroke)
+		} else {
+			break // socket closed
 		}
 
-		fmt.Printf("Data Received: %v\n", data)
-
 		// broadcast board values
-		ActiveSession[sessionID].Board <- data
+		ActiveSession[sessionID].Broadcast <- &board.BroadcastData{
+			Origin:  conn.RemoteAddr().String(),
+			Content: stroke,
+		}
 
 		// save to database
-		ActiveSession[sessionID].DBCache <- data
+		ActiveSession[sessionID].DBCache <- stroke
 	}
 }

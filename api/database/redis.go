@@ -1,72 +1,57 @@
 package database
 
 import (
-	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/gomodule/redigo/redis"
 
 	"boardsite/api/board"
 )
 
-// BoardDB Holds the connection to the DB
-type BoardDB struct {
-	SizeX, SizeY, NumBytes int
-	BoardLen               int
-	BoardKey               string
-	Conn                   redis.Conn
+// RedisDB Holds the connection to the DB
+type RedisDB struct {
+	Conn     redis.Conn
+	BoardKey string
+}
+
+type strokeObj struct {
+	ID string `json:"id"`
 }
 
 // NewConnection Sets up redis DB connection with credentials
-func NewConnection(sessionID string, x, y, numBytes int) (*BoardDB, error) {
+func NewConnection(sessionID string) (*RedisDB, error) {
 	// TODO parse from config
 	conn, err := redis.Dial("tcp", "localhost:6379")
 
-	return &BoardDB{
+	return &RedisDB{
 		Conn:     conn,
-		SizeX:    x,
-		SizeY:    y,
-		NumBytes: numBytes,
-		BoardLen: numBytes * x * y,
 		BoardKey: sessionID,
 	}, err
 }
 
 // Close Closes connection to redis DB
-func (db *BoardDB) Close() {
+func (db *RedisDB) Close() {
 	db.Conn.Close()
 }
 
-// Reset Creates an new (empty) board
-func (db *BoardDB) Reset() error {
-	// empty slice of board size
-	board := make([]byte, db.BoardLen)
-
-	// default color 0xffffff
-	for i := range board {
-		board[i] = 0xff
-	}
-
-	_, err := db.Conn.Do("SET", db.BoardKey, board)
-	return err
-}
-
 // Clear clears the board from Redis
-func (db *BoardDB) Clear() error {
+func (db *RedisDB) Clear() error {
 	_, err := db.Conn.Do("DEL", db.BoardKey)
 	return err
 }
 
-// Set Stores board values to the database
-func (db *BoardDB) Set(boardpos []board.Position) error {
-	b := make([]byte, 4)
-
-	for _, pos := range boardpos {
-		// encode to byte slice
-		binary.LittleEndian.PutUint32(b, pos.Value)
-
-		// store only boardValBytes least significant bytes
-		if pos.X < db.SizeX && pos.Y < db.SizeY {
-			db.Conn.Send("SETRANGE", db.BoardKey, db.getDBIndex(pos.X, pos.Y), b[:db.NumBytes])
+// Set Stores board strokes to the database
+//
+// Creates a JSON encoding for each slice entry which
+// is stored to the database
+func (db *RedisDB) Set(stroke []board.Stroke) error {
+	for i := range stroke {
+		if strokeStr, err := json.Marshal(&stroke[i]); err == nil {
+			db.Conn.Send("HMSET", db.BoardKey, stroke[i].ID, strokeStr)
+		} else {
+			fmt.Println(err)
 		}
 	}
 
@@ -77,36 +62,28 @@ func (db *BoardDB) Set(boardpos []board.Position) error {
 	return nil
 }
 
-func (db *BoardDB) getDBIndex(x, y int) int {
-	return (db.SizeX*y + x) * db.NumBytes
+// Delete deletes stroke from database by ID
+func (db *RedisDB) Delete(strokeID string) error {
+	_, err := db.Conn.Do("HDEL", db.BoardKey, strokeID)
+	return err
 }
 
-// FetchAll Fetches all the values of the board from the DB
-func (db *BoardDB) FetchAll() ([]board.Position, error) {
-	// slice with max capacity
-	boardpos := make([]board.Position, 0, db.BoardLen)
-
-	reply, err := db.Conn.Do("GET", db.BoardKey)
+// FetchAll Fetches all strokes of the board from the DB
+//
+// Preserves the JSON encoding of DB
+func (db *RedisDB) FetchAll() (string, error) {
+	keys, err := redis.ByteSlices(db.Conn.Do("HKEYS", db.BoardKey))
 	if err != nil {
-		return nil, err
-	} else if reply == nil {
-		return nil, nil
+		return "[]", err
 	}
 
-	data := reply.([]byte)
+	// slice with capacity equal to num keys
+	strokeStr := make([]string, 0, len(keys))
 
-	for i := 0; i < db.BoardLen; i += db.NumBytes {
-		// convert the board.NumBytes bytes to uint32
-		var value uint32
-		for j := 0; j < db.NumBytes; j++ {
-			value |= uint32(data[i+j]) << (8 * j) // little endian
-		}
-
-		// only retrieve non-white (0xffffff) values
-		if value != 0xffffff {
-			boardpos = append(boardpos, board.Position{Value: value, X: i / db.NumBytes % db.SizeX, Y: i / db.NumBytes / db.SizeX})
-		}
+	for i := range keys {
+		stroke, _ := redis.ByteSlices(db.Conn.Do("HMGET", db.BoardKey, keys[i]))
+		strokeStr = append(strokeStr, string(stroke[0]))
 	}
 
-	return boardpos, nil
+	return fmt.Sprintf("[%s]", strings.Join(strokeStr, ",")), nil
 }
