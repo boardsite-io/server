@@ -14,5 +14,9 @@ func main() {
 
 	router.HandleFunc("/board/create", session.CreateBoard)
 	router.HandleFunc("/board/{id}", session.HandleBoardRequest)
-	http.ListenAndServe(":8000", handlers.CORS()(router))
+	http.ListenAndServe(":8000",
+		handlers.CORS(
+			handlers.AllowedOrigins([]string{"*"}),
+			handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE"}),
+		)(router))
 }
