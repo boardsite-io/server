@@ -48,7 +48,7 @@ type SessionControl struct {
 // DatabaseUpdater Declares a set of functions used for Database updates.
 type DatabaseUpdater interface {
 	Delete(id string) error
-	Set(value []Stroke) error
+	Update(value []Stroke) error
 	Close()
 	Clear() error
 }
@@ -96,13 +96,7 @@ func (scb *SessionControl) broadcast() {
 func (scb *SessionControl) updateDatabase() {
 	for scb.IsActive {
 		board := <-scb.DBCache
-
-		if board[0].Type == "clear" {
-			scb.DB.Clear()
-			continue
-		}
-
-		scb.DB.Set(board)
+		scb.DB.Update(board)
 	}
 	scb.DB.Close()
 }

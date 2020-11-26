@@ -42,16 +42,21 @@ func (db *RedisDB) Clear() error {
 	return err
 }
 
-// Set Stores board strokes to the database
+// Update updates board strokes in the database
 //
 // Creates a JSON encoding for each slice entry which
 // is stored to the database
-func (db *RedisDB) Set(stroke []board.Stroke) error {
+//
+// Delete the stroke with given id, if type is set to
+// "delete"
+func (db *RedisDB) Update(stroke []board.Stroke) error {
 	for i := range stroke {
-		if strokeStr, err := json.Marshal(&stroke[i]); err == nil {
-			db.Conn.Send("HMSET", db.BoardKey, stroke[i].ID, strokeStr)
+		if stroke[i].Type == "delete" {
+			db.Conn.Send("HDEL", db.BoardKey, stroke[i].ID)
 		} else {
-			fmt.Println(err)
+			if strokeStr, err := json.Marshal(&stroke[i]); err == nil {
+				db.Conn.Send("HMSET", db.BoardKey, stroke[i].ID, strokeStr)
+			}
 		}
 	}
 
