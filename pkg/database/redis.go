@@ -26,7 +26,7 @@ type RedisDB struct {
 // NewRedisConn Sets up redis DB connection with credentials
 func NewRedisConn(sessionID string) (*RedisDB, error) {
 	// TODO parse from config
-	conn, err := redis.Dial("tcp", "arch-pi4:6379")
+	conn, err := redis.Dial("tcp", "localhost:6379")
 
 	return &RedisDB{
 		Conn:     conn,

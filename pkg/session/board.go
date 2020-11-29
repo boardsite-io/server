@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/heat1q/boardsite/pkg/database"
+
 	"github.com/gorilla/mux"
 
 	"github.com/heat1q/boardsite/pkg/api"
@@ -78,6 +80,12 @@ func HandleBoardRequest(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else if r.Method == "GET" {
+		db, dbErr := database.NewRedisConn(vars["id"])
+		if dbErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		// upgrade to websocket protocol
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -87,6 +95,6 @@ func HandleBoardRequest(w http.ResponseWriter, r *http.Request) {
 		onClientConnect(vars["id"], conn)
 		defer onClientDisconnect(vars["id"], conn)
 
-		InitWebsocket(vars["id"], conn)
+		InitWebsocket(vars["id"], conn, db)
 	}
 }

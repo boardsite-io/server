@@ -60,26 +60,9 @@ func onClientDisconnect(sessionID string, conn *websocket.Conn) {
 	conn.Close()
 }
 
-func initBoard(sessionID string) (*database.RedisDB, string, error) {
-	db, err := database.NewRedisConn(sessionID)
-	if err != nil {
-		return nil, "", err
-	}
-
-	data, err := db.FetchAll()
-	return db, data, err
-}
-
 // InitWebsocket starts the websocket
-func InitWebsocket(sessionID string, conn *websocket.Conn) {
-	// connect the database
-	db, boardData, err := initBoard(sessionID)
-	if err != nil {
-		fmt.Println("Cannot connect to database")
-		return
-	}
-	// close when we are done
-	defer db.Close()
+func InitWebsocket(sessionID string, conn *websocket.Conn, db *database.RedisDB) {
+	boardData, _ := db.FetchAll()
 
 	// send the data to client on connect
 	conn.WriteMessage(websocket.TextMessage, []byte(boardData))

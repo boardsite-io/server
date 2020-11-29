@@ -64,34 +64,43 @@ func NewSessionControl(id string, x, y int) *SessionControl {
 
 // Broadcast Broadcasts board updates to all clients
 func (scb *SessionControl) broadcast() {
-	select {
-	case data := <-scb.Broadcast:
-		scb.Mu.Lock()
-		for addr, clientConn := range scb.Clients { // Send to all connected clients
-			// except the origin, i.e. the initiator of message
-			if addr != data.Origin {
-				clientConn.WriteMessage(websocket.TextMessage, data.Content) // ignore error
+	for {
+		select {
+		case data := <-scb.Broadcast:
+			scb.Mu.Lock()
+			for addr, clientConn := range scb.Clients { // Send to all connected clients
+				// except the origin, i.e. the initiator of message
+				if addr != data.Origin {
+					clientConn.WriteMessage(websocket.TextMessage, data.Content) // ignore error
+				}
 			}
+			scb.Mu.Unlock()
+		case <-scb.Close:
+			return
 		}
-		scb.Mu.Unlock()
-	case <-scb.Close:
-		return
 	}
 }
 
 // UpdateDatabase Updates database according to given Stroke values
 func (scb *SessionControl) updateDatabase() {
-	db, _ := database.NewRedisConn(scb.ID)
+	db, err := database.NewRedisConn(scb.ID)
+	// close session if db connection fails
+	if err != nil {
+		scb.Close <- struct{}{}
+		return
+	}
 	defer db.Close()
 
-	select {
-	case board := <-scb.DBUpdate:
-		db.Update(board)
-	case <-scb.DBClear:
-		db.Clear()
-	case <-scb.Close:
-		db.Clear()
-		return
+	for {
+		select {
+		case board := <-scb.DBUpdate:
+			db.Update(board)
+		case <-scb.DBClear:
+			db.Clear()
+		case <-scb.Close:
+			db.Clear()
+			return
+		}
 	}
 }
 
@@ -103,4 +112,5 @@ func (scb *SessionControl) Clear() {
 
 func closeSession(sessionID string) {
 	ActiveSession[sessionID].Close <- struct{}{}
+	delete(ActiveSession, sessionID)
 }
