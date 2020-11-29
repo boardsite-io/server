@@ -1,4 +1,4 @@
-module boardsite
+module github.com/heat1q/boardsite
 
 go 1.15
 

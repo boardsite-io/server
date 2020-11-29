@@ -1,14 +1,21 @@
 package database
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/gomodule/redigo/redis"
 
-	"boardsite/api/board"
+	"github.com/heat1q/boardsite/pkg/api"
 )
+
+// DatabaseUpdater Declares a set of functions used for Database updates.
+// type DatabaseUpdater interface {
+// 	Delete(id string) error
+// 	Update(value []api.StrokeReader) error
+// 	Close()
+// 	Clear() error
+// }
 
 // RedisDB Holds the connection to the DB
 type RedisDB struct {
@@ -16,14 +23,10 @@ type RedisDB struct {
 	BoardKey string
 }
 
-type strokeObj struct {
-	ID string `json:"id"`
-}
-
-// NewConnection Sets up redis DB connection with credentials
-func NewConnection(sessionID string) (*RedisDB, error) {
+// NewRedisConn Sets up redis DB connection with credentials
+func NewRedisConn(sessionID string) (*RedisDB, error) {
 	// TODO parse from config
-	conn, err := redis.Dial("tcp", "localhost:6379")
+	conn, err := redis.Dial("tcp", "arch-pi4:6379")
 
 	return &RedisDB{
 		Conn:     conn,
@@ -49,13 +52,13 @@ func (db *RedisDB) Clear() error {
 //
 // Delete the stroke with given id, if type is set to
 // "delete"
-func (db *RedisDB) Update(stroke []board.Stroke) error {
+func (db *RedisDB) Update(stroke []api.Stroke) error {
 	for i := range stroke {
-		if stroke[i].Type == "delete" {
-			db.Conn.Send("HDEL", db.BoardKey, stroke[i].ID)
+		if stroke[i].IsDeleted() {
+			db.Conn.Send("HDEL", db.BoardKey, stroke[i].GetID())
 		} else {
-			if strokeStr, err := json.Marshal(&stroke[i]); err == nil {
-				db.Conn.Send("HMSET", db.BoardKey, stroke[i].ID, strokeStr)
+			if strokeStr, err := stroke[i].JSONStringify(); err == nil {
+				db.Conn.Send("HMSET", db.BoardKey, stroke[i].GetID(), strokeStr)
 			}
 		}
 	}

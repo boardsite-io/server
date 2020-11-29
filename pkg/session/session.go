@@ -1,31 +1,24 @@
-package board
+package session
 
 import (
 	"fmt"
 	"sync"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/heat1q/boardsite/pkg/api"
+	"github.com/heat1q/boardsite/pkg/database"
 )
 
-// Stroke Holds the Stroke and value of pixels
-type Stroke struct {
-	ID        string    `json:"id"`
-	Type      string    `json:"type"`
-	Color     string    `json:"color"`
-	LineWidth float64   `json:"line_width"`
-	Position  []float64 `json:"position"`
-}
+var (
+	// ActiveSession maps the session is to the SessionControl struct
+	ActiveSession = make(map[string]*SessionControl)
+)
 
 // BroadcastData holds data to be broadcasted and the origin
 type BroadcastData struct {
 	Origin  string
 	Content []byte
-}
-
-// SetupForm Form to setup a new board
-type SetupForm struct {
-	X int `json:"x"`
-	Y int `json:"y"`
 }
 
 // SessionControl holds the information and channels for sessions
@@ -36,35 +29,28 @@ type SessionControl struct {
 	ID string
 
 	Broadcast chan *BroadcastData
-	DBCache   chan []Stroke
-	DB        DatabaseUpdater
-	IsActive  bool
+	DBUpdate  chan []api.Stroke
+	DBClear   chan struct{}
+	Close     chan struct{}
+
 	// Active Connections
 	Clients    map[string]*websocket.Conn
 	NumClients int
 	Mu         sync.Mutex
 }
 
-// DatabaseUpdater Declares a set of functions used for Database updates.
-type DatabaseUpdater interface {
-	Delete(id string) error
-	Update(value []Stroke) error
-	Close()
-	Clear() error
-}
-
 // NewSessionControl creates and initializes a new SessionControl struct
-func NewSessionControl(id string, x, y int, db DatabaseUpdater) *SessionControl {
+func NewSessionControl(id string, x, y int) *SessionControl {
 	scb := &SessionControl{
 		ID:         id,
 		SizeX:      x,
 		SizeY:      y,
-		IsActive:   true,
 		Broadcast:  make(chan *BroadcastData),
-		DBCache:    make(chan []Stroke),
+		DBUpdate:   make(chan []api.Stroke),
+		DBClear:    make(chan struct{}),
+		Close:      make(chan struct{}),
 		Clients:    make(map[string]*websocket.Conn),
 		NumClients: 0,
-		DB:         db,
 	}
 
 	// start goroutines for broadcasting and saving changes to board
@@ -78,9 +64,8 @@ func NewSessionControl(id string, x, y int, db DatabaseUpdater) *SessionControl 
 
 // Broadcast Broadcasts board updates to all clients
 func (scb *SessionControl) broadcast() {
-	for scb.IsActive {
-		data := <-scb.Broadcast
-
+	select {
+	case data := <-scb.Broadcast:
 		scb.Mu.Lock()
 		for addr, clientConn := range scb.Clients { // Send to all connected clients
 			// except the origin, i.e. the initiator of message
@@ -89,14 +74,33 @@ func (scb *SessionControl) broadcast() {
 			}
 		}
 		scb.Mu.Unlock()
+	case <-scb.Close:
+		return
 	}
 }
 
 // UpdateDatabase Updates database according to given Stroke values
 func (scb *SessionControl) updateDatabase() {
-	for scb.IsActive {
-		board := <-scb.DBCache
-		scb.DB.Update(board)
+	db, _ := database.NewRedisConn(scb.ID)
+	defer db.Close()
+
+	select {
+	case board := <-scb.DBUpdate:
+		db.Update(board)
+	case <-scb.DBClear:
+		db.Clear()
+	case <-scb.Close:
+		db.Clear()
+		return
 	}
-	scb.DB.Close()
+}
+
+// Clear clears the data in this session
+func (scb *SessionControl) Clear() {
+	scb.DBClear <- struct{}{}
+	scb.Broadcast <- &BroadcastData{Content: []byte("[]")}
+}
+
+func closeSession(sessionID string) {
+	ActiveSession[sessionID].Close <- struct{}{}
 }

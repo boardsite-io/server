@@ -7,8 +7,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"boardsite/api/board"
-	"boardsite/api/database"
+	"github.com/heat1q/boardsite/pkg/api"
+	"github.com/heat1q/boardsite/pkg/database"
 )
 
 type errorStatus struct {
@@ -47,21 +47,21 @@ func onClientDisconnect(sessionID string, conn *websocket.Conn) {
 
 	ActiveSession[sessionID].Mu.Unlock()
 
+	fmt.Println(sessionID + " :: " + conn.RemoteAddr().String() + " disconnected")
+	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
+
 	// if session is empty after client disconnect
 	// the session needs to be set to inactive
 	if ActiveSession[sessionID].NumClients == 0 {
 		closeSession(sessionID)
 	}
 
-	fmt.Println(sessionID + " :: " + conn.RemoteAddr().String() + " disconnected")
-	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
-
 	// close the websocket connection
 	conn.Close()
 }
 
 func initBoard(sessionID string) (*database.RedisDB, string, error) {
-	db, err := database.NewConnection(sessionID)
+	db, err := database.NewRedisConn(sessionID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -85,7 +85,7 @@ func InitWebsocket(sessionID string, conn *websocket.Conn) {
 	conn.WriteMessage(websocket.TextMessage, []byte(boardData))
 
 	for {
-		var stroke []board.Stroke
+		var stroke []api.Stroke
 
 		if _, data, err := conn.ReadMessage(); err == nil {
 			// sanitize received data
@@ -102,13 +102,13 @@ func InitWebsocket(sessionID string, conn *websocket.Conn) {
 
 		if strokeContent, err := json.Marshal(&stroke); err == nil {
 			// broadcast board values
-			ActiveSession[sessionID].Broadcast <- &board.BroadcastData{
+			ActiveSession[sessionID].Broadcast <- &BroadcastData{
 				Origin:  conn.RemoteAddr().String(),
 				Content: strokeContent,
 			}
 
 			// save to database
-			ActiveSession[sessionID].DBCache <- stroke
+			ActiveSession[sessionID].DBUpdate <- stroke
 		}
 	}
 }

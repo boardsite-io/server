@@ -7,28 +7,14 @@ import (
 	"net/http"
 	"time"
 
-	"boardsite/api/board"
-	"boardsite/api/database"
-
 	"github.com/gorilla/mux"
+
+	"github.com/heat1q/boardsite/pkg/api"
 )
 
 const (
 	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
-
-var (
-	// ActiveSession maps the session is to the SessionControl struct
-	ActiveSession = make(map[string]*board.SessionControl)
-)
-
-type createResponse struct {
-	ID string `json:"id"`
-}
-
-type boardRequestData struct {
-	Action string `json:"action"`
-}
 
 // CreateBoard creates a new board with parameters X and Y and redirects
 // to "/board/{id}" by setting a unique ID.
@@ -38,7 +24,7 @@ func CreateBoard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO retrieve x,y from form
-	form := board.SetupForm{}
+	form := api.SetupForm{}
 	// if err := json.NewDecoder(r.Body).Decode(&form); err != nil {
 	// 	return
 	// }
@@ -57,15 +43,10 @@ func CreateBoard(w http.ResponseWriter, r *http.Request) {
 	}
 	idstr := string(id)
 
-	db, err := database.NewConnection(idstr)
-	if err != nil {
-		return
-	}
-
 	// assign to SessionControl struct
-	ActiveSession[idstr] = board.NewSessionControl(idstr, form.X, form.Y, db)
+	ActiveSession[idstr] = NewSessionControl(idstr, form.X, form.Y)
 
-	data := createResponse{ID: idstr}
+	data := api.CreateBoardResponse{ID: idstr}
 	json.NewEncoder(w).Encode(data)
 }
 
@@ -75,7 +56,7 @@ func HandleBoardRequest(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	// session does not exist
-	if ActiveSession[vars["id"]] == nil || !ActiveSession[vars["id"]].IsActive {
+	if ActiveSession[vars["id"]] == nil {
 		// TODO return status 404
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -83,14 +64,14 @@ func HandleBoardRequest(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "PUT" {
 		// modify session
-		data := boardRequestData{}
+		data := api.BoardRequest{}
 		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		if data.Action == "clear" {
-			clearSession(vars["id"])
+			ActiveSession[vars["id"]].Clear()
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -108,15 +89,4 @@ func HandleBoardRequest(w http.ResponseWriter, r *http.Request) {
 
 		InitWebsocket(vars["id"], conn)
 	}
-}
-
-func clearSession(sessionID string) {
-	ActiveSession[sessionID].DB.Clear()
-	ActiveSession[sessionID].Broadcast <- &board.BroadcastData{Content: []byte("[]")}
-}
-
-func closeSession(sessionID string) {
-	ActiveSession[sessionID].IsActive = false
-	ActiveSession[sessionID].DB.Clear()
-	delete(ActiveSession, sessionID)
 }
