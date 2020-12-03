@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -22,6 +23,8 @@ import (
 const (
 	port = 8000
 )
+
+var envRedisHost = os.Getenv("BOARDSITE_REDIS_HOST_ENV")
 
 var baseURL = fmt.Sprintf("http://localhost:%d", port)
 
@@ -50,6 +53,12 @@ func TestRunServer(t *testing.T) {
 	require.NoError(t, wsErr)
 	require.Equal(t, http.StatusSwitchingProtocols, wsResp.StatusCode)
 	defer conn.Close()
+
+	// initial data on fresh session should be empty
+	msgType, msg, msgErr := conn.ReadMessage()
+	require.NoError(t, msgErr)
+	require.Equal(t, msgType, websocket.TextMessage)
+	require.Equal(t, msg, []byte("[]"))
 
 	// send some data
 	testStroke1 := `{"id":"testid1","type":"line","color":"#ff00ff","line_width":1,"position":[1.3,3.7]}`
