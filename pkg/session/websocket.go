@@ -2,7 +2,7 @@ package session
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -34,7 +34,7 @@ func onClientConnect(sessionID string, conn *websocket.Conn) {
 	ActiveSession[sessionID].Clients[conn.RemoteAddr().String()] = conn
 
 	ActiveSession[sessionID].Mu.Unlock()
-	fmt.Println(sessionID + " :: " + conn.RemoteAddr().String() + " connected")
+	log.Println(sessionID + " :: " + conn.RemoteAddr().String() + " connected")
 }
 
 func onClientDisconnect(sessionID string, conn *websocket.Conn) {
@@ -46,7 +46,7 @@ func onClientDisconnect(sessionID string, conn *websocket.Conn) {
 
 	ActiveSession[sessionID].Mu.Unlock()
 
-	fmt.Println(sessionID + " :: " + conn.RemoteAddr().String() + " disconnected")
+	log.Println(sessionID + " :: " + conn.RemoteAddr().String() + " disconnected")
 	conn.WriteMessage(websocket.TextMessage, []byte("connection closed by host"))
 
 	// if session is empty after client disconnect
@@ -72,7 +72,7 @@ func InitWebsocket(sessionID string, conn *websocket.Conn) {
 			if e := json.Unmarshal(data, &stroke); e != nil {
 				continue
 			}
-			fmt.Printf(sessionID+" :: Data Received from %s: %d stroke(s)\n",
+			log.Printf(sessionID+" :: Data Received from %s: %d stroke(s)\n",
 				conn.RemoteAddr().String(),
 				len(stroke),
 			)

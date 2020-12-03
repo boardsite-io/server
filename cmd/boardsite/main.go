@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -25,7 +24,7 @@ func main() {
 	go func() {
 		select {
 		case <-gracefulStop:
-			fmt.Println("Shutting down...")
+			log.Println("Shutting down...")
 			if err := shutdown(); err != nil {
 				log.Fatal(err)
 			}
@@ -34,7 +33,6 @@ func main() {
 	}()
 
 	if err := run(); !errors.Is(err, http.ErrServerClosed) {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/handlers"
@@ -24,7 +25,7 @@ func Serve(ctx context.Context, port int) (func() error, func() error) {
 		handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE"}),
 	)(router)
 	serv := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: handl}
-	fmt.Printf("Starting on port %d\n", port)
+	log.Printf("Starting on port %d\n", port)
 
 	return serv.ListenAndServe, func() error {
 		return serv.Shutdown(ctx)

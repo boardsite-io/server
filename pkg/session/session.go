@@ -1,7 +1,7 @@
 package session
 
 import (
-	"fmt"
+	"log"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -63,7 +63,7 @@ func NewSessionControl(id string, x, y int) *SessionControl {
 	go scb.broadcast()
 	go scb.updateDatabase()
 
-	fmt.Printf("Create Session with ID: %s\n", id)
+	log.Printf("Create Session with ID: %s\n", id)
 
 	return scb
 }
@@ -98,6 +98,7 @@ func (scb *SessionControl) updateDatabase() {
 	// close session if db connection fails
 	if err != nil {
 		scb.Close <- struct{}{}
+		log.Fatal("Cannot connect to database")
 		return
 	}
 	defer db.Close()
