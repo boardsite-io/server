@@ -8,7 +8,6 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/heat1q/boardsite/pkg/api"
-	"github.com/heat1q/boardsite/pkg/database"
 )
 
 type errorStatus struct {
@@ -61,11 +60,9 @@ func onClientDisconnect(sessionID string, conn *websocket.Conn) {
 }
 
 // InitWebsocket starts the websocket
-func InitWebsocket(sessionID string, conn *websocket.Conn, db *database.RedisDB) {
-	boardData, _ := db.FetchAll()
-
-	// send the data to client on connect
-	conn.WriteMessage(websocket.TextMessage, []byte(boardData))
+func InitWebsocket(sessionID string, conn *websocket.Conn) {
+	// send all the data to client on connect
+	ActiveSession[sessionID].DBFetch <- conn.RemoteAddr().String()
 
 	for {
 		var stroke []api.Stroke

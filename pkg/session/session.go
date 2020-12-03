@@ -29,9 +29,13 @@ type SessionControl struct {
 	ID string
 
 	Broadcast chan *BroadcastData
-	DBUpdate  chan []api.Stroke
-	DBClear   chan struct{}
-	Close     chan struct{}
+	Echo      chan *BroadcastData
+
+	DBUpdate chan []api.Stroke
+	DBClear  chan struct{}
+	DBFetch  chan string
+
+	Close chan struct{}
 
 	// Active Connections
 	Clients    map[string]*websocket.Conn
@@ -46,8 +50,10 @@ func NewSessionControl(id string, x, y int) *SessionControl {
 		SizeX:      x,
 		SizeY:      y,
 		Broadcast:  make(chan *BroadcastData),
+		Echo:       make(chan *BroadcastData),
 		DBUpdate:   make(chan []api.Stroke),
 		DBClear:    make(chan struct{}),
+		DBFetch:    make(chan string),
 		Close:      make(chan struct{}),
 		Clients:    make(map[string]*websocket.Conn),
 		NumClients: 0,
@@ -75,6 +81,11 @@ func (scb *SessionControl) broadcast() {
 				}
 			}
 			scb.Mu.Unlock()
+		case data := <-scb.Echo:
+			// echo message back to origin
+			scb.Mu.Lock()
+			scb.Clients[data.Origin].WriteMessage(websocket.TextMessage, data.Content)
+			scb.Mu.Unlock()
 		case <-scb.Close:
 			return
 		}
@@ -95,6 +106,9 @@ func (scb *SessionControl) updateDatabase() {
 		select {
 		case board := <-scb.DBUpdate:
 			db.Update(board)
+		case origin := <-scb.DBFetch:
+			data, _ := db.FetchAll()
+			scb.Echo <- &BroadcastData{Origin: origin, Content: []byte(data)}
 		case <-scb.DBClear:
 			db.Clear()
 		case <-scb.Close:
