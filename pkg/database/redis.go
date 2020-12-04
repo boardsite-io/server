@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/gomodule/redigo/redis"
@@ -16,6 +17,12 @@ import (
 // 	Close()
 // 	Clear() error
 // }
+var (
+	redisHost = fmt.Sprintf("%s:%s",
+		os.Getenv("B_REDIS_HOST"),
+		os.Getenv("B_REDIS_PORT"),
+	)
+)
 
 // RedisDB Holds the connection to the DB
 type RedisDB struct {
@@ -26,7 +33,7 @@ type RedisDB struct {
 // NewRedisConn Sets up redis DB connection with credentials
 func NewRedisConn(sessionID string) (*RedisDB, error) {
 	// TODO parse from config
-	conn, err := redis.Dial("tcp", "localhost:6379")
+	conn, err := redis.Dial("tcp", redisHost)
 
 	return &RedisDB{
 		Conn:     conn,
