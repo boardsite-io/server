@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -13,12 +14,15 @@ import (
 )
 
 func main() {
+	port := flag.Int("port", 8000, "listening on port")
+	flag.Parse()
+
 	gracefulStop := make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)
 	signal.Notify(gracefulStop, syscall.SIGINT)
 
 	ctx := context.Background()
-	run, shutdown := app.Serve(ctx, 8000)
+	run, shutdown := app.Serve(ctx, *port)
 	defer shutdown()
 
 	go func() {
