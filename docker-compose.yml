@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  api:
+    build:
+      context: .
+      target: deploy
+    environment: 
+      - B_PORT=$API_PORT #default development
+      - B_REDIS_HOST=redis
+      - B_REDIS_PORT=6379
+    ports:
+      - "$API_PORT:$API_PORT"
+    depends_on: 
+      - redis
+  redis:
+    image: "redis:alpine"

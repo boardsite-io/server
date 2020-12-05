@@ -6,17 +6,20 @@ build:
 
 test:
 	@docker run --rm --name unit-test-redis \
-	-p6379:63000 -d redis:alpine
+	-p6379:6379 -d redis:alpine
 	@DOCKER_BUILDKIT=1 docker build . --rm --target unit-test \
-	--network=host || docker stop unit-test-redis
-	@docker rm -f unit-test-redis
+	--network=host || (docker stop unit-test-redis && exit 1)
+	@docker stop unit-test-redis
 
-debug:
-	@docker run --rm --name b-redis-debug \
-	-p6379:6379 -d redis:alpine	
-	@DOCKER_BUILDKIT=1 docker build . \
-	--target debug -t b-debug
-	@docker run --rm --name b-debug-local -p8000:8000 \
-	--link b-redis-debug b-debug && docker stop b-redis-debug
+stop:
+	@docker-compose -p boardsite down
 
-.PHONY: all build test
+development:
+	@DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 API_PORT=8000 \
+	docker-compose -p boardsite up --abort-on-container-exit
+
+production:
+	@DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 API_PORT=80 \
+	docker-compose -p boardsite up -d
+
+.PHONY: all build test stop development production
