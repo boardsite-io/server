@@ -11,9 +11,15 @@ go build -o /out/boardsite ./cmd/boardsite
 
 FROM builder AS unit-test
 ENV B_REDIS_HOST=localhost
-ENV B_REDIS_PORT=63790
+ENV B_REDIS_PORT=63000
 RUN --mount=type=cache,target=/root/.cache/go-build \
 go test -v ./test
+
+FROM builder AS debug
+ENV B_PORT=8000
+ENV B_REDIS_HOST=b-redis-debug
+ENV B_REDIS_PORT=6379
+CMD ["/out/boardsite"]
 
 FROM scratch AS bin
 COPY --from=builder /out/boardsite /
