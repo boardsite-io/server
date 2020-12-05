@@ -6,8 +6,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/heat1q/boardsite/pkg/api"
-	"github.com/heat1q/boardsite/pkg/database"
+	"github.com/heat1q/boardsite/api"
+	"github.com/heat1q/boardsite/database"
 )
 
 var (

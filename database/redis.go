@@ -7,7 +7,7 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 
-	"github.com/heat1q/boardsite/pkg/api"
+	"github.com/heat1q/boardsite/api"
 )
 
 // DatabaseUpdater Declares a set of functions used for Database updates.

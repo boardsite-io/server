@@ -8,7 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/heat1q/boardsite/pkg/api"
+	"github.com/heat1q/boardsite/api"
 )
 
 const (

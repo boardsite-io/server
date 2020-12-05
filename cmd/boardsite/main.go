@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/heat1q/boardsite/pkg/app"
+	"github.com/heat1q/boardsite/app"
 )
 
 func main() {

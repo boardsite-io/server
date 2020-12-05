@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/heat1q/boardsite/pkg/api"
-	"github.com/heat1q/boardsite/pkg/app"
-	"github.com/heat1q/boardsite/pkg/database"
+	"github.com/heat1q/boardsite/api"
+	"github.com/heat1q/boardsite/app"
+	"github.com/heat1q/boardsite/database"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

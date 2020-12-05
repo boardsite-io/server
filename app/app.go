@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
-	"github.com/heat1q/boardsite/pkg/session"
+	"github.com/heat1q/boardsite/session"
 )
 
 // Serve wraps the main application
