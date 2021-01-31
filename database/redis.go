@@ -7,7 +7,7 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 
-	"github.com/heat1q/boardsite/api"
+	"github.com/heat1q/boardsite/api/types"
 )
 
 // DatabaseUpdater Declares a set of functions used for Database updates.
@@ -26,18 +26,17 @@ var (
 
 // RedisDB Holds the connection to the DB
 type RedisDB struct {
-	Conn     redis.Conn
-	BoardKey string
+	Conn       redis.Conn
+	SessionKey string
 }
 
 // NewRedisConn Sets up redis DB connection with credentials
 func NewRedisConn(sessionID string) (*RedisDB, error) {
-	// TODO parse from config
 	conn, err := redis.Dial("tcp", redisHost)
 
 	return &RedisDB{
-		Conn:     conn,
-		BoardKey: sessionID,
+		Conn:       conn,
+		SessionKey: sessionID,
 	}, err
 }
 
@@ -46,26 +45,41 @@ func (db *RedisDB) Close() {
 	db.Conn.Close()
 }
 
-// Clear clears the board from Redis
-func (db *RedisDB) Clear() error {
-	_, err := db.Conn.Do("DEL", db.BoardKey)
-	return err
+// GetPageKey return the Redis key for the given PageID.
+func (db *RedisDB) GetPageKey(pageID string) string {
+	return db.SessionKey + "." + pageID
 }
 
-// Update updates board strokes in the database
+// Clear wipes the session from Redis.
 //
+// Removes all pages and the respective strokes on the pages
+func (db *RedisDB) Clear() {
+	for _, pageID := range db.GetPages() {
+		db.Conn.Send("DEL", db.GetPageKey(pageID))
+	}
+	db.Conn.Send("DEL", db.SessionKey)
+	db.Conn.Flush()
+}
+
+// DeletePage deletes a page and the respective strokes on the page
+// and remove the PageID from the list.
+func (db *RedisDB) DeletePage(pageID string) {
+	db.Conn.Do("DEL", db.GetPageKey(pageID))
+	db.Conn.Do("LREM", db.SessionKey, "0", pageID)
+}
+
+// Update board strokes in Redis.
 // Creates a JSON encoding for each slice entry which
-// is stored to the database
-//
-// Delete the stroke with given id, if type is set to
-// "delete"
-func (db *RedisDB) Update(stroke []api.Stroke) error {
-	for i := range stroke {
-		if stroke[i].IsDeleted() {
-			db.Conn.Send("HDEL", db.BoardKey, stroke[i].GetID())
+// is stored to the database.
+// Delete the stroke with given id if stroke type is set to delete.
+func (db *RedisDB) Update(strokes []*types.Stroke) error {
+	for i := range strokes {
+		pid := db.GetPageKey(strokes[i].GetPageID())
+		if strokes[i].IsDeleted() {
+			db.Conn.Send("HDEL", pid, strokes[i].GetID())
 		} else {
-			if strokeStr, err := stroke[i].JSONStringify(); err == nil {
-				db.Conn.Send("HMSET", db.BoardKey, stroke[i].GetID(), strokeStr)
+			if strokeStr, err := strokes[i].JSONStringify(); err == nil {
+				db.Conn.Send("HMSET", pid, strokes[i].GetID(), strokeStr)
 			}
 		}
 	}
@@ -77,17 +91,17 @@ func (db *RedisDB) Update(stroke []api.Stroke) error {
 	return nil
 }
 
-// Delete deletes stroke from database by ID
-func (db *RedisDB) Delete(strokeID string) error {
-	_, err := db.Conn.Do("HDEL", db.BoardKey, strokeID)
-	return err
-}
+// Delete a single stroke from Redis given the ID.
+// func (db *RedisDB) Delete(strokeID string) error {
+// 	_, err := db.Conn.Do("HDEL", db.SessionKey, strokeID)
+// 	return err
+// }
 
 // FetchAll Fetches all strokes of the board from the DB
 //
 // Preserves the JSON encoding of DB
 func (db *RedisDB) FetchAll() (string, error) {
-	keys, err := redis.ByteSlices(db.Conn.Do("HKEYS", db.BoardKey))
+	keys, err := redis.ByteSlices(db.Conn.Do("HKEYS", db.SessionKey))
 	if err != nil {
 		return "[]", err
 	}
@@ -96,9 +110,20 @@ func (db *RedisDB) FetchAll() (string, error) {
 	strokeStr := make([]string, 0, len(keys))
 
 	for i := range keys {
-		stroke, _ := redis.ByteSlices(db.Conn.Do("HMGET", db.BoardKey, keys[i]))
+		stroke, _ := redis.ByteSlices(db.Conn.Do("HMGET", db.SessionKey, keys[i]))
 		strokeStr = append(strokeStr, string(stroke[0]))
 	}
 
 	return fmt.Sprintf("[%s]", strings.Join(strokeStr, ",")), nil
+}
+
+// GetPages returns a list of all pageIDs for the current session.
+//
+// The PageIDs are maintained in a list in redis since the ordering is important
+func (db *RedisDB) GetPages() []string {
+	pages, err := redis.Strings(db.Conn.Do("LRANGE", db.SessionKey, "0", "-1"))
+	if err != nil {
+		return []string{}
+	}
+	return pages
 }

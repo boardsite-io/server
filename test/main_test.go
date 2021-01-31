@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/heat1q/boardsite/api"
+	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/app"
 	"github.com/heat1q/boardsite/database"
 
@@ -42,7 +42,7 @@ func TestRunServer(t *testing.T) {
 	r, err := client.Post(baseURL+"/board/create", "application/json", strings.NewReader(""))
 	assert.NoError(t, err)
 
-	boardResp := api.CreateBoardResponse{}
+	boardResp := types.CreateBoardResponse{}
 	json.NewDecoder(r.Body).Decode(&boardResp)
 	assert.NotEqual(t, boardResp.ID, "", "id not in create response")
 	sessionID := boardResp.ID

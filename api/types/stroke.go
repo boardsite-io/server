@@ -1,4 +1,4 @@
-package api
+package types
 
 import (
 	"encoding/json"
@@ -6,11 +6,16 @@ import (
 
 // Stroke Holds the Stroke and value of pixels
 type Stroke struct {
-	ID        string    `json:"id"`
-	Type      string    `json:"type"`
-	Color     string    `json:"color"`
-	LineWidth float64   `json:"line_width"`
-	Position  []float64 `json:"position"`
+	ID     string    `json:"id"`
+	PageID string    `json:"pageId"`
+	Type   string    `json:"type"`
+	X      float64   `json:"x"`
+	Y      float64   `json:"y"`
+	Points []float64 `json:"points"`
+	Style  struct {
+		Color string  `json:"color"`
+		Width float64 `json:"width"`
+	} `json:"style"`
 }
 
 // StrokeReader defines the set of common function
@@ -19,20 +24,7 @@ type StrokeReader interface {
 	JSONStringify() ([]byte, error)
 	IsDeleted() bool
 	GetID() string
-}
-
-// SetupForm Form to setup a new board
-type SetupForm struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-}
-
-type CreateBoardResponse struct {
-	ID string `json:"id"`
-}
-
-type BoardRequest struct {
-	Action string `json:"action"`
+	GetPageID() string
 }
 
 // JSONStringify return the JSON encoding of Stroke
@@ -48,4 +40,9 @@ func (s *Stroke) IsDeleted() bool {
 // GetID returns the id of the stroke
 func (s *Stroke) GetID() string {
 	return s.ID
+}
+
+// GetPageID returns the page id of the stroke
+func (s *Stroke) GetPageID() string {
+	return s.PageID
 }
