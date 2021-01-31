@@ -15,11 +15,11 @@ stop:
 	@docker-compose -p boardsite down
 
 development:
-	@DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 API_PORT=8000 \
-	docker-compose -p boardsite up --abort-on-container-exit
+	@DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 COMPOSE_TARGET=development \
+	docker-compose -p boardsite up --abort-on-container-exit --build
 
 production:
-	@DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 API_PORT=80 \
-	docker-compose -p boardsite up -d
+	@DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 COMPOSE_TARGET=production \
+	docker-compose -p boardsite up -d --build
 
-.PHONY: all build test stop development production
+.PHONY: all build test stop clean development production
