@@ -8,7 +8,7 @@ import (
 type Stroke struct {
 	ID     string    `json:"id"`
 	PageID string    `json:"pageId"`
-	Type   string    `json:"type"`
+	Type   int       `json:"type"`
 	X      float64   `json:"x"`
 	Y      float64   `json:"y"`
 	Points []float64 `json:"points"`
@@ -34,7 +34,7 @@ func (s *Stroke) JSONStringify() ([]byte, error) {
 
 // IsDeleted verifies whether stroke is deleted or not
 func (s *Stroke) IsDeleted() bool {
-	return s.Type == "delete"
+	return s.Type == 0
 }
 
 // GetID returns the id of the stroke
