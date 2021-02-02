@@ -26,8 +26,9 @@ var (
 
 // RedisDB Holds the connection to the DB
 type RedisDB struct {
-	Conn       redis.Conn
-	SessionKey string
+	Conn        redis.Conn
+	SessionKey  string
+	PageRankKey string
 }
 
 // NewRedisConn Sets up redis DB connection with credentials
@@ -35,8 +36,9 @@ func NewRedisConn(sessionID string) (*RedisDB, error) {
 	conn, err := redis.Dial("tcp", redisHost)
 
 	return &RedisDB{
-		Conn:       conn,
-		SessionKey: sessionID,
+		Conn:        conn,
+		SessionKey:  sessionID,
+		PageRankKey: sessionID + ".rank",
 	}, err
 }
 
@@ -45,8 +47,8 @@ func (db *RedisDB) Close() {
 	db.Conn.Close()
 }
 
-// GetPageKey return the Redis key for the given PageID.
-func (db *RedisDB) GetPageKey(pageID string) string {
+// getPageKey return the Redis key for the given PageID.
+func (db *RedisDB) getPageKey(pageID string) string {
 	return db.SessionKey + "." + pageID
 }
 
@@ -55,17 +57,11 @@ func (db *RedisDB) GetPageKey(pageID string) string {
 // Removes all pages and the respective strokes on the pages
 func (db *RedisDB) Clear() {
 	for _, pageID := range db.GetPages() {
-		db.Conn.Send("DEL", db.GetPageKey(pageID))
+		db.Conn.Send("DEL", db.getPageKey(pageID))
 	}
 	db.Conn.Send("DEL", db.SessionKey)
+	db.Conn.Send("DEL", db.PageRankKey)
 	db.Conn.Flush()
-}
-
-// DeletePage deletes a page and the respective strokes on the page
-// and remove the PageID from the list.
-func (db *RedisDB) DeletePage(pageID string) {
-	db.Conn.Do("DEL", db.GetPageKey(pageID))
-	db.Conn.Do("LREM", db.SessionKey, "0", pageID)
 }
 
 // Update board strokes in Redis.
@@ -74,7 +70,7 @@ func (db *RedisDB) DeletePage(pageID string) {
 // Delete the stroke with given id if stroke type is set to delete.
 func (db *RedisDB) Update(strokes []*types.Stroke) error {
 	for i := range strokes {
-		pid := db.GetPageKey(strokes[i].GetPageID())
+		pid := db.getPageKey(strokes[i].GetPageID())
 		if strokes[i].IsDeleted() {
 			db.Conn.Send("HDEL", pid, strokes[i].GetID())
 		} else {
@@ -121,9 +117,47 @@ func (db *RedisDB) FetchAll() (string, error) {
 //
 // The PageIDs are maintained in a list in redis since the ordering is important
 func (db *RedisDB) GetPages() []string {
-	pages, err := redis.Strings(db.Conn.Do("LRANGE", db.SessionKey, "0", "-1"))
+	pages, err := redis.Strings(db.Conn.Do("ZRANGE", db.PageRankKey, 0, -1))
 	if err != nil {
 		return []string{}
 	}
 	return pages
+}
+
+// AddPage adds a page with pageID at position index.
+//
+// Other pages are moved and their score is reassigned
+// when pages are added in between
+func (db *RedisDB) AddPage(newPageID string, index int) {
+	// get all pageids
+	pageIDs := db.GetPages()
+	if len(pageIDs) > 0 {
+		var score, diff, prevIndex int
+
+		if index >= 0 && index < len(pageIDs) { // add page in between
+			// increment scores of proceding pages
+			for _, pid := range pageIDs[index:] {
+				db.Conn.Send("ZINCRBY", db.PageRankKey, 1, pid)
+			}
+			db.Conn.Flush() // ignore error
+			prevIndex = index
+			diff = -1
+		} else { // append page at the end
+			prevIndex = len(pageIDs) - 1
+			diff = 1
+		}
+
+		// get score of preceding page
+		score, _ = redis.Int(db.Conn.Do("ZSCORE", db.PageRankKey, pageIDs[prevIndex]))
+		db.Conn.Do("ZADD", db.PageRankKey, "NX", score+diff, newPageID)
+	} else { // no pages exist yet
+		db.Conn.Do("ZADD", db.PageRankKey, "NX", 0, newPageID)
+	}
+}
+
+// DeletePage deletes a page and the respective strokes on the page
+// and remove the PageID from the list.
+func (db *RedisDB) DeletePage(pageID string) {
+	db.Conn.Do("DEL", db.getPageKey(pageID))
+	db.Conn.Do("ZREM", db.PageRankKey, pageID)
 }

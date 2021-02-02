@@ -12,3 +12,7 @@ type PageRequestData struct {
 	PageID string `json:"pageId"`
 	Index  int    `json:"index"`
 }
+
+type PageRankResponse struct {
+	PageRank []string `json:"pageRank"`
+}

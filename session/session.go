@@ -65,11 +65,12 @@ func GetPages(sessionID string) []string {
 	db, err := database.NewRedisConn(sessionID)
 	defer db.Close()
 
-	if err == nil {
+	if err != nil {
 		return []string{}
 	}
+	p := db.GetPages()
 
-	return db.GetPages()
+	return p
 }
 
 // GetPagesSet returns all pageIDs in a map for fast verification.
@@ -92,7 +93,14 @@ func IsValidPage(sessionID, pageID string) bool {
 
 // AddPage adds a page with pageID to the session.
 func AddPage(sessionID, pageID string, index int) {
-	// TODO
+	db, err := database.NewRedisConn(sessionID)
+	defer db.Close()
+
+	if err != nil {
+		return
+	}
+
+	db.AddPage(pageID, index)
 }
 
 // Close closes a session.

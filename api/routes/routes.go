@@ -61,7 +61,11 @@ func HandlePageRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		// TODO return pagerank array
+		// return pagerank array
+		data := types.PageRankResponse{
+			PageRank: session.GetPages(sessionID),
+		}
+		json.NewEncoder(w).Encode(data)
 	} else if r.Method == http.MethodPost {
 		// add a Page
 		data := types.PageRequestData{}
