@@ -64,7 +64,7 @@ func initSocket(sessionID string, conn *gws.Conn) {
 				data,
 			); e == nil {
 				// update the session data
-				session.Update(sessionID, conn.RemoteAddr().String(), strokes, strokesEncoded)
+				session.UpdateStrokes(sessionID, conn.RemoteAddr().String(), strokes, strokesEncoded)
 
 				log.Printf(sessionID+" :: Data Received from %s: %d stroke(s)\n",
 					conn.RemoteAddr().String(),

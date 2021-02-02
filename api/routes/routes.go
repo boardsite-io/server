@@ -92,9 +92,9 @@ func HandlePageUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodPut {
-		// TODO clear page with pageID
+		session.ClearPage(sessionID, pageID)
 	} else if r.Method == http.MethodDelete {
-		// TODO delete page with pageID
+		session.DeletePage(sessionID, pageID)
 	} else {
 		w.WriteHeader(http.StatusNotImplemented)
 	}

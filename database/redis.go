@@ -161,3 +161,8 @@ func (db *RedisDB) DeletePage(pageID string) {
 	db.Conn.Do("DEL", db.getPageKey(pageID))
 	db.Conn.Do("ZREM", db.PageRankKey, pageID)
 }
+
+// ClearPage removes all strokes with given pageID.
+func (db *RedisDB) ClearPage(pageID string) {
+	db.Conn.Do("DEL", db.getPageKey(pageID))
+}

@@ -62,15 +62,11 @@ func IsValid(sessionID string) bool {
 
 // GetPages returns all pageIDs in order.
 func GetPages(sessionID string) []string {
-	db, err := database.NewRedisConn(sessionID)
-	defer db.Close()
-
-	if err != nil {
-		return []string{}
+	if db, err := database.NewRedisConn(sessionID); err == nil {
+		defer db.Close()
+		return db.GetPages()
 	}
-	p := db.GetPages()
-
-	return p
+	return []string{}
 }
 
 // GetPagesSet returns all pageIDs in a map for fast verification.
@@ -91,16 +87,46 @@ func IsValidPage(sessionID, pageID string) bool {
 	return ok
 }
 
-// AddPage adds a page with pageID to the session.
+// AddPage adds a page with pageID to the session and broadcasts
+// the change to all connected clients.
 func AddPage(sessionID, pageID string, index int) {
-	db, err := database.NewRedisConn(sessionID)
-	defer db.Close()
-
-	if err != nil {
-		return
+	if db, err := database.NewRedisConn(sessionID); err == nil {
+		defer db.Close()
+		db.AddPage(pageID, index)
+		UpdatePages(
+			sessionID,
+			db.GetPages(),
+			[]string{},
+		)
 	}
+}
 
-	db.AddPage(pageID, index)
+// DeletePage deletes a page with pageID and broadcasts
+// the change to all connected clients.
+func DeletePage(sessionID, pageID string) {
+	if db, err := database.NewRedisConn(sessionID); err == nil {
+		defer db.Close()
+		db.DeletePage(pageID)
+		UpdatePages(
+			sessionID,
+			db.GetPages(),
+			[]string{},
+		)
+	}
+}
+
+// ClearPage clears all strokes on page with pageID and broadcasts
+// the change to all connected clients.
+func ClearPage(sessionID, pageID string) {
+	if db, err := database.NewRedisConn(sessionID); err == nil {
+		defer db.Close()
+		db.ClearPage(pageID)
+		UpdatePages(
+			sessionID,
+			[]string{},
+			[]string{pageID},
+		)
+	}
 }
 
 // Close closes a session.
@@ -142,9 +168,24 @@ func SendAllToClient(sessionID, remoteAddr string) {
 	ActiveSession[sessionID].DBFetch <- remoteAddr
 }
 
-// Update updates the session data by scheduling a broadcast to all connected clients
+// UpdatePages broadcasts the current PageRank to all connected
+// clients indicating an update in the pages (or ordering).
+func UpdatePages(sessionID string, pageIDsToUpdate, pageIDsToClear []string) {
+	stroke := types.Stroke{
+		Type:      -1, // non-zero, since it's no deletion
+		PageRank:  pageIDsToUpdate,
+		PageClear: pageIDsToClear,
+	}
+	content, _ := stroke.JSONStringify()
+	ActiveSession[sessionID].Broadcast <- &BroadcastData{
+		Origin:  "", // broadcast to everyone
+		Content: content,
+	}
+}
+
+// UpdateStrokes updates the session data by scheduling a broadcast to all connected clients
 // and a store request to Redis.
-func Update(sessionID, remoteAddr string, strokes []*types.Stroke, strokesEncoded []byte) {
+func UpdateStrokes(sessionID, remoteAddr string, strokes []*types.Stroke, strokesEncoded []byte) {
 	// broadcast changes
 	ActiveSession[sessionID].Broadcast <- &BroadcastData{
 		Origin:  remoteAddr,
