@@ -58,21 +58,17 @@ func initSocket(sessionID string, conn *gws.Conn) {
 	for {
 		if _, data, err := conn.ReadMessage(); err == nil {
 			// sanitize received data
-			if strokes, strokesEncoded, e := session.SanitizeReceived(
+			if errSanitize := session.SanitizeAndRelay(
 				sessionID,
 				conn.RemoteAddr().String(),
 				data,
-			); e == nil {
-				// update the session data
-				session.UpdateStrokes(sessionID, conn.RemoteAddr().String(), strokes, strokesEncoded)
-
-				log.Printf(sessionID+" :: Data Received from %s: %d stroke(s)\n",
-					conn.RemoteAddr().String(),
-					len(strokes),
-				)
-			} else {
+			); errSanitize != nil {
 				continue // skip if data is corrupted
 			}
+
+			log.Printf(sessionID+" :: Data Received from %s\n",
+				conn.RemoteAddr().String(),
+			)
 		} else {
 			break // socket closed
 		}

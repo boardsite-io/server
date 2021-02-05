@@ -176,16 +176,26 @@ func UpdatePages(sessionID string, pageIDsToUpdate, pageIDsToClear []string) {
 		PageRank:  pageIDsToUpdate,
 		PageClear: pageIDsToClear,
 	}
-	content, _ := stroke.JSONStringify()
-	ActiveSession[sessionID].Broadcast <- &BroadcastData{
-		Origin:  "", // broadcast to everyone
-		Content: content,
-	}
+
+	UpdateStrokes(
+		sessionID,
+		"", // send to all clients
+		[]*types.Stroke{&stroke},
+		[]*types.Stroke{},
+	)
 }
 
-// UpdateStrokes updates the session data by scheduling a broadcast to all connected clients
-// and a store request to Redis.
-func UpdateStrokes(sessionID, remoteAddr string, strokes []*types.Stroke, strokesEncoded []byte) {
+// UpdateStrokes updates the data in the session with sessionID.
+//
+// RemoteAddr indicates the initiator of the message, which is
+// to be excluded in the broadcast.
+// Strokes in the first slice are broadcasted to all connected
+// clients. Stroke in the second slice (those with type >= 0)
+// are updated in Redis.
+func UpdateStrokes(sessionID, remoteAddr string, strokes, strokesDB []*types.Stroke) {
+	// ignore error
+	// since it is unlikely that marshalling fails
+	strokesEncoded, _ := json.Marshal(&strokes)
 	// broadcast changes
 	ActiveSession[sessionID].Broadcast <- &BroadcastData{
 		Origin:  remoteAddr,
@@ -193,37 +203,44 @@ func UpdateStrokes(sessionID, remoteAddr string, strokes []*types.Stroke, stroke
 	}
 
 	// save to database
-	ActiveSession[sessionID].DBUpdate <- strokes
+	if len(strokesDB) > 0 {
+		ActiveSession[sessionID].DBUpdate <- strokesDB
+	}
 }
 
-// SanitizeReceived sanitizes websocket input data.
-// Returns a slice with stroke structs and the respective sanitized JSON encoding.
-func SanitizeReceived(sessionID, remoteAddr string, data []byte) ([]*types.Stroke, []byte, error) {
+// SanitizeAndRelay sanitizes websocket input data and returns an
+// error if data is corrupted.
+func SanitizeAndRelay(sessionID, remoteAddr string, data []byte) error {
 	var strokes = []types.Stroke{}
 	if err := json.Unmarshal(data, &strokes); err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	strokesSanitized := Sanitize(sessionID, strokes)
-
-	// ignore error
-	// since it is unlikely that marshalling fails
-	strokesEncoded, _ := json.Marshal(&strokesSanitized)
-
-	return strokesSanitized, strokesEncoded, nil
+	strokesSanitized, strokesDB := SanitizeStrokes(sessionID, strokes)
+	// update the session data
+	UpdateStrokes(sessionID, remoteAddr, strokesSanitized, strokesDB)
+	return nil
 }
 
-// Sanitize slice of strokes. Return a slice of sanitized strokes consisting
-// of pointers to the strokes to prevent a hardcopy.
-func Sanitize(sessionID string, strokes []types.Stroke) []*types.Stroke {
+// SanitizeStrokes sanitizes a slice of strokes.
+//
+// It divides the input slice into two slices of pointer
+// to strokes to prevent hardcopies. The first contains all
+// sanitizes slices. The second contains only the stroke that
+// need to be stored in the DB (i.e. type >= 0).
+func SanitizeStrokes(sessionID string, strokes []types.Stroke) ([]*types.Stroke, []*types.Stroke) {
 	strokesSanitized := make([]*types.Stroke, 0, len(strokes))
+	strokesDB := make([]*types.Stroke, 0, len(strokes))
 	pageIDs := GetPagesSet(sessionID)
 
 	for i := range strokes {
 		if _, ok := pageIDs[strokes[i].GetPageID()]; ok {
 			strokesSanitized = append(strokesSanitized, &strokes[i])
+			if strokes[i].Type >= 0 {
+				strokesDB = append(strokesDB, &strokes[i])
+			}
 		}
 	}
 
-	return strokesSanitized
+	return strokesSanitized, strokesDB
 }
