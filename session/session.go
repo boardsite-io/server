@@ -154,13 +154,13 @@ func RemoveClient(sessionID, remoteAddr string) {
 	ActiveSession[sessionID].NumClients--
 	delete(ActiveSession[sessionID].Clients, remoteAddr)
 
+	ActiveSession[sessionID].Mu.Unlock()
+
 	// if session is empty after client disconnect
 	// the session needs to be set to inactive
 	if ActiveSession[sessionID].NumClients == 0 {
 		Close(sessionID)
 	}
-
-	ActiveSession[sessionID].Mu.Unlock()
 }
 
 // SendAllToClient schedules a request to send all data of a session to client.
