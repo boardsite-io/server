@@ -11,19 +11,19 @@ import (
 	"github.com/heat1q/boardsite/websocket"
 )
 
-const (
-	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-)
+// Set the api routes
+func Set(router *mux.Router) {
+	router.HandleFunc("/b/create", handleCreateSession).Methods("POST")
+	router.HandleFunc("/b/{id}", handleSessionRequest).Methods("GET")
+	router.HandleFunc("/b/{id}/pages", handlePageRequest).Methods("GET", "POST")
+	router.HandleFunc("/b/{id}/pages/{pageId}", handlePageUpdate).Methods("PUT", "DELETE")
+}
 
-// HandleCreateSession handles the request for creating a new session.
+// handleCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
 //
 // Supported methods: POST
-func HandleCreateSession(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusNotImplemented)
-		return
-	}
+func handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	// create new session and set it active
 	idstr := session.Create()
 
@@ -31,10 +31,10 @@ func HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(data)
 }
 
-// HandleSessionRequest handles request for a session based on the sessionID.
+// handleSessionRequest handles request for a session based on the sessionID.
 //
 // Supported methods: GET
-func HandleSessionRequest(w http.ResponseWriter, r *http.Request) {
+func handleSessionRequest(w http.ResponseWriter, r *http.Request) {
 	sessionID := mux.Vars(r)["id"]
 
 	if !session.IsValid(sessionID) {
@@ -42,17 +42,15 @@ func HandleSessionRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == http.MethodGet {
-		if err := websocket.UpgradeProtocol(w, r, sessionID); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-		}
+	if err := websocket.UpgradeProtocol(w, r, sessionID); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 
-// HandlePageRequest handles requests regarding adding or retrieving pages.
+// handlePageRequest handles requests regarding adding or retrieving pages.
 //
 // Supported methods: GET, POST
-func HandlePageRequest(w http.ResponseWriter, r *http.Request) {
+func handlePageRequest(w http.ResponseWriter, r *http.Request) {
 	sessionID := mux.Vars(r)["id"]
 
 	if !session.IsValid(sessionID) {
@@ -74,15 +72,13 @@ func HandlePageRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		} // TODO serialize page data
 		session.AddPage(sessionID, data.PageID, data.Index)
-	} else {
-		w.WriteHeader(http.StatusNotImplemented)
 	}
 }
 
-// HandlePageUpdate handles requests for modifying certain pages.
+// handlePageUpdate handles requests for modifying certain pages.
 //
 // Supported methods: PUT, DELETE
-func HandlePageUpdate(w http.ResponseWriter, r *http.Request) {
+func handlePageUpdate(w http.ResponseWriter, r *http.Request) {
 	sessionID := mux.Vars(r)["id"]
 	pageID := mux.Vars(r)["pageId"]
 
@@ -95,7 +91,5 @@ func HandlePageUpdate(w http.ResponseWriter, r *http.Request) {
 		session.ClearPage(sessionID, pageID)
 	} else if r.Method == http.MethodDelete {
 		session.DeletePage(sessionID, pageID)
-	} else {
-		w.WriteHeader(http.StatusNotImplemented)
 	}
 }
