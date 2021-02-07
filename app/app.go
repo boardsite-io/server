@@ -21,7 +21,20 @@ func Serve(ctx context.Context, port int) (func() error, func() error) {
 
 	handl := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
-		handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE"}),
+		handlers.AllowedHeaders(
+			[]string{
+				"Content-Type",
+			},
+		),
+		handlers.AllowedMethods(
+			[]string{
+				"GET",
+				"HEAD",
+				"POST",
+				"PUT",
+				"DELETE",
+			},
+		),
 	)(router)
 	handl = handlers.ContentTypeHandler(handl, "text/plain", "application/json")
 
