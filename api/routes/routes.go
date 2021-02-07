@@ -27,7 +27,7 @@ func handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	// create new session and set it active
 	idstr := session.Create()
 
-	data := types.CreateBoardResponse{ID: idstr}
+	data := types.CreateBoardResponse{SessionID: idstr}
 	json.NewEncoder(w).Encode(data)
 }
 

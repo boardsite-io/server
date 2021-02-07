@@ -5,7 +5,7 @@ type BoardRequest struct {
 }
 
 type CreateBoardResponse struct {
-	ID string `json:"id"`
+	SessionID string `json:"sessionId"`
 }
 
 type PageRequestData struct {
