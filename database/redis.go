@@ -27,7 +27,7 @@ var (
 // RedisDB Holds the connection to the DB
 type RedisDB struct {
 	Conn        redis.Conn
-	SessionKey  string
+	SessionID   string
 	PageRankKey string
 }
 
@@ -37,7 +37,7 @@ func NewRedisConn(sessionID string) (*RedisDB, error) {
 
 	return &RedisDB{
 		Conn:        conn,
-		SessionKey:  sessionID,
+		SessionID:   sessionID,
 		PageRankKey: sessionID + ".rank",
 	}, err
 }
@@ -49,7 +49,7 @@ func (db *RedisDB) Close() {
 
 // getPageKey return the Redis key for the given PageID.
 func (db *RedisDB) getPageKey(pageID string) string {
-	return db.SessionKey + "." + pageID
+	return db.SessionID + "." + pageID
 }
 
 // Clear wipes the session from Redis.
@@ -59,7 +59,6 @@ func (db *RedisDB) Clear() {
 	for _, pageID := range db.GetPages() {
 		db.Conn.Send("DEL", db.getPageKey(pageID))
 	}
-	db.Conn.Send("DEL", db.SessionKey)
 	db.Conn.Send("DEL", db.PageRankKey)
 	db.Conn.Flush()
 }
@@ -87,30 +86,22 @@ func (db *RedisDB) Update(strokes []*types.Stroke) error {
 	return nil
 }
 
-// Delete a single stroke from Redis given the ID.
-// func (db *RedisDB) Delete(strokeID string) error {
-// 	_, err := db.Conn.Do("HDEL", db.SessionKey, strokeID)
-// 	return err
-// }
-
-// FetchAll Fetches all strokes of the board from the DB
+// FetchStrokes Fetches all strokes of the specified page.
 //
-// Preserves the JSON encoding of DB
-func (db *RedisDB) FetchAll() (string, error) {
-	keys, err := redis.ByteSlices(db.Conn.Do("HKEYS", db.SessionKey))
-	if err != nil {
-		return "[]", err
+// Preserves the JSON encoding of Redis and returns a stringified
+// array of stroke objects.
+func (db *RedisDB) FetchStrokes(pageID string) string {
+	pid := db.getPageKey(pageID)
+	keys, _ := redis.Strings(db.Conn.Do("HKEYS", pid))
+
+	strokes := make([]string, 0, len(keys))
+
+	for _, key := range keys {
+		s, _ := redis.String(db.Conn.Do("HGET", pid, key))
+		strokes = append(strokes, s)
 	}
 
-	// slice with capacity equal to num keys
-	strokeStr := make([]string, 0, len(keys))
-
-	for i := range keys {
-		stroke, _ := redis.ByteSlices(db.Conn.Do("HMGET", db.SessionKey, keys[i]))
-		strokeStr = append(strokeStr, string(stroke[0]))
-	}
-
-	return fmt.Sprintf("[%s]", strings.Join(strokeStr, ",")), nil
+	return fmt.Sprintf("[%s]", strings.Join(strokes, ","))
 }
 
 // GetPages returns a list of all pageIDs for the current session.

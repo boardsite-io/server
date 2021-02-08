@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -16,7 +17,7 @@ func Set(router *mux.Router) {
 	router.HandleFunc("/b/create", handleCreateSession).Methods("POST")
 	router.HandleFunc("/b/{id}", handleSessionRequest).Methods("GET")
 	router.HandleFunc("/b/{id}/pages", handlePageRequest).Methods("GET", "POST")
-	router.HandleFunc("/b/{id}/pages/{pageId}", handlePageUpdate).Methods("PUT", "DELETE")
+	router.HandleFunc("/b/{id}/pages/{pageId}", handlePageUpdate).Methods("GET", "PUT", "DELETE")
 }
 
 // handleCreateSession handles the request for creating a new session.
@@ -87,7 +88,9 @@ func handlePageUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == http.MethodPut {
+	if r.Method == http.MethodGet {
+		fmt.Fprint(w, session.GetStrokes(sessionID, pageID))
+	} else if r.Method == http.MethodPut {
 		session.ClearPage(sessionID, pageID)
 	} else if r.Method == http.MethodDelete {
 		session.DeletePage(sessionID, pageID)

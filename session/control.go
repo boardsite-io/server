@@ -24,7 +24,6 @@ type ControlBlock struct {
 
 	DBUpdate chan []*types.Stroke
 	DBClear  chan struct{}
-	DBFetch  chan string
 
 	SignalClose chan struct{}
 
@@ -42,7 +41,6 @@ func NewControlBlock(sessionID string) *ControlBlock {
 		Echo:        make(chan *BroadcastData),
 		DBUpdate:    make(chan []*types.Stroke),
 		DBClear:     make(chan struct{}),
-		DBFetch:     make(chan string),
 		SignalClose: make(chan struct{}),
 		Clients:     make(map[string]*gws.Conn),
 		NumClients:  0,
@@ -88,9 +86,6 @@ func (scb *ControlBlock) updateDatabase() {
 		select {
 		case board := <-scb.DBUpdate:
 			db.Update(board)
-		case origin := <-scb.DBFetch:
-			data, _ := db.FetchAll()
-			scb.Echo <- &BroadcastData{Origin: origin, Content: []byte(data)}
 		case <-scb.DBClear:
 			db.Clear()
 		case <-scb.SignalClose:

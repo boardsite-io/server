@@ -52,9 +52,6 @@ func initSocket(sessionID string, conn *gws.Conn) {
 	onClientConnect(sessionID, conn)
 	defer onClientDisconnect(sessionID, conn)
 
-	// send all the data to client on connect
-	session.SendAllToClient(sessionID, conn.RemoteAddr().String())
-
 	for {
 		if _, data, err := conn.ReadMessage(); err == nil {
 			// sanitize received data

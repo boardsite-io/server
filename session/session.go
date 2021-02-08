@@ -60,6 +60,16 @@ func IsValid(sessionID string) bool {
 	return ActiveSession[sessionID] != nil
 }
 
+// GetStrokes fetches all stroke data for specified page
+// as json stringified array of stroke objects.
+func GetStrokes(sessionID, pageID string) string {
+	if db, err := database.NewRedisConn(sessionID); err == nil {
+		defer db.Close()
+		return db.FetchStrokes(pageID)
+	}
+	return "[]"
+}
+
 // GetPages returns all pageIDs in order.
 func GetPages(sessionID string) []string {
 	if db, err := database.NewRedisConn(sessionID); err == nil {
@@ -161,11 +171,6 @@ func RemoveClient(sessionID, remoteAddr string) {
 	if ActiveSession[sessionID].NumClients == 0 {
 		Close(sessionID)
 	}
-}
-
-// SendAllToClient schedules a request to send all data of a session to client.
-func SendAllToClient(sessionID, remoteAddr string) {
-	ActiveSession[sessionID].DBFetch <- remoteAddr
 }
 
 // UpdatePages broadcasts the current PageRank to all connected
