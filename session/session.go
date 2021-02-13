@@ -9,7 +9,7 @@ import (
 	gws "github.com/gorilla/websocket"
 
 	"github.com/heat1q/boardsite/api/types"
-	"github.com/heat1q/boardsite/database"
+	"github.com/heat1q/boardsite/redis"
 )
 
 const (
@@ -45,11 +45,6 @@ func Create() string {
 
 	// assign to SessionControl struct
 	ActiveSession[scb.ID] = scb
-
-	// start goroutines for broadcasting and saving changes to board
-	go scb.broadcast()
-	go scb.updateDatabase()
-
 	log.Printf("Create Session with ID: %s\n", scb.ID)
 
 	return scb.ID
@@ -63,20 +58,12 @@ func IsValid(sessionID string) bool {
 // GetStrokes fetches all stroke data for specified page
 // as json stringified array of stroke objects.
 func GetStrokes(sessionID, pageID string) string {
-	if db, err := database.NewRedisConn(sessionID); err == nil {
-		defer db.Close()
-		return db.FetchStrokes(pageID)
-	}
-	return "[]"
+	return redis.FetchStrokes(sessionID, pageID)
 }
 
 // GetPages returns all pageIDs in order.
 func GetPages(sessionID string) []string {
-	if db, err := database.NewRedisConn(sessionID); err == nil {
-		defer db.Close()
-		return db.GetPages()
-	}
-	return []string{}
+	return redis.GetPages(sessionID)
 }
 
 // GetPagesSet returns all pageIDs in a map for fast verification.
@@ -100,43 +87,37 @@ func IsValidPage(sessionID, pageID string) bool {
 // AddPage adds a page with pageID to the session and broadcasts
 // the change to all connected clients.
 func AddPage(sessionID, pageID string, index int) {
-	if db, err := database.NewRedisConn(sessionID); err == nil {
-		defer db.Close()
-		db.AddPage(pageID, index)
-		UpdatePages(
-			sessionID,
-			db.GetPages(),
-			[]string{},
-		)
-	}
+	//TODO handle error
+	redis.AddPage(sessionID, pageID, index)
+	UpdatePages(
+		sessionID,
+		redis.GetPages(sessionID),
+		[]string{},
+	)
 }
 
 // DeletePage deletes a page with pageID and broadcasts
 // the change to all connected clients.
 func DeletePage(sessionID, pageID string) {
-	if db, err := database.NewRedisConn(sessionID); err == nil {
-		defer db.Close()
-		db.DeletePage(pageID)
-		UpdatePages(
-			sessionID,
-			db.GetPages(),
-			[]string{},
-		)
-	}
+	//TODO handle error
+	redis.DeletePage(sessionID, pageID)
+	UpdatePages(
+		sessionID,
+		redis.GetPages(sessionID),
+		[]string{},
+	)
 }
 
 // ClearPage clears all strokes on page with pageID and broadcasts
 // the change to all connected clients.
 func ClearPage(sessionID, pageID string) {
-	if db, err := database.NewRedisConn(sessionID); err == nil {
-		defer db.Close()
-		db.ClearPage(pageID)
-		UpdatePages(
-			sessionID,
-			[]string{},
-			[]string{pageID},
-		)
-	}
+	//TODO handle error
+	redis.ClearPage(sessionID, pageID)
+	UpdatePages(
+		sessionID,
+		[]string{},
+		[]string{pageID},
+	)
 }
 
 // Close closes a session.

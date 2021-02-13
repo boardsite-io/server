@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/heat1q/boardsite/app"
+	"github.com/heat1q/boardsite/redis"
 )
 
 func main() {
@@ -30,26 +31,38 @@ func main() {
 		log.Fatal(err)
 	}
 
-	gracefulStop := make(chan os.Signal)
-	signal.Notify(gracefulStop, syscall.SIGTERM)
-	signal.Notify(gracefulStop, syscall.SIGINT)
-
 	ctx := context.Background()
 	run, shutdown := app.Serve(ctx, port)
 	defer shutdown()
 
+	if err := redis.InitPool(); err != nil {
+		log.Fatal(err)
+	}
+	defer redis.ClosePool()
+	log.Println("Redis connection pool initialized.")
+
+	gracefulStopHook(shutdown)
+
+	if err := run(); !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal(err)
+	}
+}
+
+func gracefulStopHook(shutdown func() error) {
+	stop := make(chan os.Signal)
+	signal.Notify(stop, syscall.SIGTERM)
+	signal.Notify(stop, syscall.SIGINT)
+	signal.Notify(stop, syscall.SIGKILL)
+
 	go func() {
 		select {
-		case <-gracefulStop:
+		case <-stop:
 			log.Println("Shutting down...")
+			redis.ClosePool()
 			if err := shutdown(); err != nil {
 				log.Fatal(err)
 			}
 			os.Exit(0)
 		}
 	}()
-
-	if err := run(); !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
-	}
 }

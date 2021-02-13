@@ -1,12 +1,11 @@
 package session
 
 import (
-	"log"
 	"sync"
 
 	gws "github.com/gorilla/websocket"
 	"github.com/heat1q/boardsite/api/types"
-	"github.com/heat1q/boardsite/database"
+	"github.com/heat1q/boardsite/redis"
 )
 
 // BroadcastData holds data to be broadcasted and the origin
@@ -23,7 +22,6 @@ type ControlBlock struct {
 	Echo      chan *BroadcastData
 
 	DBUpdate chan []*types.Stroke
-	DBClear  chan struct{}
 
 	SignalClose chan struct{}
 
@@ -35,16 +33,21 @@ type ControlBlock struct {
 
 // NewControlBlock creates a new Session ControlBlock with unique ID.
 func NewControlBlock(sessionID string) *ControlBlock {
-	return &ControlBlock{
+	scb := &ControlBlock{
 		ID:          sessionID,
 		Broadcast:   make(chan *BroadcastData),
 		Echo:        make(chan *BroadcastData),
 		DBUpdate:    make(chan []*types.Stroke),
-		DBClear:     make(chan struct{}),
 		SignalClose: make(chan struct{}),
 		Clients:     make(map[string]*gws.Conn),
 		NumClients:  0,
 	}
+
+	// start goroutines for broadcasting and saving changes to board
+	go scb.broadcast()
+	go scb.updateDatabase()
+
+	return scb
 }
 
 // Broadcast Broadcasts board updates to all clients
@@ -73,23 +76,12 @@ func (scb *ControlBlock) broadcast() {
 
 // UpdateDatabase Updates database according to given Stroke values
 func (scb *ControlBlock) updateDatabase() {
-	db, err := database.NewRedisConn(scb.ID)
-	defer db.Close()
-	// close session if db connection fails
-	if err != nil {
-		scb.close()
-		log.Fatal("Cannot connect to database")
-		return
-	}
-
 	for {
 		select {
-		case board := <-scb.DBUpdate:
-			db.Update(board)
-		case <-scb.DBClear:
-			db.Clear()
+		case strokes := <-scb.DBUpdate:
+			redis.Update(scb.ID, strokes)
 		case <-scb.SignalClose:
-			db.Clear()
+			redis.ClearSession(scb.ID)
 			return
 		}
 	}
@@ -97,10 +89,4 @@ func (scb *ControlBlock) updateDatabase() {
 
 func (scb *ControlBlock) close() {
 	scb.SignalClose <- struct{}{}
-}
-
-// Clear clears the data in this session
-func (scb *ControlBlock) clear() {
-	scb.DBClear <- struct{}{}
-	scb.Broadcast <- &BroadcastData{Content: []byte("[]")}
 }
