@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 )
 
+// Style defines the stoke style.
+type Style struct {
+	Color string  `json:"color,omitempty"`
+	Width float32 `json:"width,omitempty"`
+}
+
 // Stroke Holds the Stroke as the basic data type
 // for all websocket communication.
 type Stroke struct {
@@ -13,10 +19,7 @@ type Stroke struct {
 	X      float64   `json:"x,omitempty"`
 	Y      float64   `json:"y,omitempty"`
 	Points []float64 `json:"points,omitempty"`
-	Style  struct {
-		Color string  `json:"color,omitempty"`
-		Width float64 `json:"width,omitempty"`
-	} `json:"style,omitempty"`
+	Style  Style     `json:"style,omitempty"`
 
 	// set for page updates
 	PageRank []string `json:"pageRank,omitempty"`
