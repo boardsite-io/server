@@ -15,9 +15,9 @@ type Style struct {
 type Stroke struct {
 	ID     string    `json:"id,omitempty"`
 	PageID string    `json:"pageId,omitempty"`
-	Type   int       `json:"type,omitempty"`
-	X      float64   `json:"x,omitempty"`
-	Y      float64   `json:"y,omitempty"`
+	Type   int       `json:"type"`
+	X      float64   `json:"x"`
+	Y      float64   `json:"y"`
 	Points []float64 `json:"points,omitempty"`
 	Style  Style     `json:"style,omitempty"`
 
