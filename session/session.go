@@ -2,18 +2,18 @@ package session
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
-	"math/rand"
-	"time"
 
 	gws "github.com/gorilla/websocket"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/redis"
 )
 
 const (
-	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
 var (
@@ -21,27 +21,10 @@ var (
 	ActiveSession = make(map[string]*ControlBlock)
 )
 
-// GenerateID generates a unique sessionID.
-func GenerateID() string {
-	rand.Seed(time.Now().UnixNano())
-	id := make([]byte, 6)
-	// find available id
-	for {
-		for i := range id {
-			id[i] = letters[rand.Intn(len(letters))]
-		}
-
-		if ActiveSession[string(id)] == nil {
-			break
-		}
-	}
-
-	return string(id)
-}
-
 // Create creates and initializes a new SessionControl struct
 func Create() string {
-	scb := NewControlBlock(GenerateID())
+	id, _ := gonanoid.Generate(alphabet, 8)
+	scb := NewControlBlock(id)
 
 	// assign to SessionControl struct
 	ActiveSession[scb.ID] = scb
@@ -126,38 +109,106 @@ func Close(sessionID string) {
 	delete(ActiveSession, sessionID)
 }
 
-// AddClient adds the client to the session
-func AddClient(sessionID string, conn *gws.Conn) {
-	ActiveSession[sessionID].Mu.Lock()
+// NewUser generate a new user struct based on
+// the alias and color attribute
+//
+// Does some sanitize checks.
+func NewUser(sessionID, alias, color string) (*types.User, error) {
+	if len(alias) > 24 {
+		alias = alias[:24]
+	}
+	//TODO check if html color ?
+	if len(color) != 7 {
+		return nil, fmt.Errorf("incorrect html color")
+	}
 
-	// add current remote connections to clients
+	id, err := gonanoid.New(16)
+	if err != nil {
+		return nil, err
+	}
+	user := &types.User{
+		ID:    id,
+		Alias: alias,
+		Color: color,
+	}
+	// set user waiting
+	ActiveSession[sessionID].UserReady[id] = user
+	return user, err
+}
+
+// IsReadyUser checks if the user with userID is ready to join a session.
+func IsReadyUser(sessionID, userID string) bool {
+	_, ok := ActiveSession[sessionID].UserReady[userID]
+	return ok
+}
+
+// IsValidClient checks if the user with userID is an active client in the session.
+func IsValidClient(sessionID, userID string) bool {
+	_, ok := ActiveSession[sessionID].Clients[userID]
+	return ok
+}
+
+// AddClient adds the client to the session
+// and generates a unique userID.
+func AddClient(sessionID, userID string, conn *gws.Conn) {
+	ActiveSession[sessionID].Mu.Lock()
 	ActiveSession[sessionID].NumClients++
-	ActiveSession[sessionID].Clients[conn.RemoteAddr().String()] = conn
+	// add current userid connections to clients
+	user := ActiveSession[sessionID].UserReady[userID]
+	user.Conn = conn
+	ActiveSession[sessionID].Clients[userID] = user
+
+	// user joined, remove from waiting list
+	delete(ActiveSession[sessionID].UserReady, userID)
+
+	// broadcast that user has joined
+	UpdateConnectedUsers(sessionID)
 
 	ActiveSession[sessionID].Mu.Unlock()
 }
 
 // RemoveClient removes the client from the session
-func RemoveClient(sessionID, remoteAddr string) {
+func RemoveClient(sessionID, userID string) {
 	ActiveSession[sessionID].Mu.Lock()
-
 	// remove current remote connection from clients
 	ActiveSession[sessionID].NumClients--
-	delete(ActiveSession[sessionID].Clients, remoteAddr)
-
+	delete(ActiveSession[sessionID].Clients, userID)
 	ActiveSession[sessionID].Mu.Unlock()
 
 	// if session is empty after client disconnect
 	// the session needs to be set to inactive
 	if ActiveSession[sessionID].NumClients == 0 {
 		Close(sessionID)
+		return
 	}
+
+	// broadcast that user has left
+	UpdateConnectedUsers(sessionID)
+}
+
+// UpdateConnectedUsers broadcasts the current set of active
+// connected users/clients in the session.
+//
+// The client may use this metadata to update some information
+// about the session.
+func UpdateConnectedUsers(sessionID string) {
+	stroke := &types.Stroke{
+		Type:           -1,
+		ConnectedUsers: ActiveSession[sessionID].Clients,
+	}
+
+	UpdateStrokes(
+		sessionID,
+		"", // send to all clients
+		[]*types.Stroke{stroke},
+		[]*types.Stroke{},
+	)
 }
 
 // UpdatePages broadcasts the current PageRank to all connected
 // clients indicating an update in the pages (or ordering).
 func UpdatePages(sessionID string, pageIDsToUpdate, pageIDsToClear []string) {
-	stroke := types.Stroke{
+	stroke := &types.Stroke{
 		Type:      -1, // non-zero, since it's no deletion
 		PageRank:  pageIDsToUpdate,
 		PageClear: pageIDsToClear,
@@ -166,7 +217,7 @@ func UpdatePages(sessionID string, pageIDsToUpdate, pageIDsToClear []string) {
 	UpdateStrokes(
 		sessionID,
 		"", // send to all clients
-		[]*types.Stroke{&stroke},
+		[]*types.Stroke{stroke},
 		[]*types.Stroke{},
 	)
 }
@@ -178,13 +229,13 @@ func UpdatePages(sessionID string, pageIDsToUpdate, pageIDsToClear []string) {
 // Strokes in the first slice are broadcasted to all connected
 // clients. Stroke in the second slice (those with type >= 0)
 // are updated in Redis.
-func UpdateStrokes(sessionID, remoteAddr string, strokes, strokesDB []*types.Stroke) {
+func UpdateStrokes(sessionID, userID string, strokes, strokesDB []*types.Stroke) {
 	// ignore error
 	// since it is unlikely that marshalling fails
 	strokesEncoded, _ := json.Marshal(&strokes)
 	// broadcast changes
 	ActiveSession[sessionID].Broadcast <- &BroadcastData{
-		Origin:  remoteAddr,
+		UserID:  userID,
 		Content: strokesEncoded,
 	}
 
@@ -220,10 +271,12 @@ func SanitizeStrokes(sessionID string, strokes []types.Stroke) ([]*types.Stroke,
 	pageIDs := GetPagesSet(sessionID)
 
 	for i := range strokes {
-		if _, ok := pageIDs[strokes[i].GetPageID()]; ok {
-			strokesSanitized = append(strokesSanitized, &strokes[i])
-			if strokes[i].Type >= 0 {
-				strokesDB = append(strokesDB, &strokes[i])
+		if _, ok := pageIDs[strokes[i].GetPageID()]; ok { // valid pageID
+			if IsValidClient(sessionID, strokes[i].GetUserID()) { // valid userID
+				strokesSanitized = append(strokesSanitized, &strokes[i])
+				if strokes[i].Type >= 0 {
+					strokesDB = append(strokesDB, &strokes[i])
+				}
 			}
 		}
 	}

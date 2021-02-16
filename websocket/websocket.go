@@ -20,10 +20,14 @@ var upgrader = gws.Upgrader{
 }
 
 // UpgradeProtocol to websocket protocol
-func UpgradeProtocol(w http.ResponseWriter, r *http.Request, sessionID string) error {
+func UpgradeProtocol(
+	w http.ResponseWriter,
+	r *http.Request,
+	sessionID, userID string,
+) error {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err == nil {
-		initSocket(sessionID, conn)
+		initSocket(sessionID, userID, conn)
 	}
 	return err
 }
@@ -34,13 +38,13 @@ func checkOrigin(r *http.Request) bool {
 	return true
 }
 
-func onClientConnect(sessionID string, conn *gws.Conn) {
-	session.AddClient(sessionID, conn)
+func onClientConnect(sessionID, userID string, conn *gws.Conn) {
+	session.AddClient(sessionID, userID, conn)
 	log.Println(sessionID + " :: " + conn.RemoteAddr().String() + " connected")
 }
 
-func onClientDisconnect(sessionID string, conn *gws.Conn) {
-	session.RemoveClient(sessionID, conn.RemoteAddr().String())
+func onClientDisconnect(sessionID, userID string, conn *gws.Conn) {
+	session.RemoveClient(sessionID, userID)
 	log.Println(sessionID + " :: " + conn.RemoteAddr().String() + " disconnected")
 	conn.WriteMessage(gws.TextMessage, []byte("connection closed by host"))
 	// close the websocket connection
@@ -48,9 +52,9 @@ func onClientDisconnect(sessionID string, conn *gws.Conn) {
 }
 
 // Init starts the websocket
-func initSocket(sessionID string, conn *gws.Conn) {
-	onClientConnect(sessionID, conn)
-	defer onClientDisconnect(sessionID, conn)
+func initSocket(sessionID, userID string, conn *gws.Conn) {
+	onClientConnect(sessionID, userID, conn)
+	defer onClientDisconnect(sessionID, userID, conn)
 
 	for {
 		if _, data, err := conn.ReadMessage(); err == nil {

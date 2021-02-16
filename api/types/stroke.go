@@ -2,7 +2,17 @@ package types
 
 import (
 	"encoding/json"
+
+	gws "github.com/gorilla/websocket"
 )
+
+// User defines info about connected users.
+type User struct {
+	ID    string    `json:"id"`
+	Alias string    `json:"alias"`
+	Color string    `json:"color"`
+	Conn  *gws.Conn `json:"-"`
+}
 
 // Style defines the stoke style.
 type Style struct {
@@ -15,6 +25,7 @@ type Style struct {
 type Stroke struct {
 	ID     string    `json:"id,omitempty"`
 	PageID string    `json:"pageId,omitempty"`
+	UserID string    `json:"userId"`
 	Type   int       `json:"type"`
 	X      float64   `json:"x"`
 	Y      float64   `json:"y"`
@@ -26,6 +37,10 @@ type Stroke struct {
 
 	// pageIDs of pages to clear
 	PageClear []string `json:"pageClear,omitempty"`
+
+	// active users in session
+	// required in the frontend to display all connected users
+	ConnectedUsers map[string]*User `json:"connectedUsers,omitempty"`
 }
 
 // StrokeReader defines the set of common function
@@ -34,6 +49,7 @@ type StrokeReader interface {
 	JSONStringify() ([]byte, error)
 	IsDeleted() bool
 	GetID() string
+	GetUserID() string
 	GetPageID() string
 }
 
@@ -50,6 +66,11 @@ func (s *Stroke) IsDeleted() bool {
 // GetID returns the id of the stroke
 func (s *Stroke) GetID() string {
 	return s.ID
+}
+
+// GetUserID returns the userid of the stroke
+func (s *Stroke) GetUserID() string {
+	return s.UserID
 }
 
 // GetPageID returns the page id of the stroke
