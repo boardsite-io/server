@@ -10,8 +10,9 @@ Accepted Content-Types: `application/json`, `plain/text`
  Routes | Methods | Description | Request Body | Response Body
  -------|---------|-------------|--------------|--------------
  `/b/create` | `POST` | Create a new session | - | `{sessionId: string}`
- `/b/${id}` | `GET` | Join a session with ID `${id}` and upgrade to websocket protocol if successful | - | -
- `/b/${id}` | `DELETE` | Close and clear the sesion | - | -
+  `/b/${id}` | `DELETE` | Close and clear the sesion | - | -
+ `/b/${id}/users` | `POST` | Register a new user for the session | `{alias: string, color: string}` | `{id: string, alias: string, color: string}`
+ `/b/${id}/users/${userId}/socket` | `GET` | Join a session with ID `${id}` as user `${userId}` and upgrade to websocket protocol if successful | - | -
  `/b/${id}/pages` | `GET` | Return all page IDs of the session in order | - | `{pageRank: string[]}`
  `/b/${id}/pages` | `POST` | Add a page with ID and an index to denote the position | `{pageId: string, index: number}` | -
  `/b/${id}/pages/${pageId}` | `GET` | Get all data on the page `${pageId}` | - | `Stroke[]`
@@ -25,6 +26,7 @@ All data transmitted over the websocket is serializable to a single interface. W
 interface Stroke {
     type: number
     id?: string
+    userId?: string
     pageId?: string
     x?: number
     y?: number
@@ -35,6 +37,13 @@ interface Stroke {
     }
     PageRank?: string[]
     pageClear?: string[]
+    connectedUsers?: {
+        id: {
+            id: string
+            alias: string
+            color: string
+        }
+    }
 }
 ```
 The application defines the `type`, the server only knows the following types:
