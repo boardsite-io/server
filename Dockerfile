@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:experimental
 
-FROM golang:1.15.5-alpine AS builder
+FROM golang:1.16.0-alpine AS builder
 WORKDIR /src
 ENV CGO_ENABLED=0
 COPY go.* ./
