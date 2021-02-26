@@ -1,25 +1,19 @@
 package session
 
 import (
+	"log"
 	"sync"
 
-	gws "github.com/gorilla/websocket"
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/redis"
 )
-
-// BroadcastData holds data to be broadcasted and the origin
-type BroadcastData struct {
-	UserID  string
-	Content []byte
-}
 
 // ControlBlock holds the information and channels for sessions
 type ControlBlock struct {
 	ID string
 
-	Broadcast chan *BroadcastData
-	Echo      chan *BroadcastData
+	Broadcast chan *types.Message
+	Echo      chan *types.Message
 
 	DBUpdate chan []*types.Stroke
 
@@ -40,8 +34,8 @@ type ControlBlock struct {
 func NewControlBlock(sessionID string) *ControlBlock {
 	scb := &ControlBlock{
 		ID:          sessionID,
-		Broadcast:   make(chan *BroadcastData),
-		Echo:        make(chan *BroadcastData),
+		Broadcast:   make(chan *types.Message),
+		Echo:        make(chan *types.Message),
 		DBUpdate:    make(chan []*types.Stroke),
 		SignalClose: make(chan struct{}),
 		UserReady:   make(map[string]*types.User),
@@ -64,15 +58,22 @@ func (scb *ControlBlock) broadcast() {
 			scb.Mu.Lock()
 			for userID, user := range scb.Clients { // Send to all connected clients
 				// except the origin, i.e. the initiator of message
-				if userID != data.UserID {
-					user.Conn.WriteMessage(gws.TextMessage, data.Content) // ignore error
+				if userID != data.Sender {
+					if err := user.Conn.WriteJSON(data); err != nil {
+						log.Printf("%s :: cannot broadcast to %s: %v",
+							scb.ID, user.Conn.RemoteAddr(), err)
+						continue
+					}
 				}
 			}
 			scb.Mu.Unlock()
 		case data := <-scb.Echo:
 			// echo message back to origin
 			scb.Mu.Lock()
-			scb.Clients[data.UserID].Conn.WriteMessage(gws.TextMessage, data.Content)
+			if err := scb.Clients[data.Sender].Conn.WriteJSON(data); err != nil {
+				// log.Println("")
+				continue
+			}
 			scb.Mu.Unlock()
 		case <-scb.SignalClose:
 			return

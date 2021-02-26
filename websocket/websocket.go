@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/session"
 
 	gws "github.com/gorilla/websocket"
@@ -58,11 +59,15 @@ func initSocket(sessionID, userID string, conn *gws.Conn) {
 
 	for {
 		if _, data, err := conn.ReadMessage(); err == nil {
+			msg, errMsg := types.UnmarshalMessage(data)
+			if errMsg != nil {
+				continue
+			}
+
 			// sanitize received data
-			if errSanitize := session.SanitizeAndRelay(
+			if errSanitize := session.Receive(
 				sessionID,
-				conn.RemoteAddr().String(),
-				data,
+				msg,
 			); errSanitize != nil {
 				continue // skip if data is corrupted
 			}

@@ -1,7 +1,7 @@
 package session
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -75,7 +75,6 @@ func AddPage(sessionID, pageID string, index int) {
 	UpdatePages(
 		sessionID,
 		redis.GetPages(sessionID),
-		[]string{},
 	)
 }
 
@@ -87,20 +86,21 @@ func DeletePage(sessionID, pageID string) {
 	UpdatePages(
 		sessionID,
 		redis.GetPages(sessionID),
-		[]string{},
 	)
 }
 
 // ClearPage clears all strokes on page with pageID and broadcasts
 // the change to all connected clients.
-func ClearPage(sessionID, pageID string) {
+func ClearPage(sessionID string, pageIDs ...string) {
 	//TODO handle error
-	redis.ClearPage(sessionID, pageID)
-	UpdatePages(
-		sessionID,
-		[]string{},
-		[]string{pageID},
-	)
+	for _, pid := range pageIDs {
+		redis.ClearPage(sessionID, pid)
+	}
+	ActiveSession[sessionID].Broadcast <- &types.Message{
+		Type:    types.MessageTypePageClear,
+		Sender:  "", // send to all clients
+		Content: pageIDs,
+	}
 }
 
 // Close closes a session.
@@ -192,94 +192,74 @@ func RemoveClient(sessionID, userID string) {
 // The client may use this metadata to update some information
 // about the session.
 func UpdateConnectedUsers(sessionID string) {
-	stroke := &types.Stroke{
-		Type:           -1,
-		ConnectedUsers: ActiveSession[sessionID].Clients,
+	ActiveSession[sessionID].Broadcast <- &types.Message{
+		Type:    types.MessageTypeUserSync,
+		Sender:  "",
+		Content: ActiveSession[sessionID].Clients,
 	}
-
-	UpdateStrokes(
-		sessionID,
-		"", // send to all clients
-		[]*types.Stroke{stroke},
-		[]*types.Stroke{},
-	)
 }
 
 // UpdatePages broadcasts the current PageRank to all connected
 // clients indicating an update in the pages (or ordering).
-func UpdatePages(sessionID string, pageIDsToUpdate, pageIDsToClear []string) {
-	stroke := &types.Stroke{
-		Type:      -1, // non-zero, since it's no deletion
-		PageRank:  pageIDsToUpdate,
-		PageClear: pageIDsToClear,
+func UpdatePages(sessionID string, pageIDsToUpdate []string) {
+	ActiveSession[sessionID].Broadcast <- &types.Message{
+		Type:    types.MessageTypePageSync,
+		Sender:  "", // send to all clients
+		Content: pageIDsToUpdate,
 	}
-
-	UpdateStrokes(
-		sessionID,
-		"", // send to all clients
-		[]*types.Stroke{stroke},
-		[]*types.Stroke{},
-	)
 }
 
-// UpdateStrokes updates the data in the session with sessionID.
+// Receive is the entry point when a message is received in
+// the session via the websocket.
+func Receive(sessionID string, msg *types.Message) error {
+	if !IsValidClient(sessionID, msg.Sender) {
+		return errors.New("invalid sender userId")
+	}
+
+	switch msg.Type {
+	case types.MessageTypeStroke:
+		return SanitizeStrokes(sessionID, msg)
+	default:
+		return fmt.Errorf("message type not recognized: %s", msg.Type)
+	}
+}
+
+// SanitizeStrokes parses the stroke content of the message.
 //
-// RemoteAddr indicates the initiator of the message, which is
-// to be excluded in the broadcast.
-// Strokes in the first slice are broadcasted to all connected
-// clients. Stroke in the second slice (those with type >= 0)
-// are updated in Redis.
-func UpdateStrokes(sessionID, userID string, strokes, strokesDB []*types.Stroke) {
-	// ignore error
-	// since it is unlikely that marshalling fails
-	strokesEncoded, _ := json.Marshal(&strokes)
-	// broadcast changes
-	ActiveSession[sessionID].Broadcast <- &BroadcastData{
-		UserID:  userID,
-		Content: strokesEncoded,
-	}
-
-	// save to database
-	if len(strokesDB) > 0 {
-		ActiveSession[sessionID].DBUpdate <- strokesDB
-	}
-}
-
-// SanitizeAndRelay sanitizes websocket input data and returns an
-// error if data is corrupted.
-func SanitizeAndRelay(sessionID, remoteAddr string, data []byte) error {
-	var strokes = []types.Stroke{}
-	if err := json.Unmarshal(data, &strokes); err != nil {
+// It further checks if the strokes have a valid pageId and userId.
+func SanitizeStrokes(sessionID string, msg *types.Message) error {
+	var strokes []*types.Stroke
+	if err := msg.UnmarshalContent(&strokes); err != nil {
 		return err
 	}
 
-	strokesSanitized, strokesDB := SanitizeStrokes(sessionID, strokes)
-	// update the session data
-	UpdateStrokes(sessionID, remoteAddr, strokesSanitized, strokesDB)
-	return nil
-}
-
-// SanitizeStrokes sanitizes a slice of strokes.
-//
-// It divides the input slice into two slices of pointer
-// to strokes to prevent hardcopies. The first contains all
-// sanitizes slices. The second contains only the stroke that
-// need to be stored in the DB (i.e. type >= 0).
-func SanitizeStrokes(sessionID string, strokes []types.Stroke) ([]*types.Stroke, []*types.Stroke) {
-	strokesSanitized := make([]*types.Stroke, 0, len(strokes))
-	strokesDB := make([]*types.Stroke, 0, len(strokes))
+	validStrokes := make([]*types.Stroke, 0, len(strokes))
 	pageIDs := GetPagesSet(sessionID)
 
-	for i := range strokes {
-		if _, ok := pageIDs[strokes[i].GetPageID()]; ok { // valid pageID
-			if IsValidClient(sessionID, strokes[i].GetUserID()) { // valid userID
-				strokesSanitized = append(strokesSanitized, &strokes[i])
-				if strokes[i].Type >= 0 {
-					strokesDB = append(strokesDB, &strokes[i])
-				}
+	for _, stroke := range strokes {
+		if _, ok := pageIDs[stroke.GetPageID()]; ok { // valid pageID
+			if stroke.GetUserID() == msg.Sender { // valid userID
+				validStrokes = append(validStrokes, stroke)
 			}
 		}
 	}
+	UpdateStrokes(sessionID, msg.Sender, validStrokes)
+	return nil
+}
 
-	return strokesSanitized, strokesDB
+// UpdateStrokes updates the strokes in the session with sessionID.
+//
+// userID indicates the initiator of the message, which is
+// to be excluded in the broadcast. The strokes are scheduled for an
+// update to Redis.
+func UpdateStrokes(sessionID, userID string, strokes []*types.Stroke) {
+	// broadcast changes
+	ActiveSession[sessionID].Broadcast <- &types.Message{
+		Type:    types.MessageTypeStroke,
+		Sender:  userID,
+		Content: strokes,
+	}
+
+	// save to database
+	ActiveSession[sessionID].DBUpdate <- strokes
 }

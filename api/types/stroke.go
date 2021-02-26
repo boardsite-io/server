@@ -2,45 +2,25 @@ package types
 
 import (
 	"encoding/json"
-
-	gws "github.com/gorilla/websocket"
 )
 
-// User defines info about connected users.
-type User struct {
-	ID    string    `json:"id"`
-	Alias string    `json:"alias"`
-	Color string    `json:"color"`
-	Conn  *gws.Conn `json:"-"`
-}
-
-// Style defines the stoke style.
+// Style declares the stoke style.
 type Style struct {
-	Color string  `json:"color,omitempty"`
-	Width float32 `json:"width,omitempty"`
+	Color   string  `json:"color,omitempty"`
+	Width   float64 `json:"width,omitempty"`
+	Opacity float64 `json:"opacity,omitempty"`
 }
 
-// Stroke Holds the Stroke as the basic data type
-// for all websocket communication.
+// Stroke declares the structure of most stoke types.
 type Stroke struct {
-	ID     string    `json:"id,omitempty"`
+	Type   int       `json:"strokeType"`
+	ID     string    `json:"strokeId,omitempty"`
 	PageID string    `json:"pageId,omitempty"`
 	UserID string    `json:"userId"`
-	Type   int       `json:"type"`
 	X      float64   `json:"x"`
 	Y      float64   `json:"y"`
 	Points []float64 `json:"points,omitempty"`
 	Style  Style     `json:"style,omitempty"`
-
-	// set for page updates
-	PageRank []string `json:"pageRank,omitempty"`
-
-	// pageIDs of pages to clear
-	PageClear []string `json:"pageClear,omitempty"`
-
-	// active users in session
-	// required in the frontend to display all connected users
-	ConnectedUsers map[string]*User `json:"connectedUsers,omitempty"`
 }
 
 // StrokeReader defines the set of common function

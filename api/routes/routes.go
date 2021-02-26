@@ -2,7 +2,6 @@ package routes
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -28,9 +27,7 @@ func Set(router *mux.Router) {
 func handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	// create new session and set it active
 	idstr := session.Create()
-
-	data := types.CreateBoardResponse{SessionID: idstr}
-	json.NewEncoder(w).Encode(data)
+	writeMessage(w, types.NewMessage(idstr, ""))
 }
 
 // handleUserCreate
@@ -42,18 +39,19 @@ func handleUserCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userReq := types.User{}
-	if err := json.NewDecoder(r.Body).Decode(&userReq); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	var userReq types.User
+	if err := types.DecodeMsgContent(r.Body, &userReq); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
 	}
 
 	// new user struct with alias and color
 	user, err := session.NewUser(sessionID, userReq.Alias, userReq.Color)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, err)
+		return
 	}
-
-	json.NewEncoder(w).Encode(user)
+	writeMessage(w, types.NewMessage(user, ""))
 }
 
 // handleSocketRequest handles request for a websocket upgrade
@@ -86,17 +84,14 @@ func handlePageRequest(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet {
 		// return pagerank array
-		data := types.PageRankResponse{
-			PageRank: session.GetPages(sessionID),
-		}
-		json.NewEncoder(w).Encode(data)
+		writeMessage(w, types.NewMessage(session.GetPages(sessionID), ""))
 	} else if r.Method == http.MethodPost {
 		// add a Page
-		data := types.PageRequestData{}
-		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		var data types.ContentPageRequest
+		if err := types.DecodeMsgContent(r.Body, &data); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
-		} // TODO serialize page data
+		}
 		session.AddPage(sessionID, data.PageID, data.Index)
 	}
 }
@@ -114,10 +109,24 @@ func handlePageUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		fmt.Fprint(w, session.GetStrokes(sessionID, pageID))
+		writeMessage(
+			w,
+			types.NewMessage(session.GetStrokes(sessionID, pageID), ""),
+		)
 	} else if r.Method == http.MethodPut {
 		session.ClearPage(sessionID, pageID)
 	} else if r.Method == http.MethodDelete {
 		session.DeletePage(sessionID, pageID)
 	}
+}
+
+func writeMessage(w http.ResponseWriter, content interface{}) {
+	if err := json.NewEncoder(w).Encode(content); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+	}
+}
+
+func writeError(w http.ResponseWriter, status int, err error) {
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(types.NewErrorMessage(err))
 }
