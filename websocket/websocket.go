@@ -10,10 +10,6 @@ import (
 	gws "github.com/gorilla/websocket"
 )
 
-type errorStatus struct {
-	Error string `json:"error"`
-}
-
 var upgrader = gws.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -24,11 +20,12 @@ var upgrader = gws.Upgrader{
 func UpgradeProtocol(
 	w http.ResponseWriter,
 	r *http.Request,
-	sessionID, userID string,
+	scb *session.ControlBlock,
+	userID string,
 ) error {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err == nil {
-		initSocket(sessionID, userID, conn)
+		initSocket(scb, userID, conn)
 	}
 	return err
 }
@@ -39,23 +36,23 @@ func checkOrigin(r *http.Request) bool {
 	return true
 }
 
-func onClientConnect(sessionID, userID string, conn *gws.Conn) {
-	session.AddClient(sessionID, userID, conn)
-	log.Println(sessionID + " :: " + conn.RemoteAddr().String() + " connected")
+func onClientConnect(scb *session.ControlBlock, userID string, conn *gws.Conn) {
+	scb.UserConnect(userID) // already checked if user is ready at this point
+	log.Println(scb.ID + " :: " + conn.RemoteAddr().String() + " connected")
 }
 
-func onClientDisconnect(sessionID, userID string, conn *gws.Conn) {
-	session.RemoveClient(sessionID, userID)
-	log.Println(sessionID + " :: " + conn.RemoteAddr().String() + " disconnected")
+func onClientDisconnect(scb *session.ControlBlock, userID string, conn *gws.Conn) {
+	scb.UserDisconnect(userID)
+	log.Println(scb.ID + " :: " + conn.RemoteAddr().String() + " disconnected")
 	conn.WriteMessage(gws.TextMessage, []byte("connection closed by host"))
 	// close the websocket connection
 	conn.Close()
 }
 
-// Init starts the websocket
-func initSocket(sessionID, userID string, conn *gws.Conn) {
-	onClientConnect(sessionID, userID, conn)
-	defer onClientDisconnect(sessionID, userID, conn)
+// initSocket starts the websocket
+func initSocket(scb *session.ControlBlock, userID string, conn *gws.Conn) {
+	onClientConnect(scb, userID, conn)
+	defer onClientDisconnect(scb, userID, conn)
 
 	for {
 		if _, data, err := conn.ReadMessage(); err == nil {
@@ -66,13 +63,13 @@ func initSocket(sessionID, userID string, conn *gws.Conn) {
 
 			// sanitize received data
 			if errSanitize := session.Receive(
-				sessionID,
+				scb,
 				msg,
 			); errSanitize != nil {
 				continue // skip if data is corrupted
 			}
 
-			log.Printf(sessionID+" :: Data Received from %s\n",
+			log.Printf(scb.ID+" :: Data Received from %s\n",
 				conn.RemoteAddr().String(),
 			)
 		} else {

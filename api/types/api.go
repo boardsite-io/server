@@ -11,10 +11,11 @@ import (
 
 // Message type definitions.
 const (
-	MessageTypeStroke    = "stroke"
-	MessageTypeUserSync  = "usersync"
-	MessageTypePageSync  = "pagesync"
-	MessageTypePageClear = "pageclear"
+	MessageTypeStroke           = "stroke"
+	MessageTypeUserConnected    = "userconn"
+	MessageTypeUserDisconnected = "userdisc"
+	MessageTypePageSync         = "pagesync"
+	MessageTypePageClear        = "pageclear"
 )
 
 // Message declares the generic message envelope

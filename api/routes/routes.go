@@ -26,16 +26,19 @@ func Set(router *mux.Router) {
 // Supported methods: POST
 func handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	// create new session and set it active
-	idstr := session.Create()
+	idstr, err := session.Create()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
 	writeMessage(w, types.NewMessage(idstr, ""))
 }
 
 // handleUserCreate
 func handleUserCreate(w http.ResponseWriter, r *http.Request) {
-	sessionID := mux.Vars(r)["id"]
-
-	if !session.IsValid(sessionID) {
-		w.WriteHeader(http.StatusNotFound)
+	scb, err := session.GetSCB(mux.Vars(r)["id"])
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
 		return
 	}
 
@@ -46,7 +49,7 @@ func handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// new user struct with alias and color
-	user, err := session.NewUser(sessionID, userReq.Alias, userReq.Color)
+	user, err := session.NewUser(scb, userReq.Alias, userReq.Color)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
@@ -61,13 +64,19 @@ func handleUserCreate(w http.ResponseWriter, r *http.Request) {
 func handleSocketRequest(w http.ResponseWriter, r *http.Request) {
 	sessionID, userID := mux.Vars(r)["id"], mux.Vars(r)["userId"]
 
-	if !session.IsValid(sessionID) || !session.IsReadyUser(sessionID, userID) {
-		w.WriteHeader(http.StatusNotFound)
+	scb, err := session.GetSCB(sessionID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
+	_, errUser := scb.GetUserReady(userID)
+	if errUser != nil {
+		writeError(w, http.StatusNotFound, errUser)
 		return
 	}
 
-	if err := websocket.UpgradeProtocol(w, r, sessionID, userID); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if err := websocket.UpgradeProtocol(w, r, scb, userID); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
 	}
 }
 
@@ -75,16 +84,15 @@ func handleSocketRequest(w http.ResponseWriter, r *http.Request) {
 //
 // Supported methods: GET, POST
 func handlePageRequest(w http.ResponseWriter, r *http.Request) {
-	sessionID := mux.Vars(r)["id"]
-
-	if !session.IsValid(sessionID) {
-		w.WriteHeader(http.StatusNotFound)
+	scb, err := session.GetSCB(mux.Vars(r)["id"])
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
 		return
 	}
 
 	if r.Method == http.MethodGet {
 		// return pagerank array
-		writeMessage(w, types.NewMessage(session.GetPages(sessionID), ""))
+		writeMessage(w, types.NewMessage(session.GetPages(scb.ID), ""))
 	} else if r.Method == http.MethodPost {
 		// add a Page
 		var data types.ContentPageRequest
@@ -92,7 +100,7 @@ func handlePageRequest(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		session.AddPage(sessionID, data.PageID, data.Index)
+		session.AddPage(scb, data.PageID, data.Index)
 	}
 }
 
@@ -100,10 +108,14 @@ func handlePageRequest(w http.ResponseWriter, r *http.Request) {
 //
 // Supported methods: PUT, DELETE
 func handlePageUpdate(w http.ResponseWriter, r *http.Request) {
-	sessionID := mux.Vars(r)["id"]
-	pageID := mux.Vars(r)["pageId"]
+	scb, err := session.GetSCB(mux.Vars(r)["id"])
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
 
-	if !session.IsValid(sessionID) || !session.IsValidPage(sessionID, pageID) {
+	pageID := mux.Vars(r)["pageId"]
+	if !session.IsValidPage(scb.ID, pageID) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -111,12 +123,12 @@ func handlePageUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		writeMessage(
 			w,
-			types.NewMessage(session.GetStrokes(sessionID, pageID), ""),
+			types.NewMessage(session.GetStrokes(scb.ID, pageID), ""),
 		)
 	} else if r.Method == http.MethodPut {
-		session.ClearPage(sessionID, pageID)
+		session.ClearPage(scb, pageID)
 	} else if r.Method == http.MethodDelete {
-		session.DeletePage(sessionID, pageID)
+		session.DeletePage(scb, pageID)
 	}
 }
 
