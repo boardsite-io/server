@@ -13,8 +13,8 @@ type Style struct {
 
 // Stroke declares the structure of most stoke types.
 type Stroke struct {
-	Type   int       `json:"strokeType"`
-	ID     string    `json:"strokeId,omitempty"`
+	Type   int       `json:"type"`
+	ID     string    `json:"id,omitempty"`
 	PageID string    `json:"pageId,omitempty"`
 	UserID string    `json:"userId"`
 	X      float64   `json:"x"`

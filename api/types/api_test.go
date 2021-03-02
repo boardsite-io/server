@@ -1,7 +1,6 @@
 package types
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +14,7 @@ func TestUnmarshalMsg(t *testing.T) {
 	}{
 		{"", nil, assert.AnError},
 		{`{{"content": {}`, nil, assert.AnError},
-		{`{"content": {"strokeType": "0}}`, nil, assert.AnError},
+		{`{"content": {"type": "0}}`, nil, assert.AnError},
 		{`{}`, &Message{}, nil},
 		{`{"type":"sometype"}`, &Message{Type: "sometype"}, nil},
 		{
@@ -41,33 +40,27 @@ func TestUnmarshalMsg(t *testing.T) {
 func TestUnmarshalMsgContent(t *testing.T) {
 	tests := []struct {
 		msg  string
-		want interface{}
+		want Stroke
 		err  error
 	}{
-		{"", nil, assert.AnError},
-		{"{}", nil, assert.AnError},
-		{`{{"content": {}`, nil, assert.AnError},
-		{`{"content": {"strokeType": "0}}`, nil, assert.AnError},
+		{"", Stroke{}, assert.AnError},
+		{"{}", Stroke{}, assert.AnError},
+		{`{{"content": {}`, Stroke{}, assert.AnError},
+		{`{"content": {"type": "0}}`, Stroke{}, assert.AnError},
 		{
-			`{"type":"sometype","sender":"heat","content":{"strokeType":0,"strokeId":"strokeid1","userId":"user1"}}`,
-			Stroke{ID: "strokeid1", UserID: "user1", Type: 0},
-			nil,
-		},
-		{
-			`{"type":"sometype","sender":"heat","content":{"id":"user1","alias":"user1","color":"#ff00ff"}}`,
-			User{ID: "user1", Alias: "user1", Color: "#ff00ff"},
+			`{"type":"sometype","sender":"heat","content":{"type":0,"id":"id1","userId":"user1"}}`,
+			Stroke{ID: "id1", UserID: "user1", Type: 0},
 			nil,
 		},
 	}
 
 	for _, test := range tests {
-		c := reflect.ValueOf(test.want)
-		w := reflect.ValueOf(test.want)
+		var c Stroke
 		if test.err != nil {
 			assert.Error(t, UnmarshalMsgContent([]byte(test.msg), &c))
 		} else {
 			assert.NoError(t, UnmarshalMsgContent([]byte(test.msg), &c))
 		}
-		assert.Equal(t, w, c, "incorrect unmarshalling of message content")
+		assert.Equal(t, test.want, c, "incorrect unmarshalling of message content")
 	}
 }
