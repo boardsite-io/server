@@ -6,9 +6,9 @@ import (
 
 // Style declares the stoke style.
 type Style struct {
-	Color   string  `json:"color,omitempty"`
-	Width   float64 `json:"width,omitempty"`
-	Opacity float64 `json:"opacity,omitempty"`
+	Color   string  `json:"color"`
+	Width   float64 `json:"width"`
+	Opacity float64 `json:"opacity"`
 }
 
 // Stroke declares the structure of most stoke types.
