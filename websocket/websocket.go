@@ -24,10 +24,10 @@ func UpgradeProtocol(
 	userID string,
 ) error {
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if err == nil {
-		initSocket(scb, userID, conn)
+	if err != nil {
+		return err
 	}
-	return err
+	return initSocket(scb, userID, conn)
 }
 
 // For development purpose
@@ -36,9 +36,15 @@ func checkOrigin(r *http.Request) bool {
 	return true
 }
 
-func onClientConnect(scb *session.ControlBlock, userID string, conn *gws.Conn) {
-	scb.UserConnect(userID) // already checked if user is ready at this point
+func onClientConnect(scb *session.ControlBlock, userID string, conn *gws.Conn) error {
+	u, err := scb.GetUserReady(userID)
+	if err != nil {
+		return err
+	}
+	u.Conn = conn      // set the current ws connection
+	scb.UserConnect(u) // already checked if user is ready at this point
 	log.Println(scb.ID + " :: " + conn.RemoteAddr().String() + " connected")
+	return nil
 }
 
 func onClientDisconnect(scb *session.ControlBlock, userID string, conn *gws.Conn) {
@@ -50,8 +56,10 @@ func onClientDisconnect(scb *session.ControlBlock, userID string, conn *gws.Conn
 }
 
 // initSocket starts the websocket
-func initSocket(scb *session.ControlBlock, userID string, conn *gws.Conn) {
-	onClientConnect(scb, userID, conn)
+func initSocket(scb *session.ControlBlock, userID string, conn *gws.Conn) error {
+	if err := onClientConnect(scb, userID, conn); err != nil {
+		return err
+	}
 	defer onClientDisconnect(scb, userID, conn)
 
 	for {
@@ -76,4 +84,5 @@ func initSocket(scb *session.ControlBlock, userID string, conn *gws.Conn) {
 			break // socket closed
 		}
 	}
+	return nil
 }

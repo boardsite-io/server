@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -102,7 +103,11 @@ func UnmarshalMessage(data []byte) (*Message, error) {
 // UnmarshalContent parses the JSON-encoded content of a Message and
 // stores the result in the value pointed to by v.
 func (m *Message) UnmarshalContent(v interface{}) error {
-	if err := json.Unmarshal(*(m.Content.(*json.RawMessage)), v); err != nil {
+	c, ok := (m.Content.(*json.RawMessage))
+	if !ok {
+		return errors.New("cannot unmarshal content")
+	}
+	if err := json.Unmarshal(*c, v); err != nil {
 		return err
 	}
 	return nil

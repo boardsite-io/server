@@ -1,14 +1,14 @@
 package redis
 
 import (
-	"fmt"
-	"github.com/heat1q/boardsite/api/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"math"
 	"math/rand"
 	"os"
 	"testing"
+
+	"github.com/heat1q/boardsite/api/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupConn() error {
@@ -92,11 +92,50 @@ func TestUpdateAndFetchStroke(t *testing.T) {
 	}
 	require.NoError(t, Update("sid1", clearData))
 
-	refStrokeStr, _ := refStroke.JSONStringify()
+	refStrokeStr, errRef := refStroke.JSONStringify()
+	require.NoError(t, errRef)
+
+	raw, errFetch := FetchStrokesRaw("sid1", "pid1")
+	require.NoError(t, errFetch)
 	assert.Equal(
 		t,
-		fmt.Sprintf("[%s]", refStrokeStr),
-		FetchStrokes("sid1", "pid1"),
+		refStrokeStr,
+		raw[0],
 		"incorrect json stringified array of strokes objects",
 	)
+}
+
+func TestFetchStrokesRaw(t *testing.T) {
+	if err := setupConn(); err != nil {
+		t.Log("cannot connect to local Redis instance")
+		t.SkipNow()
+	}
+	defer ClosePool()
+
+	setData := []*types.Stroke{
+		genRandStroke("id1", "pid1", rand.Intn(10)+1),
+		genRandStroke("id2", "pid1", rand.Intn(10)+1),
+		genRandStroke("id3", "pid2", rand.Intn(10)+1),
+		genRandStroke("id4", "pid1", rand.Intn(10)+1),
+		genRandStroke("id5", "pid2", rand.Intn(10)+1),
+	}
+	require.NoError(t, Update("sid1", setData))
+
+	tests := []struct {
+		sid     string
+		pid     string
+		wantLen int
+	}{
+		{"", "", 0},
+		{"sid0", "pid1", 0},
+		{"sid1", "pid1", 3},
+		{"sid1", "pid2", 2},
+		{"sid1", "pid3", 0},
+	}
+
+	for _, test := range tests {
+		raw, err := FetchStrokesRaw(test.sid, test.pid)
+		assert.NoError(t, err)
+		assert.Equal(t, test.wantLen, len(raw), "wrong number of fetched strokes")
+	}
 }

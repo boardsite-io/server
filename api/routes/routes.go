@@ -121,9 +121,13 @@ func handlePageUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
+		strokes, errFetch := session.GetStrokes(scb.ID, pageID)
+		if errFetch != nil {
+			writeError(w, http.StatusServiceUnavailable, errFetch)
+		}
 		writeMessage(
 			w,
-			types.NewMessage(session.GetStrokes(scb.ID, pageID), ""),
+			types.NewMessage(strokes, ""),
 		)
 	} else if r.Method == http.MethodPut {
 		session.ClearPage(scb, pageID)

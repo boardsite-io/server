@@ -51,6 +51,7 @@ func NewControlBlock(sessionID string) *ControlBlock {
 	return scb
 }
 
+// UserReady adds an user to the usersReady map.
 func (scb *ControlBlock) UserReady(u *types.User) {
 	scb.muRdyUsr.Lock()
 	scb.usersReady[u.ID] = u
@@ -77,14 +78,9 @@ func (scb *ControlBlock) IsUserReady(userID string) bool {
 // UserConnect adds user from the userReady state to clients.
 //
 // Broadcast that user has connected to session.
-func (scb *ControlBlock) UserConnect(userID string) {
-	scb.muRdyUsr.Lock()
-	u := scb.usersReady[userID]
-	delete(scb.usersReady, userID)
-	scb.muRdyUsr.Unlock()
-
+func (scb *ControlBlock) UserConnect(u *types.User) {
 	scb.muUsr.Lock()
-	scb.users[userID] = u
+	scb.users[u.ID] = u
 	scb.numUsers++
 	scb.muUsr.Unlock()
 

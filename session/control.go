@@ -17,6 +17,7 @@ var (
 	activeSession = make(map[string]*ControlBlock)
 )
 
+// GetSCB returns the session control block for given sessionID.
 func GetSCB(sessionID string) (*ControlBlock, error) {
 	mu.RLock()
 	defer mu.RUnlock()

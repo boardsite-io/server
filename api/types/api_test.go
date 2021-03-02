@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,6 +47,7 @@ func TestUnmarshalMsgContent(t *testing.T) {
 		{"", Stroke{}, assert.AnError},
 		{"{}", Stroke{}, assert.AnError},
 		{`{{"content": {}`, Stroke{}, assert.AnError},
+		{`{"content": null}`, Stroke{}, assert.AnError},
 		{`{"content": {"type": "0}}`, Stroke{}, assert.AnError},
 		{
 			`{"type":"sometype","sender":"heat","content":{"type":0,"id":"id1","userId":"user1"}}`,
@@ -62,5 +64,24 @@ func TestUnmarshalMsgContent(t *testing.T) {
 			assert.NoError(t, UnmarshalMsgContent([]byte(test.msg), &c))
 		}
 		assert.Equal(t, test.want, c, "incorrect unmarshalling of message content")
+	}
+}
+
+func TestMarshalMessage(t *testing.T) {
+	tests := []struct {
+		msgType string
+		sender  string
+		content interface{}
+		want    string
+	}{
+		{"", "", []string{}, `{"type":"","content":[]}`},
+		{"", "", []string{"pid1", "pid2"}, `{"type":"","content":["pid1","pid2"]}`},
+	}
+
+	for _, test := range tests {
+		m := NewMessage(test.content, test.msgType, test.sender)
+		menc, err := json.Marshal(m)
+		assert.NoError(t, err)
+		assert.Equal(t, test.want, string(menc), "incorrect marshalling of message")
 	}
 }

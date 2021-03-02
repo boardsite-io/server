@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -10,10 +11,20 @@ import (
 	"github.com/heat1q/boardsite/redis"
 )
 
-// GetStrokes fetches all stroke data for specified page
-// as json stringified array of stroke objects.
-func GetStrokes(sessionID, pageID string) string {
-	return redis.FetchStrokes(sessionID, pageID)
+// GetStrokes fetches all stroke data for specified page.
+func GetStrokes(sessionID, pageID string) ([]types.Stroke, error) {
+	strokesRaw, err := redis.FetchStrokesRaw(sessionID, pageID)
+	if err != nil {
+		return nil, errors.New("unable to fetch strokes")
+	}
+
+	strokes := make([]types.Stroke, len(strokesRaw))
+	for i, s := range strokesRaw {
+		if err := json.Unmarshal(s, &strokes[i]); err != nil {
+			return nil, err
+		}
+	}
+	return strokes, nil
 }
 
 // GetPages returns all pageIDs in order.

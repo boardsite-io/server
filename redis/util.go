@@ -1,9 +1,6 @@
 package redis
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/gomodule/redigo/redis"
 
 	"github.com/heat1q/boardsite/api/types"
@@ -60,25 +57,34 @@ func Update(sessionID string, strokes []*types.Stroke) error {
 	return nil
 }
 
-// FetchStrokes Fetches all strokes of the specified page.
+// FetchStrokesRaw Fetches all strokes of the specified page.
 //
-// Preserves the JSON encoding of Redis and returns a stringified
-// array of stroke objects.
-func FetchStrokes(sessionID, pageID string) string {
+// Preserves the JSON encoding of Redis and returns an array of
+// a stringified stroke objects.
+func FetchStrokesRaw(sessionID, pageID string) ([][]byte, error) {
 	conn := Pool.Get()
 	defer conn.Close()
 
 	pid := getPageKey(sessionID, pageID)
-	keys, _ := redis.Strings(conn.Do("HKEYS", pid))
-
-	strokes := make([]string, 0, len(keys))
-
-	for _, key := range keys {
-		s, _ := redis.String(conn.Do("HGET", pid, key))
-		strokes = append(strokes, s)
+	keys, err := redis.Strings(conn.Do("HKEYS", pid))
+	if err != nil {
+		return nil, err
+	}
+	if len(keys) == 0 { // page is empty
+		return [][]byte{}, nil
 	}
 
-	return fmt.Sprintf("[%s]", strings.Join(strokes, ","))
+	query := make([]interface{}, 1, len(keys)+1)
+	query[0] = pid
+	for _, key := range keys {
+		query = append(query, key)
+	}
+
+	strokes, errFetch := redis.ByteSlices(conn.Do("HMGET", query...))
+	if errFetch != nil {
+		return nil, errFetch
+	}
+	return strokes, nil
 }
 
 // GetPages returns a list of all pageIDs for the current session.
