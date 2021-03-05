@@ -33,6 +33,7 @@ func ClearSession(sessionID string) {
 	pages, _ := GetPages(sessionID)
 	for _, pid := range pages {
 		conn.Send("DEL", getPageKey(sessionID, pid))
+		conn.Send("DEL", getPageMetaKey(sessionID, pid))
 	}
 	conn.Send("DEL", getPageRankKey(sessionID))
 	conn.Flush()
@@ -178,6 +179,7 @@ func DeletePage(sessionID, pageID string) {
 
 	conn.Do("DEL", getPageKey(sessionID, pageID))
 	conn.Do("ZREM", getPageRankKey(sessionID), pageID)
+	conn.Do("DEL", getPageMetaKey(sessionID, pageID))
 }
 
 // ClearPage removes all strokes with given pageID.
