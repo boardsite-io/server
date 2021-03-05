@@ -36,10 +36,22 @@ type User struct {
 	Conn  *gws.Conn `json:"-"`
 }
 
+// PageMeta declares some page meta data.
+type PageMeta struct {
+	Background string `json:"background"`
+}
+
 // ContentPageRequest declares the message content for page requests.
 type ContentPageRequest struct {
-	PageID string `json:"pageId"`
-	Index  int    `json:"index"`
+	PageID   string `json:"pageId"`
+	Index    int    `json:"index"`
+	PageMeta `json:"meta"`
+}
+
+// ContentPageSync message content for page sync.
+type ContentPageSync struct {
+	PageRank []string    `json:"pageRank"`
+	Meta     []*PageMeta `json:"meta"`
 }
 
 // type ContentUserSync map[string]*User

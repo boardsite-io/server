@@ -1,6 +1,8 @@
 package redis
 
 import (
+	"encoding/json"
+
 	"github.com/gomodule/redigo/redis"
 
 	"github.com/heat1q/boardsite/api/types"
@@ -16,6 +18,11 @@ func getPageKey(sessionID, pageID string) string {
 	return sessionID + "." + pageID
 }
 
+// getPageMetaKey returns the redis key for page meta data.
+func getPageMetaKey(sessionID, pageID string) string {
+	return getPageKey(sessionID, pageID) + ".meta"
+}
+
 // ClearSession wipes the session from Redis.
 //
 // Removes all pages and the respective strokes on the pages
@@ -23,8 +30,9 @@ func ClearSession(sessionID string) {
 	conn := Pool.Get()
 	defer conn.Close()
 
-	for _, pageID := range GetPages(sessionID) {
-		conn.Send("DEL", getPageKey(sessionID, pageID))
+	pages, _ := GetPages(sessionID)
+	for _, pid := range pages {
+		conn.Send("DEL", getPageKey(sessionID, pid))
 	}
 	conn.Send("DEL", getPageRankKey(sessionID))
 	conn.Flush()
@@ -90,28 +98,54 @@ func FetchStrokesRaw(sessionID, pageID string) ([][]byte, error) {
 // GetPages returns a list of all pageIDs for the current session.
 //
 // The PageIDs are maintained in a list in redis since the ordering is important
-func GetPages(sessionID string) []string {
+func GetPages(sessionID string) ([]string, error) {
 	conn := Pool.Get()
 	defer conn.Close()
 
-	pages, err := redis.Strings(conn.Do("ZRANGE", getPageRankKey(sessionID), 0, -1))
+	pages, err := redis.Strings(
+		conn.Do("ZRANGE", getPageRankKey(sessionID), 0, -1))
 	if err != nil {
-		return []string{}
+		return nil, err
 	}
-	return pages
+	return pages, nil
+}
+
+// GetPagesMeta returns a slice of all page meta data.
+func GetPagesMeta(sessionID string, pageIDs []string) ([]*types.PageMeta, error) {
+	conn := Pool.Get()
+	defer conn.Close()
+
+	metaRank := make([]*types.PageMeta, len(pageIDs))
+	for i, pid := range pageIDs {
+		var meta types.PageMeta
+		if resp, err := redis.Bytes(conn.Do("GET", getPageMetaKey(sessionID, pid))); err == nil {
+			if err := json.Unmarshal(resp, &meta); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+		metaRank[i] = &meta
+	}
+	return metaRank, nil
 }
 
 // AddPage adds a page with pageID at position index.
 //
 // Other pages are moved and their score is reassigned
 // when pages are added in between
-func AddPage(sessionID, newPageID string, index int) {
+func AddPage(sessionID, newPageID string, index int, meta *types.PageMeta) {
 	conn := Pool.Get()
 	defer conn.Close()
 
+	if meta != nil {
+		pMeta, _ := json.Marshal(meta)
+		conn.Do("SET", getPageMetaKey(sessionID, newPageID), pMeta)
+	}
+
 	// get all pageids
 	pageRankKey := getPageRankKey(sessionID)
-	pageIDs := GetPages(sessionID)
+	pageIDs, _ := GetPages(sessionID)
 	if len(pageIDs) > 0 {
 		var score, diff, prevIndex int
 

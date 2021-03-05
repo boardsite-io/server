@@ -28,13 +28,21 @@ func GetStrokes(sessionID, pageID string) ([]types.Stroke, error) {
 }
 
 // GetPages returns all pageIDs in order.
-func GetPages(sessionID string) []string {
-	return redis.GetPages(sessionID)
+func GetPages(sessionID string) ([]string, []*types.PageMeta, error) {
+	pageRank, err := redis.GetPages(sessionID)
+	if err != nil {
+		return nil, nil, errors.New("unable to fetch pages")
+	}
+	meta, err := redis.GetPagesMeta(sessionID, pageRank)
+	if err != nil {
+		return nil, nil, errors.New("unable to fetch pages meta data")
+	}
+	return pageRank, meta, nil
 }
 
 // GetPagesSet returns all pageIDs in a map for fast verification.
 func GetPagesSet(sessionID string) map[string]struct{} {
-	pageIDs := GetPages(sessionID)
+	pageIDs, _ := redis.GetPages(sessionID)
 	pageIDSet := make(map[string]struct{})
 
 	for _, pid := range pageIDs {
@@ -52,24 +60,18 @@ func IsValidPage(sessionID, pageID string) bool {
 
 // AddPage adds a page with pageID to the session and broadcasts
 // the change to all connected clients.
-func AddPage(scb *ControlBlock, pageID string, index int) {
+func AddPage(scb *ControlBlock, pageID string, index int, meta *types.PageMeta) error {
 	//TODO handle error
-	redis.AddPage(scb.ID, pageID, index)
-	UpdatePages(
-		scb,
-		redis.GetPages(scb.ID),
-	)
+	redis.AddPage(scb.ID, pageID, index, meta)
+	return SyncPages(scb)
 }
 
 // DeletePage deletes a page with pageID and broadcasts
 // the change to all connected clients.
-func DeletePage(scb *ControlBlock, pageID string) {
+func DeletePage(scb *ControlBlock, pageID string) error {
 	//TODO handle error
 	redis.DeletePage(scb.ID, pageID)
-	UpdatePages(
-		scb,
-		redis.GetPages(scb.ID),
-	)
+	return SyncPages(scb)
 }
 
 // ClearPage clears all strokes on page with pageID and broadcasts
@@ -86,14 +88,23 @@ func ClearPage(scb *ControlBlock, pageIDs ...string) {
 	}
 }
 
-// UpdatePages broadcasts the current PageRank to all connected
+// SyncPages broadcasts the current PageRank to all connected
 // clients indicating an update in the pages (or ordering).
-func UpdatePages(scb *ControlBlock, pageIDsToUpdate []string) {
-	scb.Broadcast <- &types.Message{
-		Type:    types.MessageTypePageSync,
-		Sender:  "", // send to all clients
-		Content: pageIDsToUpdate,
+func SyncPages(scb *ControlBlock) error {
+	pageRank, meta, err := GetPages(scb.ID)
+	if err != nil {
+		return err
 	}
+
+	scb.Broadcast <- &types.Message{
+		Type:   types.MessageTypePageSync,
+		Sender: "", // send to all clients
+		Content: &types.ContentPageSync{
+			PageRank: pageRank,
+			Meta:     meta,
+		},
+	}
+	return nil
 }
 
 // NewUser generate a new user struct based on

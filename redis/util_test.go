@@ -59,8 +59,36 @@ func TestAddPages(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		AddPage(sid, test.pid, test.index)
-		assert.Equal(t, test.want, GetPages(sid), "pageRank is not correct")
+		AddPage(sid, test.pid, test.index, nil)
+		pids, err := GetPages(sid)
+		assert.NoError(t, err)
+		assert.Equal(t, test.want, pids, "pageRank is not correct")
+	}
+}
+
+func TestMetaPages(t *testing.T) {
+	if err := setupConn(); err != nil {
+		t.Log("cannot connect to local Redis instance")
+		t.SkipNow()
+	}
+	defer ClosePool()
+
+	sid := "sid2"
+	ClearSession(sid)
+
+	tests := []struct {
+		meta  types.PageMeta
+		index int
+		want  types.PageMeta
+	}{
+		{types.PageMeta{Background: "somebackground1"}, 0, types.PageMeta{Background: "somebackground1"}},
+	}
+
+	for _, test := range tests {
+		AddPage(sid, "pid1", test.index, &test.meta)
+		meta, err := GetPagesMeta(sid, []string{"pid1"})
+		assert.NoError(t, err)
+		assert.Equal(t, test.want, *meta[0], "pageRank is not correct")
 	}
 }
 
@@ -71,7 +99,7 @@ func TestUpdateAndFetchStroke(t *testing.T) {
 	}
 	defer ClosePool()
 
-	ClearSession("sid")
+	ClearSession("sid1")
 	refStroke := genRandStroke("id1", "pid1", 1)
 
 	setData := []*types.Stroke{

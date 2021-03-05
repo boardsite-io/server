@@ -91,8 +91,16 @@ func handlePageRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
+		pageRank, meta, err := session.GetPages(scb.ID)
+		if err != nil {
+			writeError(w, http.StatusServiceUnavailable, err)
+		}
+
 		// return pagerank array
-		writeMessage(w, types.NewMessage(session.GetPages(scb.ID), ""))
+		writeMessage(w, types.NewMessage(types.ContentPageSync{
+			PageRank: pageRank,
+			Meta:     meta,
+		}, ""))
 	} else if r.Method == http.MethodPost {
 		// add a Page
 		var data types.ContentPageRequest
@@ -100,7 +108,7 @@ func handlePageRequest(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		session.AddPage(scb, data.PageID, data.Index)
+		session.AddPage(scb, data.PageID, data.Index, &data.PageMeta)
 	}
 }
 
