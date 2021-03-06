@@ -17,6 +17,7 @@ const (
 	MessageTypeUserDisconnected = "userdisc"
 	MessageTypePageSync         = "pagesync"
 	MessageTypePageClear        = "pageclear"
+	MessageTypeMouseMove        = "mmove"
 )
 
 // Message declares the generic message envelope
@@ -52,6 +53,12 @@ type ContentPageRequest struct {
 type ContentPageSync struct {
 	PageRank []string    `json:"pageRank"`
 	Meta     []*PageMeta `json:"meta"`
+}
+
+// ContentMouseMove declares mouse move updates.
+type ContentMouseMove struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 // type ContentUserSync map[string]*User

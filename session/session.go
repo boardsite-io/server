@@ -11,6 +11,11 @@ import (
 	"github.com/heat1q/boardsite/redis"
 )
 
+var receiveHandler = map[string]func(scb *ControlBlock, msg *types.Message) error{
+	types.MessageTypeStroke:    sanitizeStrokes,
+	types.MessageTypeMouseMove: mouseMove,
+}
+
 // GetStrokes fetches all stroke data for specified page.
 func GetStrokes(sessionID, pageID string) ([]types.Stroke, error) {
 	strokesRaw, err := redis.FetchStrokesRaw(sessionID, pageID)
@@ -147,19 +152,17 @@ func Receive(scb *ControlBlock, msg *types.Message) error {
 	if !scb.IsUserConnected(msg.Sender) {
 		return errors.New("invalid sender userId")
 	}
-
-	switch msg.Type {
-	case types.MessageTypeStroke:
-		return SanitizeStrokes(scb, msg)
-	default:
+	handleMsg, ok := receiveHandler[msg.Type]
+	if !ok {
 		return fmt.Errorf("message type not recognized: %s", msg.Type)
 	}
+	return handleMsg(scb, msg)
 }
 
-// SanitizeStrokes parses the stroke content of the message.
+// sanitizeStrokes parses the stroke content of the message.
 //
 // It further checks if the strokes have a valid pageId and userId.
-func SanitizeStrokes(scb *ControlBlock, msg *types.Message) error {
+func sanitizeStrokes(scb *ControlBlock, msg *types.Message) error {
 	var strokes []*types.Stroke
 	if err := msg.UnmarshalContent(&strokes); err != nil {
 		return err
@@ -176,18 +179,18 @@ func SanitizeStrokes(scb *ControlBlock, msg *types.Message) error {
 		}
 	}
 	if len(validStrokes) > 0 {
-		UpdateStrokes(scb, msg.Sender, validStrokes)
+		updateStrokes(scb, msg.Sender, validStrokes)
 		return nil
 	}
 	return errors.New("strokes not validated")
 }
 
-// UpdateStrokes updates the strokes in the session with sessionID.
+// updateStrokes updates the strokes in the session with sessionID.
 //
 // userID indicates the initiator of the message, which is
 // to be excluded in the broadcast. The strokes are scheduled for an
 // update to Redis.
-func UpdateStrokes(scb *ControlBlock, userID string, strokes []*types.Stroke) {
+func updateStrokes(scb *ControlBlock, userID string, strokes []*types.Stroke) {
 	// broadcast changes
 	scb.Broadcast <- &types.Message{
 		Type:    types.MessageTypeStroke,
@@ -197,4 +200,18 @@ func UpdateStrokes(scb *ControlBlock, userID string, strokes []*types.Stroke) {
 
 	// save to database
 	scb.DBUpdate <- strokes
+}
+
+// mouseMove broadcast mouse move events.
+func mouseMove(scb *ControlBlock, msg *types.Message) error {
+	var mouseUpdate types.ContentMouseMove
+	if err := msg.UnmarshalContent(&mouseUpdate); err != nil {
+		return err
+	}
+	scb.Broadcast <- &types.Message{
+		Type:    types.MessageTypeMouseMove,
+		Sender:  msg.Sender,
+		Content: mouseUpdate,
+	}
+	return nil
 }

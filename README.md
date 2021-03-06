@@ -66,3 +66,12 @@ Accepted Content-Types: `application/json`, `plain/text`
 ```
 string[] // array of pageIds
 ```
+
+### Mouse Move Event
+**Mesage Type**: `mmove`
+```
+{
+    x: number
+    y: number
+}
+```
