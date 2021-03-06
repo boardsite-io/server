@@ -10,10 +10,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 go build -o /out/boardsite ./cmd/boardsite
 
 FROM builder AS unit-test
-ENV B_REDIS_HOST=localhost
-ENV B_REDIS_PORT=6379
 RUN --mount=type=cache,target=/root/.cache/go-build \
-go test -v ./test
+go test -v ./...
 
 FROM builder AS development
 ENV B_PORT=8000
