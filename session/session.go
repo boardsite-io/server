@@ -62,7 +62,9 @@ func IsValidPage(sessionID, pageID string) bool {
 // the change to all connected clients.
 func AddPage(scb *ControlBlock, pageID string, index int, meta *types.PageMeta) error {
 	//TODO handle error
-	redis.AddPage(scb.ID, pageID, index, meta)
+	if err := redis.AddPage(scb.ID, pageID, index, meta); err != nil {
+		return errors.New("cannot add page")
+	}
 	return SyncPages(scb)
 }
 
@@ -70,22 +72,27 @@ func AddPage(scb *ControlBlock, pageID string, index int, meta *types.PageMeta) 
 // the change to all connected clients.
 func DeletePage(scb *ControlBlock, pageID string) error {
 	//TODO handle error
-	redis.DeletePage(scb.ID, pageID)
+	if err := redis.DeletePage(scb.ID, pageID); err != nil {
+		return errors.New("cannot delete page")
+	}
 	return SyncPages(scb)
 }
 
 // ClearPage clears all strokes on page with pageID and broadcasts
 // the change to all connected clients.
-func ClearPage(scb *ControlBlock, pageIDs ...string) {
+func ClearPage(scb *ControlBlock, pageIDs ...string) error {
 	//TODO handle error
 	for _, pid := range pageIDs {
-		redis.ClearPage(scb.ID, pid)
+		if err := redis.ClearPage(scb.ID, pid); err != nil {
+			return errors.New("cannot clear page")
+		}
 	}
 	scb.Broadcast <- &types.Message{
 		Type:    types.MessageTypePageClear,
 		Sender:  "", // send to all clients
 		Content: pageIDs,
 	}
+	return nil
 }
 
 // SyncPages broadcasts the current PageRank to all connected
@@ -168,8 +175,11 @@ func SanitizeStrokes(scb *ControlBlock, msg *types.Message) error {
 			}
 		}
 	}
-	UpdateStrokes(scb, msg.Sender, validStrokes)
-	return nil
+	if len(validStrokes) > 0 {
+		UpdateStrokes(scb, msg.Sender, validStrokes)
+		return nil
+	}
+	return errors.New("strokes not validated")
 }
 
 // UpdateStrokes updates the strokes in the session with sessionID.

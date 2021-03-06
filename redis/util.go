@@ -26,17 +26,28 @@ func getPageMetaKey(sessionID, pageID string) string {
 // ClearSession wipes the session from Redis.
 //
 // Removes all pages and the respective strokes on the pages
-func ClearSession(sessionID string) {
+func ClearSession(sessionID string) error {
 	conn := Pool.Get()
 	defer conn.Close()
 
-	pages, _ := GetPages(sessionID)
-	for _, pid := range pages {
-		conn.Send("DEL", getPageKey(sessionID, pid))
-		conn.Send("DEL", getPageMetaKey(sessionID, pid))
+	pages, err := GetPages(sessionID)
+	if err != nil {
+		return err
 	}
-	conn.Send("DEL", getPageRankKey(sessionID))
-	conn.Flush()
+
+	if len(pages) == 0 { // nothing to do
+		return nil
+	}
+
+	query := make([]interface{}, 1, len(pages)*2+1)
+	query[0] = getPageRankKey(sessionID)
+	for _, pid := range pages {
+		query = append(query, getPageKey(sessionID, pid), getPageMetaKey(sessionID, pid))
+	}
+	if _, err := conn.Do("DEL", query...); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Update board strokes in Redis.
@@ -50,19 +61,22 @@ func Update(sessionID string, strokes []*types.Stroke) error {
 
 	for i := range strokes {
 		pid := getPageKey(sessionID, strokes[i].GetPageID())
+		var err error
 		if strokes[i].IsDeleted() {
-			conn.Send("HDEL", pid, strokes[i].GetID())
+			err = conn.Send("HDEL", pid, strokes[i].GetID())
 		} else {
 			if strokeStr, err := strokes[i].JSONStringify(); err == nil {
-				conn.Send("HMSET", pid, strokes[i].GetID(), strokeStr)
+				err = conn.Send("HMSET", pid, strokes[i].GetID(), strokeStr)
 			}
+		}
+		if err != nil {
+			return err
 		}
 	}
 
 	if err := conn.Flush(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -135,27 +149,42 @@ func GetPagesMeta(sessionID string, pageIDs []string) ([]*types.PageMeta, error)
 //
 // Other pages are moved and their score is reassigned
 // when pages are added in between
-func AddPage(sessionID, newPageID string, index int, meta *types.PageMeta) {
+func AddPage(sessionID, newPageID string,
+	index int, meta *types.PageMeta) error {
 	conn := Pool.Get()
 	defer conn.Close()
 
 	if meta != nil {
-		pMeta, _ := json.Marshal(meta)
-		conn.Do("SET", getPageMetaKey(sessionID, newPageID), pMeta)
+		pMeta, err := json.Marshal(meta)
+		if err != nil {
+			return err
+		}
+		if _, err := conn.Do(
+			"SET", getPageMetaKey(sessionID, newPageID), pMeta); err != nil {
+			return err
+		}
 	}
 
 	// get all pageids
 	pageRankKey := getPageRankKey(sessionID)
-	pageIDs, _ := GetPages(sessionID)
+	pageIDs, err := GetPages(sessionID)
+	if err != nil {
+		return err
+	}
 	if len(pageIDs) > 0 {
 		var score, diff, prevIndex int
 
 		if index >= 0 && index < len(pageIDs) { // add page in between
 			// increment scores of proceding pages
 			for _, pid := range pageIDs[index:] {
-				conn.Send("ZINCRBY", pageRankKey, 1, pid)
+				if err := conn.Send(
+					"ZINCRBY", pageRankKey, 1, pid); err != nil {
+					return err
+				}
 			}
-			conn.Flush() // ignore error
+			if err := conn.Flush(); err != nil {
+				return err
+			}
 			prevIndex = index
 			diff = -1
 		} else { // append page at the end
@@ -164,28 +193,49 @@ func AddPage(sessionID, newPageID string, index int, meta *types.PageMeta) {
 		}
 
 		// get score of preceding page
-		score, _ = redis.Int(conn.Do("ZSCORE", pageRankKey, pageIDs[prevIndex]))
-		conn.Do("ZADD", pageRankKey, "NX", score+diff, newPageID)
+		score, err = redis.Int(conn.Do("ZSCORE", pageRankKey, pageIDs[prevIndex]))
+		if err != nil {
+			return err
+		}
+		if _, err := conn.Do(
+			"ZADD", pageRankKey, "NX", score+diff, newPageID); err != nil {
+			return err
+		}
 	} else { // no pages exist yet
-		conn.Do("ZADD", pageRankKey, "NX", 0, newPageID)
+		if _, err := conn.Do("ZADD", pageRankKey, "NX", 0, newPageID); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // DeletePage deletes a page and the respective strokes on the page
 // and remove the PageID from the list.
-func DeletePage(sessionID, pageID string) {
+func DeletePage(sessionID, pageID string) error {
 	conn := Pool.Get()
 	defer conn.Close()
 
-	conn.Do("DEL", getPageKey(sessionID, pageID))
-	conn.Do("ZREM", getPageRankKey(sessionID), pageID)
-	conn.Do("DEL", getPageMetaKey(sessionID, pageID))
+	if err := conn.Send(
+		"DEL",
+		getPageKey(sessionID, pageID),
+		getPageMetaKey(sessionID, pageID),
+	); err != nil {
+		return err
+	}
+	if err := conn.Send(
+		"ZREM",
+		getPageRankKey(sessionID),
+		pageID,
+	); err != nil {
+		return err
+	}
+	return conn.Flush()
 }
 
 // ClearPage removes all strokes with given pageID.
-func ClearPage(sessionID, pageID string) {
+func ClearPage(sessionID, pageID string) error {
 	conn := Pool.Get()
 	defer conn.Close()
-
-	conn.Do("DEL", getPageKey(sessionID, pageID))
+	_, err := conn.Do("DEL", getPageKey(sessionID, pageID))
+	return err
 }

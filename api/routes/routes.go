@@ -108,7 +108,10 @@ func handlePageRequest(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		session.AddPage(scb, data.PageID, data.Index, &data.PageMeta)
+
+		if err := session.AddPage(scb, data.PageID, data.Index, &data.PageMeta); err != nil {
+			writeError(w, http.StatusServiceUnavailable, err)
+		}
 	}
 }
 
@@ -138,9 +141,13 @@ func handlePageUpdate(w http.ResponseWriter, r *http.Request) {
 			types.NewMessage(strokes, ""),
 		)
 	} else if r.Method == http.MethodPut {
-		session.ClearPage(scb, pageID)
+		if err := session.ClearPage(scb, pageID); err != nil {
+			writeError(w, http.StatusServiceUnavailable, err)
+		}
 	} else if r.Method == http.MethodDelete {
-		session.DeletePage(scb, pageID)
+		if err := session.DeletePage(scb, pageID); err != nil {
+			writeError(w, http.StatusServiceUnavailable, err)
+		}
 	}
 }
 

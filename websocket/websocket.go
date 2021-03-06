@@ -74,6 +74,7 @@ func initSocket(scb *session.ControlBlock, userID string, conn *gws.Conn) error 
 				scb,
 				msg,
 			); errSanitize != nil {
+				log.Println(scb.ID+" :: Error Receive :: %v", err)
 				continue // skip if data is corrupted
 			}
 
