@@ -126,12 +126,12 @@ func GetPages(sessionID string) ([]string, error) {
 }
 
 // GetPagesMeta returns a slice of all page meta data.
-func GetPagesMeta(sessionID string, pageIDs []string) ([]*types.PageMeta, error) {
+func GetPagesMeta(sessionID string, pageIDs []string) (map[string]*types.PageMeta, error) {
 	conn := Pool.Get()
 	defer conn.Close()
 
-	metaRank := make([]*types.PageMeta, len(pageIDs))
-	for i, pid := range pageIDs {
+	metaPages := make(map[string]*types.PageMeta)
+	for _, pid := range pageIDs {
 		var meta types.PageMeta
 		if resp, err := redis.Bytes(conn.Do("GET", getPageMetaKey(sessionID, pid))); err == nil {
 			if err := json.Unmarshal(resp, &meta); err != nil {
@@ -140,9 +140,9 @@ func GetPagesMeta(sessionID string, pageIDs []string) ([]*types.PageMeta, error)
 		} else {
 			return nil, err
 		}
-		metaRank[i] = &meta
+		metaPages[pid] = &meta
 	}
-	return metaRank, nil
+	return metaPages, nil
 }
 
 // AddPage adds a page with pageID at position index.

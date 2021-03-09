@@ -33,7 +33,7 @@ func GetStrokes(sessionID, pageID string) ([]types.Stroke, error) {
 }
 
 // GetPages returns all pageIDs in order.
-func GetPages(sessionID string) ([]string, []*types.PageMeta, error) {
+func GetPages(sessionID string) ([]string, map[string]*types.PageMeta, error) {
 	pageRank, err := redis.GetPages(sessionID)
 	if err != nil {
 		return nil, nil, errors.New("unable to fetch pages")

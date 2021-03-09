@@ -51,8 +51,8 @@ type ContentPageRequest struct {
 
 // ContentPageSync message content for page sync.
 type ContentPageSync struct {
-	PageRank []string    `json:"pageRank"`
-	Meta     []*PageMeta `json:"meta"`
+	PageRank []string             `json:"pageRank"`
+	Meta     map[string]*PageMeta `json:"meta"`
 }
 
 // ContentMouseMove declares mouse move updates.

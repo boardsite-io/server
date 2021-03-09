@@ -88,7 +88,7 @@ func TestMetaPages(t *testing.T) {
 		AddPage(sid, "pid1", test.index, &test.meta)
 		meta, err := GetPagesMeta(sid, []string{"pid1"})
 		assert.NoError(t, err)
-		assert.Equal(t, test.want, *meta[0], "pageRank is not correct")
+		assert.Equal(t, test.want, *meta["pid1"], "pageRank is not correct")
 	}
 }
 
