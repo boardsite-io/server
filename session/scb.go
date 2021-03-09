@@ -124,6 +124,17 @@ func (scb *ControlBlock) IsUserConnected(userID string) bool {
 	return ok
 }
 
+// GetUsers returns all active users/clients in the session.
+func (scb *ControlBlock) GetUsers() map[string]*types.User {
+	users := make(map[string]*types.User)
+	scb.muUsr.RLock()
+	for id, u := range scb.users {
+		users[id] = u
+	}
+	scb.muUsr.RUnlock()
+	return users
+}
+
 // Broadcast Broadcasts board updates to all clients
 func (scb *ControlBlock) broadcast() {
 	for {

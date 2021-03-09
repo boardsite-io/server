@@ -14,7 +14,7 @@ import (
 // Set the api routes
 func Set(router *mux.Router) {
 	router.HandleFunc("/b/create", handleCreateSession).Methods("POST")
-	router.HandleFunc("/b/{id}/users", handleUserCreate).Methods("POST")
+	router.HandleFunc("/b/{id}/users", handleUsers).Methods("GET", "POST")
 	router.HandleFunc("/b/{id}/users/{userId}/socket", handleSocketRequest).Methods("GET")
 	router.HandleFunc("/b/{id}/pages", handlePageRequest).Methods("GET", "POST")
 	router.HandleFunc("/b/{id}/pages/{pageId}", handlePageUpdate).Methods("GET", "PUT", "DELETE")
@@ -35,26 +35,30 @@ func handleCreateSession(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUserCreate
-func handleUserCreate(w http.ResponseWriter, r *http.Request) {
+func handleUsers(w http.ResponseWriter, r *http.Request) {
 	scb, err := session.GetSCB(mux.Vars(r)["id"])
 	if err != nil {
 		writeError(w, http.StatusNotFound, err)
 		return
 	}
 
-	var userReq types.User
-	if err := types.DecodeMsgContent(r.Body, &userReq); err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		return
-	}
+	if r.Method == http.MethodGet {
+		writeMessage(w, types.NewMessage(scb.GetUsers(), ""))
+	} else if r.Method == http.MethodPost {
+		var userReq types.User
+		if err := types.DecodeMsgContent(r.Body, &userReq); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
 
-	// new user struct with alias and color
-	user, err := session.NewUser(scb, userReq.Alias, userReq.Color)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		return
+		// new user struct with alias and color
+		user, err := session.NewUser(scb, userReq.Alias, userReq.Color)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		writeMessage(w, types.NewMessage(user, ""))
 	}
-	writeMessage(w, types.NewMessage(user, ""))
 }
 
 // handleSocketRequest handles request for a websocket upgrade
