@@ -66,7 +66,10 @@ func IsValidPage(sessionID, pageID string) bool {
 // AddPage adds a page with pageID to the session and broadcasts
 // the change to all connected clients.
 func AddPage(scb *ControlBlock, pageID string, index int, meta *types.PageMeta) error {
-	//TODO handle error
+	if IsValidPage(scb.ID, pageID) {
+		return errors.New("page already exists")
+	}
+
 	if err := redis.AddPage(scb.ID, pageID, index, meta); err != nil {
 		return errors.New("cannot add page")
 	}
