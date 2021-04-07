@@ -86,7 +86,7 @@ func TestMetaPages(t *testing.T) {
 
 	for _, test := range tests {
 		AddPage(sid, "pid1", test.index, &test.meta)
-		meta, err := GetPagesMeta(sid, []string{"pid1"})
+		meta, err := GetPagesMeta(sid, "pid1")
 		assert.NoError(t, err)
 		assert.Equal(t, test.want, *meta["pid1"], "pageRank is not correct")
 	}
@@ -196,7 +196,7 @@ func TestDeletePage(t *testing.T) {
 
 		assert.NoError(t, DeletePage(sid, test.wantPid))
 
-		_, err := GetPagesMeta(sid, []string{test.pidAdd})
+		_, err := GetPagesMeta(sid, test.pidAdd)
 		if test.wantEmtpy {
 			assert.Error(t, err, "meta data not empty after deletion")
 		} else {
@@ -239,7 +239,7 @@ func TestClearSession(t *testing.T) {
 
 	assert.NoError(t, ClearSession(sid))
 
-	_, err := GetPagesMeta(sid, []string{pid})
+	_, err := GetPagesMeta(sid, pid)
 	assert.Error(t, err, "meta data not empty after deletion")
 	strokes, _ := FetchStrokesRaw(sid, pid)
 	assert.Empty(t, strokes, "strokes from page not removed")
@@ -263,4 +263,33 @@ func TestClearPage(t *testing.T) {
 	assert.NoError(t, ClearPage(sid, pid))
 	strokes, _ := FetchStrokesRaw(sid, pid)
 	assert.Empty(t, strokes, "strokes from page not cleared")
+}
+
+func TestUpdatePageMeta(t *testing.T) {
+	if err := setupConn(); err != nil {
+		t.Log("cannot connect to local Redis instance")
+		t.SkipNow()
+	}
+	defer ClosePool()
+
+	sid := "sid1"
+	pid := "pid1"
+	ClearSession(sid)
+	AddPage(sid, pid, 0, &types.PageMeta{Background: "bg"})
+	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
+
+	tests := []struct {
+		update   types.PageMeta
+		wantMeta types.PageMeta
+	}{
+		{types.PageMeta{Background: ""}, types.PageMeta{Background: "bg"}},
+		{types.PageMeta{Background: "bg2"}, types.PageMeta{Background: "bg2"}},
+	}
+
+	for _, test := range tests {
+		assert.NoError(t, UpdatePageMeta(sid, pid, &test.update))
+		meta, err := GetPagesMeta(sid, pid)
+		assert.NoError(t, err)
+		assert.Equal(t, *meta[pid], test.wantMeta)
+	}
 }

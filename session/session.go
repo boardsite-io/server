@@ -38,7 +38,7 @@ func GetPages(sessionID string) ([]string, map[string]*types.PageMeta, error) {
 	if err != nil {
 		return nil, nil, errors.New("unable to fetch pages")
 	}
-	meta, err := redis.GetPagesMeta(sessionID, pageRank)
+	meta, err := redis.GetPagesMeta(sessionID, pageRank...)
 	if err != nil {
 		return nil, nil, errors.New("unable to fetch pages meta data")
 	}
@@ -86,19 +86,28 @@ func DeletePage(scb *ControlBlock, pageID string) error {
 	return SyncPages(scb)
 }
 
-// ClearPage clears all strokes on page with pageID and broadcasts
-// the change to all connected clients.
-func ClearPage(scb *ControlBlock, pageIDs ...string) error {
-	//TODO handle error
-	for _, pid := range pageIDs {
-		if err := redis.ClearPage(scb.ID, pid); err != nil {
+// UpdatePage modifies the page meta data and/or clears the content.
+func UpdatePage(scb *ControlBlock, pageID string,
+	meta *types.PageMeta, clear bool) error {
+	if clear {
+		if err := redis.ClearPage(scb.ID, pageID); err != nil {
 			return errors.New("cannot clear page")
 		}
 	}
+
+	// update db
+	if err := redis.UpdatePageMeta(scb.ID, pageID, meta); err != nil {
+		return err
+	}
+
 	scb.Broadcast <- &types.Message{
-		Type:    types.MessageTypePageClear,
-		Sender:  "", // send to all clients
-		Content: pageIDs,
+		Type:   types.MessageTypePageUpdate,
+		Sender: "", // send to all clients
+		Content: types.ContentPageRequest{
+			PageID:   pageID,
+			Clear:    clear,
+			PageMeta: *meta,
+		},
 	}
 	return nil
 }

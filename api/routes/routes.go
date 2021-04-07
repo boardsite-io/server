@@ -145,7 +145,12 @@ func handlePageUpdate(w http.ResponseWriter, r *http.Request) {
 			types.NewMessage(strokes, ""),
 		)
 	} else if r.Method == http.MethodPut {
-		if err := session.ClearPage(scb, pageID); err != nil {
+		var data types.ContentPageRequest
+		if err := types.DecodeMsgContent(r.Body, &data); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if err := session.UpdatePage(scb, pageID, &data.PageMeta, data.Clear); err != nil {
 			writeError(w, http.StatusServiceUnavailable, err)
 		}
 	} else if r.Method == http.MethodDelete {

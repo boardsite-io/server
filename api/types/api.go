@@ -16,7 +16,7 @@ const (
 	MessageTypeUserConnected    = "userconn"
 	MessageTypeUserDisconnected = "userdisc"
 	MessageTypePageSync         = "pagesync"
-	MessageTypePageClear        = "pageclear"
+	MessageTypePageUpdate       = "pageupdate"
 	MessageTypeMouseMove        = "mmove"
 )
 
@@ -39,13 +39,14 @@ type User struct {
 
 // PageMeta declares some page meta data.
 type PageMeta struct {
-	Background string `json:"background"`
+	Background string `json:"background,omitempty"`
 }
 
 // ContentPageRequest declares the message content for page requests.
 type ContentPageRequest struct {
 	PageID   string `json:"pageId"`
-	Index    int    `json:"index"`
+	Index    int    `json:"index,omitempty"`
+	Clear    bool   `json:"clear,omitempty"`
 	PageMeta `json:"meta"`
 }
 
