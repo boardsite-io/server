@@ -23,10 +23,10 @@ Accepted Content-Types: `application/json`, `plain/text`
  `/b/${id}/pages` | `GET` | Return all page IDs of the session in order | - | `string[]`
  `/b/${id}/pages` | `POST` | Add a page with ID and an index to denote the position | `{pageId: string, index: number}` | -
  `/b/${id}/pages/${pageId}` | `GET` | Get all data on the page `${pageId}` | - | `Stroke[]`
- `/b/${id}/pages/${pageId}` | `PUT` | Clear all data on the page `${pageId}` | - | -
+ `/b/${id}/pages/${pageId}` | `PUT` | Update page `${pageId}` | `{clear: bool, meta: any}` | -
  `/b/${id}/pages/${pageId}` | `DELETE` | Delete a page | - | -
 
-## Message Content
+## WS Message Content
 ### Stroke 
 **Message Type**: `stroke`
 ```
@@ -57,10 +57,18 @@ Accepted Content-Types: `application/json`, `plain/text`
 ```
 
 ### Page Sync/Clear
-**Mesage Type**: `{pagesync, pageclear}`
+**Mesage Type**: `pagesync`
 ```
 {
     pageRank: string[]
+    meta: any
+}
+```
+**Mesage Type**: `pageupdate`
+```
+{
+    pageId: string
+    clear: bool
     meta: any
 }
 ```
