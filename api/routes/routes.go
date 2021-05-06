@@ -2,6 +2,8 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -18,6 +20,8 @@ func Set(router *mux.Router) {
 	router.HandleFunc("/b/{id}/users/{userId}/socket", handleSocketRequest).Methods("GET")
 	router.HandleFunc("/b/{id}/pages", handlePageRequest).Methods("GET", "POST")
 	router.HandleFunc("/b/{id}/pages/{pageId}", handlePageUpdate).Methods("GET", "PUT", "DELETE")
+	router.HandleFunc("/b/{id}/attachments", handleUpload).Methods("POST")
+	router.HandleFunc("/b/{id}/attachments/{attachId}", handleAttachment).Methods("GET")
 }
 
 // handleCreateSession handles the request for creating a new session.
@@ -169,4 +173,50 @@ func writeMessage(w http.ResponseWriter, content interface{}) {
 func writeError(w http.ResponseWriter, status int, err error) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(types.NewErrorMessage(err))
+}
+
+func handleUpload(w http.ResponseWriter, r *http.Request) {
+	scb, err := session.GetSCB(mux.Vars(r)["id"])
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
+
+	if err := r.ParseMultipartForm(2 << 20); err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("file size exceeded limit of 2MB"))
+		return
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	defer file.Close()
+
+	attachID, err := session.UploadAttachment(scb, file, header.Filename)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeMessage(w, types.NewMessage(attachID, ""))
+}
+
+func handleAttachment(w http.ResponseWriter, r *http.Request) {
+	scb, err := session.GetSCB(mux.Vars(r)["id"])
+	if err != nil {
+		writeError(w, http.StatusNotFound, err)
+		return
+	}
+	attachID := mux.Vars(r)["attachId"]
+	file, err := session.OpenAttachment(scb, attachID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, nil)
+		return
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(w, file); err != nil {
+		writeError(w, http.StatusInternalServerError, nil)
+		return
+	}
 }

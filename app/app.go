@@ -15,7 +15,7 @@ import (
 // Serve wraps the main application
 func Serve(ctx context.Context, port int) (func() error, func() error) {
 	router := mux.NewRouter()
-	router.Use(contentTypeMiddleware)
+	//router.Use(contentTypeMiddleware)
 
 	routes.Set(router)
 
@@ -36,7 +36,13 @@ func Serve(ctx context.Context, port int) (func() error, func() error) {
 			},
 		),
 	)(router)
-	handl = handlers.ContentTypeHandler(handl, "text/plain", "application/json")
+	handl = handlers.ContentTypeHandler(
+		handl,
+		"text/plain",
+		"application/json",
+		"image/*",
+		"multipart/form-data",
+	)
 
 	serv := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: handl}
 	log.Printf("Starting on port %d\n", port)
@@ -46,9 +52,9 @@ func Serve(ctx context.Context, port int) (func() error, func() error) {
 	}
 }
 
-func contentTypeMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "application/json")
-		next.ServeHTTP(w, r)
-	})
-}
+// func contentTypeMiddleware(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		w.Header().Add("Content-Type", "application/json")
+// 		next.ServeHTTP(w, r)
+// 	})
+// }
