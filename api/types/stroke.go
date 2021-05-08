@@ -19,6 +19,8 @@ type Stroke struct {
 	UserID string    `json:"userId"`
 	X      float64   `json:"x"`
 	Y      float64   `json:"y"`
+	ScaleX float64   `json:"scaleX,omitempty"`
+	ScaleY float64   `json:"scaleY,omitempty"`
 	Points []float64 `json:"points,omitempty"`
 	Style  Style     `json:"style,omitempty"`
 }

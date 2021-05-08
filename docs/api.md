@@ -39,6 +39,8 @@ Accepted Content-Types: `application/json`, `plain/text`
     pageId?: string
     x?: number
     y?: number
+    scaleX?: number
+    scaleY?: number
     points?: number[]
     style?: {
         color: string
