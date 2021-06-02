@@ -13,12 +13,8 @@ FROM builder AS unit-test
 RUN --mount=type=cache,target=/root/.cache/go-build \
 go test -v ./...
 
-FROM builder AS development
-ENV B_PORT=8000
-CMD ["/out/boardsite"]
-
-FROM builder AS production
-ENV B_PORT=443
+FROM builder AS deploy
+ENV B_PORT=80
 CMD ["/out/boardsite"]
 
 FROM scratch AS bin
