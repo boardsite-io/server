@@ -77,10 +77,6 @@ func initSocket(scb *session.ControlBlock, userID string, conn *gws.Conn) error 
 				log.Println(scb.ID+" :: Error Receive :: %v", err)
 				continue // skip if data is corrupted
 			}
-
-			log.Printf(scb.ID+" :: Data Received from %s\n",
-				conn.RemoteAddr().String(),
-			)
 		} else {
 			break // socket closed
 		}
