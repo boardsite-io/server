@@ -81,7 +81,7 @@ func TestMetaPages(t *testing.T) {
 		index int
 		want  types.PageMeta
 	}{
-		{types.PageMeta{Background: "somebackground1"}, 0, types.PageMeta{Background: "somebackground1"}},
+		{types.PageMeta{Background: types.PageBackground{"somebackground1", 0}}, 0, types.PageMeta{Background: types.PageBackground{"somebackground1", 0}}},
 	}
 
 	for _, test := range tests {
@@ -190,7 +190,7 @@ func TestDeletePage(t *testing.T) {
 		assert.NoError(t, ClearSession(sid))
 		assert.NoError(t,
 			AddPage(sid, test.pidAdd, 0,
-				&types.PageMeta{Background: "bg"}), "cannot add page")
+				&types.PageMeta{Background: types.PageBackground{"bg", 0}}), "cannot add page")
 		assert.NoError(t,
 			Update(sid, []*types.Stroke{genRandStroke("id1", test.pidAdd, 1)}))
 
@@ -234,7 +234,7 @@ func TestClearSession(t *testing.T) {
 	assert.NoError(t, ClearSession(sid))
 	assert.NoError(t, ClearSession(sid))
 
-	AddPage(sid, pid, 0, &types.PageMeta{Background: "bg"})
+	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{"bg2", 0}})
 	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
 
 	assert.NoError(t, ClearSession(sid))
@@ -257,7 +257,7 @@ func TestClearPage(t *testing.T) {
 	sid := "sid1"
 	pid := "pid1"
 	ClearSession(sid)
-	AddPage(sid, pid, 0, &types.PageMeta{Background: "bg"})
+	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{"bg2", 0}})
 	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
 
 	assert.NoError(t, ClearPage(sid, pid))
@@ -275,21 +275,22 @@ func TestUpdatePageMeta(t *testing.T) {
 	sid := "sid1"
 	pid := "pid1"
 	ClearSession(sid)
-	AddPage(sid, pid, 0, &types.PageMeta{Background: "bg"})
+	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{"bg", 1}})
 	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
 
 	tests := []struct {
 		update   types.PageMeta
 		wantMeta types.PageMeta
 	}{
-		{types.PageMeta{Background: ""}, types.PageMeta{Background: "bg"}},
-		{types.PageMeta{Background: "bg2"}, types.PageMeta{Background: "bg2"}},
+		{types.PageMeta{Background: types.PageBackground{}}, types.PageMeta{Background: types.PageBackground{"bg", 0}}},
+		{types.PageMeta{Background: types.PageBackground{"", 1}}, types.PageMeta{Background: types.PageBackground{"bg", 1}}},
+		{types.PageMeta{Background: types.PageBackground{"bg2", 0}}, types.PageMeta{Background: types.PageBackground{"bg2", 0}}},
 	}
 
 	for _, test := range tests {
 		assert.NoError(t, UpdatePageMeta(sid, pid, &test.update))
 		meta, err := GetPagesMeta(sid, pid)
 		assert.NoError(t, err)
-		assert.Equal(t, *meta[pid], test.wantMeta)
+		assert.Equal(t, test.wantMeta, *meta[pid])
 	}
 }

@@ -37,9 +37,16 @@ type User struct {
 	Conn  *gws.Conn `json:"-"`
 }
 
+// PageStyle declares the style of the page background.
+type PageBackground struct {
+	// page background
+	Style   string `json:"style,omitempty"`
+	PageNum int    `json:"pageNum"`
+}
+
 // PageMeta declares some page meta data.
 type PageMeta struct {
-	Background string `json:"background,omitempty"`
+	Background PageBackground `json:"background"`
 }
 
 // ContentPageRequest declares the message content for page requests.
