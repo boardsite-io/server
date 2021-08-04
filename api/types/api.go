@@ -41,7 +41,8 @@ type User struct {
 type PageBackground struct {
 	// page background
 	Style   string `json:"style,omitempty"`
-	PageNum int    `json:"pageNum"`
+	PageNum int    `json:"documentPageNum"`
+	URL     string `json:"url"`
 }
 
 // PageMeta declares some page meta data.
