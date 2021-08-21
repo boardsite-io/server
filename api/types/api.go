@@ -3,7 +3,6 @@ package types
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -26,7 +25,6 @@ type Message struct {
 	Type    string      `json:"type"`
 	Sender  string      `json:"sender,omitempty"`
 	Content interface{} `json:"content,omitempty"`
-	Error   string      `json:"error,omitempty"`
 }
 
 // User declares some information about connected users.
@@ -86,12 +84,6 @@ func NewMessage(content interface{}, msgType string, sender ...string) *Message 
 		Sender:  s,
 		Content: content,
 	}
-}
-
-// NewErrorMessage creates a new Message with the error field formatted
-// accoring to the error.
-func NewErrorMessage(err error) *Message {
-	return &Message{Error: fmt.Sprintf("%v", err)}
 }
 
 // DecodeMsgContent is a shorthand wrapper to directly decode
