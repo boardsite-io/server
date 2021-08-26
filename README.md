@@ -8,3 +8,6 @@ Server source code for Boardsite. The server implements user sessions based on t
 
 ## License
 This project is licensed under GNU GPLv3. See LICENSE for details.
+
+## Development
+Run development server with ```make development```
