@@ -50,10 +50,10 @@ type PageMeta struct {
 
 // ContentPageRequest declares the message content for page requests.
 type ContentPageRequest struct {
-	PageID   string `json:"pageId"`
-	Index    int    `json:"index,omitempty"`
-	Clear    bool   `json:"clear,omitempty"`
-	PageMeta `json:"meta"`
+	PageID []string             `json:"pageId"`
+	Index  []int                `json:"index,omitempty"`
+	Clear  bool                 `json:"clear,omitempty"`
+	Meta   map[string]*PageMeta `json:"meta"`
 }
 
 // ContentPageSync message content for page sync.

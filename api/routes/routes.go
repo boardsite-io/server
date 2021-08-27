@@ -19,8 +19,8 @@ func Set(router *mux.Router) {
 	router.HandleFunc("/b/{id}/users/{userId}/socket", handleRequest(getSocket)).Methods("GET")
 	router.HandleFunc("/b/{id}/pages", handleRequest(getPage)).Methods("GET")
 	router.HandleFunc("/b/{id}/pages", handleRequest(postPage)).Methods("POST")
+	router.HandleFunc("/b/{id}/pages", handleRequest(putPage)).Methods("PUT")
 	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(getPageUpdate)).Methods("GET")
-	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(putPageUpdate)).Methods("PUT")
 	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(deletePageUpdate)).Methods("DELETE")
 	router.HandleFunc("/b/{id}/attachments", handleRequest(postAttachment)).Methods("POST")
 	router.HandleFunc("/b/{id}/attachments/{attachId}", handleRequest(getAttachment)).Methods("GET")
@@ -114,11 +114,29 @@ func postPage(c *requestContext) error {
 		return apiErrors.BadRequest.SetInfo(err)
 	}
 
-	if err := session.AddPage(scb, data.PageID, data.Index, &data.PageMeta); err != nil {
+	if err := session.AddPages(scb, data.PageID, data.Index, data.Meta); err != nil {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
 
 	return c.NoContent(http.StatusCreated)
+}
+
+func putPage(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+	if err != nil {
+		return apiErrors.NotFound.SetInfo(err)
+	}
+
+	var data types.ContentPageRequest
+	if err := types.DecodeMsgContent(c.Request().Body, &data); err != nil {
+		return apiErrors.BadRequest
+	}
+
+	if err := session.UpdatePages(scb, data.PageID, data.Meta, data.Clear); err != nil {
+		return apiErrors.InternalServerError.SetInfo(err)
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 func getPageUpdate(c *requestContext) error {
@@ -138,29 +156,6 @@ func getPageUpdate(c *requestContext) error {
 	}
 
 	return c.JSON(http.StatusOK, strokes)
-}
-
-func putPageUpdate(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
-	if err != nil {
-		return apiErrors.NotFound.SetInfo(err)
-	}
-
-	pageID := mux.Vars(c.Request())["pageId"]
-	if !session.IsValidPage(scb.ID, pageID) {
-		return apiErrors.NotFound
-	}
-
-	var data types.ContentPageRequest
-	if err := types.DecodeMsgContent(c.Request().Body, &data); err != nil {
-		return apiErrors.BadRequest
-	}
-
-	if err := session.UpdatePage(scb, pageID, &data.PageMeta, data.Clear); err != nil {
-		return apiErrors.InternalServerError.SetInfo(err)
-	}
-
-	return c.NoContent(http.StatusNoContent)
 }
 
 func deletePageUpdate(c *requestContext) error {
