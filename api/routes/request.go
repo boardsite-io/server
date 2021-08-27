@@ -24,6 +24,7 @@ func (c *requestContext) ResponseWriter() http.ResponseWriter {
 
 func (c *requestContext) JSON(status int, v interface{}) error {
 	// wrap the content in message
+	c.w.Header().Add("Content-Type", "application/json")
 	c.w.WriteHeader(status)
 	msg := types.NewMessage(v, "")
 	return json.NewEncoder(c.w).Encode(msg)
@@ -46,6 +47,7 @@ func handleRequest(fn func(c *requestContext) error) func(http.ResponseWriter, *
 		err := fn(c)
 		if err != nil {
 			err = apiErrors.MaptoHTTPError(err)
+			c.w.Header().Add("Content-Type", "application/json")
 			w.WriteHeader(err.(*apiErrors.Wrapper).Code)
 			_ = json.NewEncoder(w).Encode(err)
 		}
