@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
@@ -93,14 +94,28 @@ func AddPages(scb *ControlBlock, pageIDs []string, index []int, meta map[string]
 	return nil
 }
 
-// DeletePage deletes a page with pageID and broadcasts
+// DeletePages delete pages with pageID and broadcasts
 // the change to all connected clients.
-func DeletePage(scb *ControlBlock, pageID string) error {
-	//TODO handle error
-	if err := redis.DeletePage(scb.ID, pageID); err != nil {
-		return errors.New("cannot delete page")
+func DeletePages(scb *ControlBlock, pageID ...string) error {
+	defer SyncPages(scb)
+
+	var sb strings.Builder
+	// go through all pages even if some fail
+	for _, pid := range pageID {
+		if !IsValidPage(scb.ID, pid) {
+			sb.WriteString(fmt.Sprintf(": page %s does not exist", pid))
+			continue
+		}
+		if err := redis.DeletePage(scb.ID, pid); err != nil {
+			sb.WriteString(fmt.Sprintf(": cannot delete page %s", pageID))
+		}
 	}
-	return SyncPages(scb)
+
+	if sb.Len() > 0 {
+		return fmt.Errorf("error deleting pages%s", sb.String())
+	}
+
+	return nil
 }
 
 // UpdatePages modifies the page meta data and/or clears the content.

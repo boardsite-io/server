@@ -13,17 +13,18 @@ import (
 
 // Set the api routes
 func Set(router *mux.Router) {
-	router.HandleFunc("/b/create", handleRequest(postCreateSession)).Methods("POST")
-	router.HandleFunc("/b/{id}/users", handleRequest(getUsers)).Methods("GET")
-	router.HandleFunc("/b/{id}/users", handleRequest(postUsers)).Methods("POST")
-	router.HandleFunc("/b/{id}/users/{userId}/socket", handleRequest(getSocket)).Methods("GET")
-	router.HandleFunc("/b/{id}/pages", handleRequest(getPage)).Methods("GET")
-	router.HandleFunc("/b/{id}/pages", handleRequest(postPage)).Methods("POST")
-	router.HandleFunc("/b/{id}/pages", handleRequest(putPage)).Methods("PUT")
-	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(getPageUpdate)).Methods("GET")
-	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(deletePageUpdate)).Methods("DELETE")
-	router.HandleFunc("/b/{id}/attachments", handleRequest(postAttachment)).Methods("POST")
-	router.HandleFunc("/b/{id}/attachments/{attachId}", handleRequest(getAttachment)).Methods("GET")
+	router.HandleFunc("/b/create", handleRequest(postCreateSession)).Methods(http.MethodPost)
+	router.HandleFunc("/b/{id}/users", handleRequest(getUsers)).Methods(http.MethodGet)
+	router.HandleFunc("/b/{id}/users", handleRequest(postUsers)).Methods(http.MethodPost)
+	router.HandleFunc("/b/{id}/users/{userId}/socket", handleRequest(getSocket)).Methods(http.MethodGet)
+	router.HandleFunc("/b/{id}/pages", handleRequest(getPages)).Methods(http.MethodGet)
+	router.HandleFunc("/b/{id}/pages", handleRequest(postPages)).Methods(http.MethodPost)
+	router.HandleFunc("/b/{id}/pages", handleRequest(putPages)).Methods(http.MethodPut)
+	router.HandleFunc("/b/{id}/pages", handleRequest(deletePages)).Methods(http.MethodDelete)
+	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(getPageUpdate)).Methods(http.MethodGet)
+	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(deletePageUpdate)).Methods(http.MethodDelete)
+	router.HandleFunc("/b/{id}/attachments", handleRequest(postAttachment)).Methods(http.MethodPost)
+	router.HandleFunc("/b/{id}/attachments/{attachId}", handleRequest(getAttachment)).Methods(http.MethodGet)
 }
 
 // postCreateSession handles the request for creating a new session.
@@ -82,7 +83,7 @@ func getSocket(c *requestContext) error {
 	return websocket.UpgradeProtocol(c.ResponseWriter(), c.Request(), scb, userID)
 }
 
-func getPage(c *requestContext) error {
+func getPages(c *requestContext) error {
 	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
@@ -102,7 +103,7 @@ func getPage(c *requestContext) error {
 }
 
 // handlePageRequest handles requests regarding adding or retrieving pages.
-func postPage(c *requestContext) error {
+func postPages(c *requestContext) error {
 	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
@@ -121,7 +122,7 @@ func postPage(c *requestContext) error {
 	return c.NoContent(http.StatusCreated)
 }
 
-func putPage(c *requestContext) error {
+func putPages(c *requestContext) error {
 	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
@@ -133,6 +134,24 @@ func putPage(c *requestContext) error {
 	}
 
 	if err := session.UpdatePages(scb, data.PageID, data.Meta, data.Clear); err != nil {
+		return apiErrors.InternalServerError.SetInfo(err)
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func deletePages(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+	if err != nil {
+		return apiErrors.NotFound.SetInfo(err)
+	}
+
+	var data types.ContentPageRequest
+	if err := types.DecodeMsgContent(c.Request().Body, &data); err != nil {
+		return apiErrors.BadRequest
+	}
+
+	if err := session.DeletePages(scb, data.PageID...); err != nil {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
 
@@ -169,7 +188,7 @@ func deletePageUpdate(c *requestContext) error {
 		return apiErrors.NotFound
 	}
 
-	if err := session.DeletePage(scb, pageID); err != nil {
+	if err := session.DeletePages(scb, pageID); err != nil {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
 
