@@ -38,9 +38,9 @@ type User struct {
 // PageStyle declares the style of the page background.
 type PageBackground struct {
 	// page background
-	Style   string `json:"style,omitempty"`
-	PageNum int    `json:"documentPageNum"`
-	URL     string `json:"url"`
+	Style    string `json:"style,omitempty"`
+	PageNum  int    `json:"documentPageNum"`
+	AttachId string `json:"attachId"`
 }
 
 // PageMeta declares some page meta data.
