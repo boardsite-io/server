@@ -3,7 +3,6 @@ package types
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -26,7 +25,6 @@ type Message struct {
 	Type    string      `json:"type"`
 	Sender  string      `json:"sender,omitempty"`
 	Content interface{} `json:"content,omitempty"`
-	Error   string      `json:"error,omitempty"`
 }
 
 // User declares some information about connected users.
@@ -37,17 +35,25 @@ type User struct {
 	Conn  *gws.Conn `json:"-"`
 }
 
+// PageStyle declares the style of the page background.
+type PageBackground struct {
+	// page background
+	Style    string `json:"style,omitempty"`
+	PageNum  int    `json:"documentPageNum"`
+	AttachId string `json:"attachId"`
+}
+
 // PageMeta declares some page meta data.
 type PageMeta struct {
-	Background string `json:"background,omitempty"`
+	Background PageBackground `json:"background"`
 }
 
 // ContentPageRequest declares the message content for page requests.
 type ContentPageRequest struct {
-	PageID   string `json:"pageId"`
-	Index    int    `json:"index,omitempty"`
-	Clear    bool   `json:"clear,omitempty"`
-	PageMeta `json:"meta"`
+	PageID []string             `json:"pageId"`
+	Index  []int                `json:"index,omitempty"`
+	Clear  bool                 `json:"clear,omitempty"`
+	Meta   map[string]*PageMeta `json:"meta"`
 }
 
 // ContentPageSync message content for page sync.
@@ -78,12 +84,6 @@ func NewMessage(content interface{}, msgType string, sender ...string) *Message 
 		Sender:  s,
 		Content: content,
 	}
-}
-
-// NewErrorMessage creates a new Message with the error field formatted
-// accoring to the error.
-func NewErrorMessage(err error) *Message {
-	return &Message{Error: fmt.Sprintf("%v", err)}
 }
 
 // DecodeMsgContent is a shorthand wrapper to directly decode

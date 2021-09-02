@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
@@ -58,57 +59,105 @@ func GetPagesSet(sessionID string) map[string]struct{} {
 }
 
 // IsValidPage checks if a pageID is valid, i.e. the page exists.
-func IsValidPage(sessionID, pageID string) bool {
-	_, ok := GetPagesSet(sessionID)[pageID]
-	return ok
+func IsValidPage(sessionID string, pageID ...string) bool {
+	pages := GetPagesSet(sessionID)
+	for _, pid := range pageID {
+		if _, ok := pages[pid]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
-// AddPage adds a page with pageID to the session and broadcasts
+// AddPages adds a page with pageID to the session and broadcasts
 // the change to all connected clients.
-func AddPage(scb *ControlBlock, pageID string, index int, meta *types.PageMeta) error {
-	if IsValidPage(scb.ID, pageID) {
-		return errors.New("page already exists")
+func AddPages(scb *ControlBlock, pageIDs []string, index []int, meta map[string]*types.PageMeta) error {
+	if len(pageIDs) != len(index) {
+		return errors.New("cannot find page index")
+	}
+	if IsValidPage(scb.ID, pageIDs...) {
+		return errors.New("some pages already exist")
 	}
 
-	if err := redis.AddPage(scb.ID, pageID, index, meta); err != nil {
-		return errors.New("cannot add page")
-	}
-	return SyncPages(scb)
-}
+	defer SyncPages(scb)
 
-// DeletePage deletes a page with pageID and broadcasts
-// the change to all connected clients.
-func DeletePage(scb *ControlBlock, pageID string) error {
-	//TODO handle error
-	if err := redis.DeletePage(scb.ID, pageID); err != nil {
-		return errors.New("cannot delete page")
-	}
-	return SyncPages(scb)
-}
-
-// UpdatePage modifies the page meta data and/or clears the content.
-func UpdatePage(scb *ControlBlock, pageID string,
-	meta *types.PageMeta, clear bool) error {
-	if clear {
-		if err := redis.ClearPage(scb.ID, pageID); err != nil {
-			return errors.New("cannot clear page")
+	for i, pid := range pageIDs {
+		pMeta, ok := meta[pid]
+		if !ok {
+			return fmt.Errorf("no meta given for page %s", pid)
+		}
+		if err := redis.AddPage(scb.ID, pid, index[i], pMeta); err != nil {
+			return errors.New("cannot add page")
 		}
 	}
 
-	// update db
-	if err := redis.UpdatePageMeta(scb.ID, pageID, meta); err != nil {
-		return err
+	return nil
+}
+
+// DeletePages delete pages with pageID and broadcasts
+// the change to all connected clients.
+func DeletePages(scb *ControlBlock, pageID ...string) error {
+	defer SyncPages(scb)
+
+	var sb strings.Builder
+	// go through all pages even if some fail
+	for _, pid := range pageID {
+		if !IsValidPage(scb.ID, pid) {
+			sb.WriteString(fmt.Sprintf(": page %s does not exist", pid))
+			continue
+		}
+		if err := redis.DeletePage(scb.ID, pid); err != nil {
+			sb.WriteString(fmt.Sprintf(": cannot delete page %s", pageID))
+		}
 	}
 
-	scb.Broadcast <- &types.Message{
-		Type:   types.MessageTypePageUpdate,
-		Sender: "", // send to all clients
-		Content: types.ContentPageRequest{
-			PageID:   pageID,
-			Clear:    clear,
-			PageMeta: *meta,
-		},
+	if sb.Len() > 0 {
+		return fmt.Errorf("error deleting pages%s", sb.String())
 	}
+
+	return nil
+}
+
+// UpdatePages modifies the page meta data and/or clears the content.
+func UpdatePages(scb *ControlBlock, pageIDs []string, meta map[string]*types.PageMeta, clear bool) error {
+	var pageIDsUpdate []string
+
+	defer func() {
+		if len(pageIDsUpdate) == 0 {
+			return
+		}
+		scb.Broadcast <- &types.Message{
+			Type:   types.MessageTypePageUpdate,
+			Sender: "", // send to all clients
+			Content: types.ContentPageRequest{
+				PageID: pageIDsUpdate,
+				Clear:  clear,
+				Meta:   meta,
+			},
+		}
+	}()
+
+	for _, pid := range pageIDs {
+		if !IsValidPage(scb.ID, pid) {
+			return fmt.Errorf("page %s does not exits", pid)
+		}
+		if clear {
+			if err := redis.ClearPage(scb.ID, pid); err != nil {
+				return fmt.Errorf("cannot clear page %s", pid)
+			}
+		} else {
+			pMeta, ok := meta[pid]
+			if !ok {
+				return fmt.Errorf("no meta given for page %s", pid)
+			}
+			// update db
+			if err := redis.UpdatePageMeta(scb.ID, pid, pMeta); err != nil {
+				return err
+			}
+		}
+		pageIDsUpdate = append(pageIDsUpdate, pid)
+	}
+
 	return nil
 }
 

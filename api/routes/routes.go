@@ -1,222 +1,234 @@
 package routes
 
 import (
-	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
 
 	"github.com/gorilla/mux"
 
 	"github.com/heat1q/boardsite/api/types"
+	apiErrors "github.com/heat1q/boardsite/api/types/errors"
 	"github.com/heat1q/boardsite/session"
 	"github.com/heat1q/boardsite/websocket"
 )
 
 // Set the api routes
 func Set(router *mux.Router) {
-	router.HandleFunc("/b/create", handleCreateSession).Methods("POST")
-	router.HandleFunc("/b/{id}/users", handleUsers).Methods("GET", "POST")
-	router.HandleFunc("/b/{id}/users/{userId}/socket", handleSocketRequest).Methods("GET")
-	router.HandleFunc("/b/{id}/pages", handlePageRequest).Methods("GET", "POST")
-	router.HandleFunc("/b/{id}/pages/{pageId}", handlePageUpdate).Methods("GET", "PUT", "DELETE")
-	router.HandleFunc("/b/{id}/attachments", handleUpload).Methods("POST")
-	router.HandleFunc("/b/{id}/attachments/{attachId}", handleAttachment).Methods("GET")
+	router.HandleFunc("/b/create", handleRequest(postCreateSession)).Methods(http.MethodPost)
+	router.HandleFunc("/b/{id}/users", handleRequest(getUsers)).Methods(http.MethodGet)
+	router.HandleFunc("/b/{id}/users", handleRequest(postUsers)).Methods(http.MethodPost)
+	router.HandleFunc("/b/{id}/users/{userId}/socket", handleRequest(getSocket)).Methods(http.MethodGet)
+	router.HandleFunc("/b/{id}/pages", handleRequest(getPages)).Methods(http.MethodGet)
+	router.HandleFunc("/b/{id}/pages", handleRequest(postPages)).Methods(http.MethodPost)
+	router.HandleFunc("/b/{id}/pages", handleRequest(putPages)).Methods(http.MethodPut)
+	router.HandleFunc("/b/{id}/pages", handleRequest(deletePages)).Methods(http.MethodDelete)
+	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(getPageUpdate)).Methods(http.MethodGet)
+	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(deletePageUpdate)).Methods(http.MethodDelete)
+	router.HandleFunc("/b/{id}/attachments", handleRequest(postAttachment)).Methods(http.MethodPost)
+	router.HandleFunc("/b/{id}/attachments/{attachId}", handleRequest(getAttachment)).Methods(http.MethodGet)
 }
 
-// handleCreateSession handles the request for creating a new session.
+// postCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
-//
-// Supported methods: POST
-func handleCreateSession(w http.ResponseWriter, r *http.Request) {
-	// create new session and set it active
+func postCreateSession(c *requestContext) error {
 	idstr, err := session.Create()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
+		return err
 	}
-	writeMessage(w, types.NewMessage(idstr, ""))
+	return c.JSON(http.StatusCreated, idstr)
+}
+
+func getUsers(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+	if err != nil {
+		return apiErrors.NotFound
+	}
+	return c.JSON(http.StatusOK, scb.GetUsers())
 }
 
 // handleUserCreate
-func handleUsers(w http.ResponseWriter, r *http.Request) {
-	scb, err := session.GetSCB(mux.Vars(r)["id"])
+func postUsers(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
 	if err != nil {
-		writeError(w, http.StatusNotFound, err)
-		return
+		return apiErrors.NotFound
 	}
 
-	if r.Method == http.MethodGet {
-		writeMessage(w, types.NewMessage(scb.GetUsers(), ""))
-	} else if r.Method == http.MethodPost {
-		var userReq types.User
-		if err := types.DecodeMsgContent(r.Body, &userReq); err != nil {
-			writeError(w, http.StatusBadRequest, err)
-			return
-		}
-
-		// new user struct with alias and color
-		user, err := session.NewUser(scb, userReq.Alias, userReq.Color)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, err)
-			return
-		}
-		writeMessage(w, types.NewMessage(user, ""))
+	var userReq types.User
+	if err := types.DecodeMsgContent(c.Request().Body, &userReq); err != nil {
+		return apiErrors.BadRequest
 	}
+
+	// new user struct with alias and color
+	user, err := session.NewUser(scb, userReq.Alias, userReq.Color)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, user)
 }
 
-// handleSocketRequest handles request for a websocket upgrade
+// getSocket handles request for a websocket upgrade
 // based on the sessionID and the userID.
-//
-// Supported methods: GET
-func handleSocketRequest(w http.ResponseWriter, r *http.Request) {
-	sessionID, userID := mux.Vars(r)["id"], mux.Vars(r)["userId"]
+func getSocket(c *requestContext) error {
+	sessionID, userID := mux.Vars(c.Request())["id"], mux.Vars(c.Request())["userId"]
 
 	scb, err := session.GetSCB(sessionID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, err)
-		return
+		return apiErrors.NotFound.SetInfo(err)
 	}
 	_, errUser := scb.GetUserReady(userID)
 	if errUser != nil {
-		writeError(w, http.StatusNotFound, errUser)
-		return
+		return apiErrors.NotFound.SetInfo(err)
 	}
 
-	if err := websocket.UpgradeProtocol(w, r, scb, userID); err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+	return websocket.UpgradeProtocol(c.ResponseWriter(), c.Request(), scb, userID)
+}
+
+func getPages(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+	if err != nil {
+		return apiErrors.NotFound.SetInfo(err)
 	}
+
+	pageRank, meta, err := session.GetPages(scb.ID)
+	if err != nil {
+		return apiErrors.InternalServerError.SetInfo(err)
+	}
+
+	// return pagerank array
+	pages := types.ContentPageSync{
+		PageRank: pageRank,
+		Meta:     meta,
+	}
+	return c.JSON(http.StatusOK, pages)
 }
 
 // handlePageRequest handles requests regarding adding or retrieving pages.
-//
-// Supported methods: GET, POST
-func handlePageRequest(w http.ResponseWriter, r *http.Request) {
-	scb, err := session.GetSCB(mux.Vars(r)["id"])
+func postPages(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
 	if err != nil {
-		writeError(w, http.StatusNotFound, err)
-		return
+		return apiErrors.NotFound.SetInfo(err)
 	}
 
-	if r.Method == http.MethodGet {
-		pageRank, meta, err := session.GetPages(scb.ID)
-		if err != nil {
-			writeError(w, http.StatusServiceUnavailable, err)
-		}
-
-		// return pagerank array
-		writeMessage(w, types.NewMessage(types.ContentPageSync{
-			PageRank: pageRank,
-			Meta:     meta,
-		}, ""))
-	} else if r.Method == http.MethodPost {
-		// add a Page
-		var data types.ContentPageRequest
-		if err := types.DecodeMsgContent(r.Body, &data); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		if err := session.AddPage(scb, data.PageID, data.Index, &data.PageMeta); err != nil {
-			writeError(w, http.StatusServiceUnavailable, err)
-		}
+	// add a Page
+	var data types.ContentPageRequest
+	if err := types.DecodeMsgContent(c.Request().Body, &data); err != nil {
+		return apiErrors.BadRequest.SetInfo(err)
 	}
+
+	if err := session.AddPages(scb, data.PageID, data.Index, data.Meta); err != nil {
+		return apiErrors.InternalServerError.SetInfo(err)
+	}
+
+	return c.NoContent(http.StatusCreated)
 }
 
-// handlePageUpdate handles requests for modifying certain pages.
-//
-// Supported methods: PUT, DELETE
-func handlePageUpdate(w http.ResponseWriter, r *http.Request) {
-	scb, err := session.GetSCB(mux.Vars(r)["id"])
+func putPages(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
 	if err != nil {
-		writeError(w, http.StatusNotFound, err)
-		return
+		return apiErrors.NotFound.SetInfo(err)
 	}
 
-	pageID := mux.Vars(r)["pageId"]
+	var data types.ContentPageRequest
+	if err := types.DecodeMsgContent(c.Request().Body, &data); err != nil {
+		return apiErrors.BadRequest
+	}
+
+	if err := session.UpdatePages(scb, data.PageID, data.Meta, data.Clear); err != nil {
+		return apiErrors.InternalServerError.SetInfo(err)
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func deletePages(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+	if err != nil {
+		return apiErrors.NotFound.SetInfo(err)
+	}
+
+	var data types.ContentPageRequest
+	if err := types.DecodeMsgContent(c.Request().Body, &data); err != nil {
+		return apiErrors.BadRequest
+	}
+
+	if err := session.DeletePages(scb, data.PageID...); err != nil {
+		return apiErrors.InternalServerError.SetInfo(err)
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func getPageUpdate(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+	if err != nil {
+		return apiErrors.NotFound.SetInfo(err)
+	}
+
+	pageID := mux.Vars(c.Request())["pageId"]
 	if !session.IsValidPage(scb.ID, pageID) {
-		w.WriteHeader(http.StatusNotFound)
-		return
+		return apiErrors.NotFound
 	}
 
-	if r.Method == http.MethodGet {
-		strokes, errFetch := session.GetStrokes(scb.ID, pageID)
-		if errFetch != nil {
-			writeError(w, http.StatusServiceUnavailable, errFetch)
-		}
-		writeMessage(
-			w,
-			types.NewMessage(strokes, ""),
-		)
-	} else if r.Method == http.MethodPut {
-		var data types.ContentPageRequest
-		if err := types.DecodeMsgContent(r.Body, &data); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if err := session.UpdatePage(scb, pageID, &data.PageMeta, data.Clear); err != nil {
-			writeError(w, http.StatusServiceUnavailable, err)
-		}
-	} else if r.Method == http.MethodDelete {
-		if err := session.DeletePage(scb, pageID); err != nil {
-			writeError(w, http.StatusServiceUnavailable, err)
-		}
+	strokes, errFetch := session.GetStrokes(scb.ID, pageID)
+	if errFetch != nil {
+		return apiErrors.InternalServerError.SetInfo(errFetch)
 	}
+
+	return c.JSON(http.StatusOK, strokes)
 }
 
-func writeMessage(w http.ResponseWriter, content interface{}) {
-	if err := json.NewEncoder(w).Encode(content); err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-	}
-}
-
-func writeError(w http.ResponseWriter, status int, err error) {
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(types.NewErrorMessage(err))
-}
-
-func handleUpload(w http.ResponseWriter, r *http.Request) {
-	scb, err := session.GetSCB(mux.Vars(r)["id"])
+func deletePageUpdate(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
 	if err != nil {
-		writeError(w, http.StatusNotFound, err)
-		return
+		return apiErrors.NotFound.SetInfo(err)
 	}
 
-	if err := r.ParseMultipartForm(2 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, errors.New("file size exceeded limit of 2MB"))
-		return
+	pageID := mux.Vars(c.Request())["pageId"]
+	if !session.IsValidPage(scb.ID, pageID) {
+		return apiErrors.NotFound
 	}
-	file, header, err := r.FormFile("file")
+
+	if err := session.DeletePages(scb, pageID); err != nil {
+		return apiErrors.InternalServerError.SetInfo(err)
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func postAttachment(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		return
+		return apiErrors.NotFound.SetInfo(err)
+	}
+
+	if err := c.Request().ParseMultipartForm(2 << 20); err != nil {
+		return apiErrors.BadRequest.SetInfo("file size exceeded limit of 2MB")
+	}
+	file, header, err := c.Request().FormFile("file")
+	if err != nil {
+		return apiErrors.BadRequest.SetInfo(err)
 	}
 	defer file.Close()
 
 	attachID, err := session.UploadAttachment(scb, file, header.Filename)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
+		return apiErrors.InternalServerError.SetInfo(err)
 	}
-	writeMessage(w, types.NewMessage(attachID, ""))
+
+	return c.JSON(http.StatusCreated, attachID)
 }
 
-func handleAttachment(w http.ResponseWriter, r *http.Request) {
-	scb, err := session.GetSCB(mux.Vars(r)["id"])
+func getAttachment(c *requestContext) error {
+	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
 	if err != nil {
-		writeError(w, http.StatusNotFound, err)
-		return
+		return apiErrors.NotFound.SetInfo(err)
 	}
-	attachID := mux.Vars(r)["attachId"]
+	attachID := mux.Vars(c.Request())["attachId"]
 	file, err := session.OpenAttachment(scb, attachID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, nil)
-		return
+		return apiErrors.NotFound
 	}
 	defer file.Close()
 
-	if _, err := io.Copy(w, file); err != nil {
-		writeError(w, http.StatusInternalServerError, nil)
-		return
-	}
+	return c.Stream(http.StatusOK, file)
 }
