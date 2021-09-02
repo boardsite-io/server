@@ -81,7 +81,11 @@ func TestMetaPages(t *testing.T) {
 		index int
 		want  types.PageMeta
 	}{
-		{types.PageMeta{Background: types.PageBackground{"somebackground1", 0}}, 0, types.PageMeta{Background: types.PageBackground{"somebackground1", 0}}},
+		{
+			meta:  types.PageMeta{Background: types.PageBackground{Style: "doc", PageNum: 1, AttachId: "12345potato"}},
+			index: 0,
+			want:  types.PageMeta{Background: types.PageBackground{Style: "doc", PageNum: 1, AttachId: "12345potato"}},
+		},
 	}
 
 	for _, test := range tests {
@@ -190,7 +194,7 @@ func TestDeletePage(t *testing.T) {
 		assert.NoError(t, ClearSession(sid))
 		assert.NoError(t,
 			AddPage(sid, test.pidAdd, 0,
-				&types.PageMeta{Background: types.PageBackground{"bg", 0}}), "cannot add page")
+				&types.PageMeta{Background: types.PageBackground{Style: "bg", PageNum: 0, AttachId: ""}}), "cannot add page")
 		assert.NoError(t,
 			Update(sid, []*types.Stroke{genRandStroke("id1", test.pidAdd, 1)}))
 
@@ -234,7 +238,7 @@ func TestClearSession(t *testing.T) {
 	assert.NoError(t, ClearSession(sid))
 	assert.NoError(t, ClearSession(sid))
 
-	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{"bg2", 0}})
+	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{Style: "bg2", PageNum: 0, AttachId: ""}})
 	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
 
 	assert.NoError(t, ClearSession(sid))
@@ -257,7 +261,7 @@ func TestClearPage(t *testing.T) {
 	sid := "sid1"
 	pid := "pid1"
 	ClearSession(sid)
-	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{"bg2", 0}})
+	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{Style: "bg2", PageNum: 0, AttachId: ""}})
 	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
 
 	assert.NoError(t, ClearPage(sid, pid))
@@ -275,16 +279,25 @@ func TestUpdatePageMeta(t *testing.T) {
 	sid := "sid1"
 	pid := "pid1"
 	ClearSession(sid)
-	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{"bg", 1}})
+	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{Style: "bg", PageNum: 1}})
 	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
 
 	tests := []struct {
 		update   types.PageMeta
 		wantMeta types.PageMeta
 	}{
-		{types.PageMeta{Background: types.PageBackground{}}, types.PageMeta{Background: types.PageBackground{"bg", 0}}},
-		{types.PageMeta{Background: types.PageBackground{"", 1}}, types.PageMeta{Background: types.PageBackground{"bg", 1}}},
-		{types.PageMeta{Background: types.PageBackground{"bg2", 0}}, types.PageMeta{Background: types.PageBackground{"bg2", 0}}},
+		{
+			update:   types.PageMeta{Background: types.PageBackground{}},
+			wantMeta: types.PageMeta{Background: types.PageBackground{Style: "bg"}},
+		},
+		{
+			update:   types.PageMeta{Background: types.PageBackground{PageNum: 1}},
+			wantMeta: types.PageMeta{Background: types.PageBackground{Style: "bg", PageNum: 1}},
+		},
+		{
+			update:   types.PageMeta{Background: types.PageBackground{Style: "bg2"}},
+			wantMeta: types.PageMeta{Background: types.PageBackground{Style: "bg2"}},
+		},
 	}
 
 	for _, test := range tests {
