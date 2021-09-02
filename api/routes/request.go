@@ -2,7 +2,6 @@ package routes
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 
 	"github.com/heat1q/boardsite/api/types"
@@ -30,9 +29,10 @@ func (c *requestContext) JSON(status int, v interface{}) error {
 	return json.NewEncoder(c.w).Encode(msg)
 }
 
-func (c *requestContext) Stream(status int, reader io.Reader) error {
+func (c *requestContext) Stream(status int, data []byte, MIMEType string) error {
+	c.w.Header().Add("Content-Type", MIMEType)
 	c.w.WriteHeader(status)
-	_, err := io.Copy(c.w, reader)
+	_, err := c.w.Write(data)
 	return err
 }
 
