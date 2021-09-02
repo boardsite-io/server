@@ -5,6 +5,8 @@ import (
 	"log"
 	"sync"
 
+	"github.com/heat1q/boardsite/attachments"
+
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/redis"
 )
@@ -30,6 +32,8 @@ type ControlBlock struct {
 	// and have an intact WS connection
 	users    map[string]*types.User
 	numUsers int
+
+	Attachments attachments.Handler
 }
 
 // NewControlBlock creates a new Session ControlBlock with unique ID.
@@ -42,6 +46,7 @@ func NewControlBlock(sessionID string) *ControlBlock {
 		SignalClose: make(chan struct{}),
 		usersReady:  make(map[string]*types.User),
 		users:       make(map[string]*types.User),
+		Attachments: attachments.NewLocalHandler(sessionID),
 	}
 
 	// start goroutines for broadcasting and saving changes to board
