@@ -1,23 +1,21 @@
-name: Build
+name: Testing
 
 on:
-  push:
-    paths-ignore:
-      - "docs/**"
-      - "README.md"
-    branches: [ master ]
   pull_request:
     branches: [ master ]
 
 jobs:
-
   build:
-    name: Build and test
+    name: Test and build
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Vet files
+        run: go vet ./...
+      - name: Format files
+        run: go fmt ./...
       - name: Build the binary
         run: make build
       - name: Run unit tests
