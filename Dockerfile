@@ -7,7 +7,7 @@ COPY go.* ./
 RUN go mod download
 COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
-go build -o /out/boardsite ./cmd/boardsite
+go build -o /out/boardsite .
 
 FROM builder AS unit-test
 RUN --mount=type=cache,target=/root/.cache/go-build \
