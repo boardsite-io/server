@@ -54,8 +54,4 @@ jobs:
           SSH_PORT: ${{ secrets.BOARDSITE_SSH_PORT }}
       - name: Deploy
         run: |
-          ssh deploy << EOF
-          cd ~/boardsite-io-deploy
-          make
-          make deploy
-          EOF
+          ssh deploy "cd ~/boardsite-io-deploy && make && make deploy"
