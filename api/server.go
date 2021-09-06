@@ -1,4 +1,4 @@
-package app
+package api
 
 import (
 	"context"
@@ -51,10 +51,3 @@ func Serve(ctx context.Context, port int) (func() error, func() error) {
 		return serv.Shutdown(ctx)
 	}
 }
-
-// func contentTypeMiddleware(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		w.Header().Add("Content-Type", "application/json")
-// 		next.ServeHTTP(w, r)
-// 	})
-// }

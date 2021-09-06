@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/heat1q/boardsite/app"
+	"github.com/heat1q/boardsite/api"
 	"github.com/heat1q/boardsite/redis"
 )
 
@@ -32,7 +32,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	run, shutdown := app.Serve(ctx, port)
+	run, shutdown := api.Serve(ctx, port)
 	defer shutdown()
 
 	if err := redis.InitPool(); err != nil {
