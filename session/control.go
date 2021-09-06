@@ -70,7 +70,7 @@ func Close(sessionID string) error {
 	delete(activeSession, sessionID)
 	mu.Unlock()
 
-	if err := ClearAttachments(scb); err != nil {
+	if err := scb.Attachments.Clear(); err != nil {
 		log.Printf("cannot clear attachments for %s: %v\n", scb.ID, err)
 	}
 

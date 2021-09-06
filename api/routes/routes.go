@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -204,13 +205,18 @@ func postAttachment(c *requestContext) error {
 	if err := c.Request().ParseMultipartForm(2 << 20); err != nil {
 		return apiErrors.BadRequest.SetInfo("file size exceeded limit of 2MB")
 	}
-	file, header, err := c.Request().FormFile("file")
+	file, _, err := c.Request().FormFile("file")
 	if err != nil {
 		return apiErrors.BadRequest.SetInfo(err)
 	}
 	defer file.Close()
 
-	attachID, err := session.UploadAttachment(scb, file, header.Filename)
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return apiErrors.BadRequest.SetInfo(err)
+	}
+
+	attachID, err := scb.Attachments.Upload(data)
 	if err != nil {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
@@ -224,11 +230,10 @@ func getAttachment(c *requestContext) error {
 		return apiErrors.NotFound.SetInfo(err)
 	}
 	attachID := mux.Vars(c.Request())["attachId"]
-	file, err := session.OpenAttachment(scb, attachID)
+	data, MIMEType, err := scb.Attachments.Get(attachID)
 	if err != nil {
-		return apiErrors.NotFound
+		return apiErrors.NotFound.SetInfo(err)
 	}
-	defer file.Close()
 
-	return c.Stream(http.StatusOK, file)
+	return c.Stream(http.StatusOK, data, MIMEType)
 }
