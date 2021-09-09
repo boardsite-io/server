@@ -1,5 +1,6 @@
 package redis
 
+/*
 import (
 	"math"
 	"math/rand"
@@ -307,3 +308,4 @@ func TestUpdatePageMeta(t *testing.T) {
 		assert.Equal(t, test.wantMeta, *meta[pid])
 	}
 }
+*/

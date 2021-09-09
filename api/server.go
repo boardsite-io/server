@@ -6,19 +6,49 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/heat1q/boardsite/session"
+
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
-	"github.com/heat1q/boardsite/api/routes"
+	"github.com/heat1q/boardsite/api/config"
+	"github.com/heat1q/boardsite/redis"
 )
 
+type Server struct {
+	cfg        *config.Configuration
+	router     *mux.Router
+	dispatcher session.Dispatcher
+}
+
+func NewServer() (*Server, error) {
+	cfg, err := config.New()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Server{
+		cfg:    cfg,
+		router: mux.NewRouter(),
+	}, nil
+}
+
 // Serve wraps the main application
-func Serve(ctx context.Context, port int) (func() error, func() error) {
-	router := mux.NewRouter()
-	//router.Use(contentTypeMiddleware)
+func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
+	// setup redis cache
+	redisHandler, err := redis.New(s.cfg.Cache.Host, s.cfg.Cache.Port)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	log.Println("Redis connection pool initialized.")
 
-	routes.Set(router)
+	// set up session dipatcher/handler
+	s.dispatcher = session.NewDispatcher(redisHandler)
 
+	// set routes
+	s.setRoutes()
+
+	// configure CORS
 	handl := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedHeaders(
@@ -35,7 +65,7 @@ func Serve(ctx context.Context, port int) (func() error, func() error) {
 				"DELETE",
 			},
 		),
-	)(router)
+	)(s.router)
 	handl = handlers.ContentTypeHandler(
 		handl,
 		"text/plain",
@@ -44,10 +74,11 @@ func Serve(ctx context.Context, port int) (func() error, func() error) {
 		"multipart/form-data",
 	)
 
-	serv := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: handl}
-	log.Printf("Starting on port %d\n", port)
+	serv := http.Server{Addr: fmt.Sprintf(":%d", s.cfg.Server.Port), Handler: handl}
+	log.Printf("Starting %s@%s listening on :%d\n", s.cfg.App.Name, s.cfg.App.Version, s.cfg.Server.Port)
 
 	return serv.ListenAndServe, func() error {
+		redisHandler.ClosePool()
 		return serv.Shutdown(ctx)
 	}
 }

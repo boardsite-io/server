@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -18,6 +19,7 @@ var upgrader = gws.Upgrader{
 
 // UpgradeProtocol to websocket protocol
 func UpgradeProtocol(
+	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
 	scb *session.ControlBlock,
@@ -27,7 +29,7 @@ func UpgradeProtocol(
 	if err != nil {
 		return err
 	}
-	return initSocket(scb, userID, conn)
+	return initSocket(ctx, scb, userID, conn)
 }
 
 // For development purpose
@@ -56,7 +58,7 @@ func onClientDisconnect(scb *session.ControlBlock, userID string, conn *gws.Conn
 }
 
 // initSocket starts the websocket
-func initSocket(scb *session.ControlBlock, userID string, conn *gws.Conn) error {
+func initSocket(ctx context.Context, scb *session.ControlBlock, userID string, conn *gws.Conn) error {
 	if err := onClientConnect(scb, userID, conn); err != nil {
 		return err
 	}
@@ -70,8 +72,8 @@ func initSocket(scb *session.ControlBlock, userID string, conn *gws.Conn) error 
 			}
 
 			// sanitize received data
-			if errSanitize := session.Receive(
-				scb,
+			if errSanitize := scb.Receive(
+				ctx,
 				msg,
 			); errSanitize != nil {
 				log.Println(scb.ID+" :: Error Receive :: %v", err)
