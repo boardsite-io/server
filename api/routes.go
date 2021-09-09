@@ -1,4 +1,4 @@
-package routes
+package api
 
 import (
 	"io"
@@ -6,40 +6,44 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/heat1q/boardsite/api/request"
 	"github.com/heat1q/boardsite/api/types"
 	apiErrors "github.com/heat1q/boardsite/api/types/errors"
-	"github.com/heat1q/boardsite/session"
 	"github.com/heat1q/boardsite/websocket"
 )
 
-// Set the api routes
-func Set(router *mux.Router) {
-	router.HandleFunc("/b/create", handleRequest(postCreateSession)).Methods(http.MethodPost)
-	router.HandleFunc("/b/{id}/users", handleRequest(getUsers)).Methods(http.MethodGet)
-	router.HandleFunc("/b/{id}/users", handleRequest(postUsers)).Methods(http.MethodPost)
-	router.HandleFunc("/b/{id}/users/{userId}/socket", handleRequest(getSocket)).Methods(http.MethodGet)
-	router.HandleFunc("/b/{id}/pages", handleRequest(getPages)).Methods(http.MethodGet)
-	router.HandleFunc("/b/{id}/pages", handleRequest(postPages)).Methods(http.MethodPost)
-	router.HandleFunc("/b/{id}/pages", handleRequest(putPages)).Methods(http.MethodPut)
-	router.HandleFunc("/b/{id}/pages", handleRequest(deletePages)).Methods(http.MethodDelete)
-	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(getPageUpdate)).Methods(http.MethodGet)
-	router.HandleFunc("/b/{id}/pages/{pageId}", handleRequest(deletePageUpdate)).Methods(http.MethodDelete)
-	router.HandleFunc("/b/{id}/attachments", handleRequest(postAttachment)).Methods(http.MethodPost)
-	router.HandleFunc("/b/{id}/attachments/{attachId}", handleRequest(getAttachment)).Methods(http.MethodGet)
+// setRoutes sets the api routes
+func (s *Server) setRoutes() {
+	s.setHandleFunc("/b/create", s.postCreateSession).Methods(http.MethodPost)
+	s.setHandleFunc("/b/{id}/users", s.getUsers).Methods(http.MethodGet)
+	s.setHandleFunc("/b/{id}/users", s.postUsers).Methods(http.MethodPost)
+	s.setHandleFunc("/b/{id}/users/{userId}/socket", s.getSocket).Methods(http.MethodGet)
+	s.setHandleFunc("/b/{id}/pages", s.getPages).Methods(http.MethodGet)
+	s.setHandleFunc("/b/{id}/pages", s.postPages).Methods(http.MethodPost)
+	s.setHandleFunc("/b/{id}/pages", s.putPages).Methods(http.MethodPut)
+	s.setHandleFunc("/b/{id}/pages", s.deletePages).Methods(http.MethodDelete)
+	s.setHandleFunc("/b/{id}/pages/{pageId}", s.getPageUpdate).Methods(http.MethodGet)
+	s.setHandleFunc("/b/{id}/pages/{pageId}", s.deletePageUpdate).Methods(http.MethodDelete)
+	s.setHandleFunc("/b/{id}/attachments", s.postAttachment).Methods(http.MethodPost)
+	s.setHandleFunc("/b/{id}/attachments/{attachId}", s.getAttachment).Methods(http.MethodGet)
+}
+
+func (s *Server) setHandleFunc(path string, fn func(*request.Context) error) *mux.Route {
+	return s.router.HandleFunc(path, request.NewHandler(fn))
 }
 
 // postCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
-func postCreateSession(c *requestContext) error {
-	idstr, err := session.Create()
+func (s *Server) postCreateSession(c *request.Context) error {
+	idstr, err := s.dispatcher.Create()
 	if err != nil {
 		return err
 	}
 	return c.JSON(http.StatusCreated, idstr)
 }
 
-func getUsers(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) getUsers(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound
 	}
@@ -47,8 +51,8 @@ func getUsers(c *requestContext) error {
 }
 
 // handleUserCreate
-func postUsers(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) postUsers(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound
 	}
@@ -59,7 +63,7 @@ func postUsers(c *requestContext) error {
 	}
 
 	// new user struct with alias and color
-	user, err := session.NewUser(scb, userReq.Alias, userReq.Color)
+	user, err := scb.NewUser(userReq.Alias, userReq.Color)
 	if err != nil {
 		return err
 	}
@@ -69,10 +73,13 @@ func postUsers(c *requestContext) error {
 
 // getSocket handles request for a websocket upgrade
 // based on the sessionID and the userID.
-func getSocket(c *requestContext) error {
-	sessionID, userID := mux.Vars(c.Request())["id"], mux.Vars(c.Request())["userId"]
+func (s *Server) getSocket(c *request.Context) error {
+	var (
+		sessionID = c.Vars()["id"]
+		userID    = c.Vars()["userId"]
+	)
 
-	scb, err := session.GetSCB(sessionID)
+	scb, err := s.dispatcher.GetSCB(sessionID)
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
 	}
@@ -81,16 +88,16 @@ func getSocket(c *requestContext) error {
 		return apiErrors.NotFound.SetInfo(err)
 	}
 
-	return websocket.UpgradeProtocol(c.ResponseWriter(), c.Request(), scb, userID)
+	return websocket.UpgradeProtocol(c.Ctx(), c.ResponseWriter(), c.Request(), scb, userID)
 }
 
-func getPages(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) getPages(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
 	}
 
-	pageRank, meta, err := session.GetPages(scb.ID)
+	pageRank, meta, err := scb.GetPages(c.Ctx())
 	if err != nil {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
@@ -104,8 +111,8 @@ func getPages(c *requestContext) error {
 }
 
 // handlePageRequest handles requests regarding adding or retrieving pages.
-func postPages(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) postPages(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
 	}
@@ -116,15 +123,15 @@ func postPages(c *requestContext) error {
 		return apiErrors.BadRequest.SetInfo(err)
 	}
 
-	if err := session.AddPages(scb, data.PageID, data.Index, data.Meta); err != nil {
+	if err := scb.AddPages(c.Ctx(), data.PageID, data.Index, data.Meta); err != nil {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
 
 	return c.NoContent(http.StatusCreated)
 }
 
-func putPages(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) putPages(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
 	}
@@ -134,15 +141,15 @@ func putPages(c *requestContext) error {
 		return apiErrors.BadRequest
 	}
 
-	if err := session.UpdatePages(scb, data.PageID, data.Meta, data.Clear); err != nil {
+	if err := scb.UpdatePages(c.Ctx(), data.PageID, data.Meta, data.Clear); err != nil {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
 
 	return c.NoContent(http.StatusNoContent)
 }
 
-func deletePages(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) deletePages(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
 	}
@@ -152,25 +159,25 @@ func deletePages(c *requestContext) error {
 		return apiErrors.BadRequest
 	}
 
-	if err := session.DeletePages(scb, data.PageID...); err != nil {
+	if err := scb.DeletePages(c.Ctx(), data.PageID...); err != nil {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
 
 	return c.NoContent(http.StatusNoContent)
 }
 
-func getPageUpdate(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) getPageUpdate(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
 	}
 
-	pageID := mux.Vars(c.Request())["pageId"]
-	if !session.IsValidPage(scb.ID, pageID) {
+	pageID := c.Vars()["pageId"]
+	if !scb.IsValidPage(c.Ctx(), pageID) {
 		return apiErrors.NotFound
 	}
 
-	strokes, errFetch := session.GetStrokes(scb.ID, pageID)
+	strokes, errFetch := scb.GetStrokes(c.Ctx(), pageID)
 	if errFetch != nil {
 		return apiErrors.InternalServerError.SetInfo(errFetch)
 	}
@@ -178,26 +185,26 @@ func getPageUpdate(c *requestContext) error {
 	return c.JSON(http.StatusOK, strokes)
 }
 
-func deletePageUpdate(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) deletePageUpdate(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
 	}
 
-	pageID := mux.Vars(c.Request())["pageId"]
-	if !session.IsValidPage(scb.ID, pageID) {
+	pageID := c.Vars()["pageId"]
+	if !scb.IsValidPage(c.Ctx(), pageID) {
 		return apiErrors.NotFound
 	}
 
-	if err := session.DeletePages(scb, pageID); err != nil {
+	if err := scb.DeletePages(c.Ctx(), pageID); err != nil {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
 
 	return c.NoContent(http.StatusNoContent)
 }
 
-func postAttachment(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) postAttachment(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
 	}
@@ -224,12 +231,12 @@ func postAttachment(c *requestContext) error {
 	return c.JSON(http.StatusCreated, attachID)
 }
 
-func getAttachment(c *requestContext) error {
-	scb, err := session.GetSCB(mux.Vars(c.Request())["id"])
+func (s *Server) getAttachment(c *request.Context) error {
+	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)
 	}
-	attachID := mux.Vars(c.Request())["attachId"]
+	attachID := c.Vars()["attachId"]
 	data, MIMEType, err := scb.Attachments.Get(attachID)
 	if err != nil {
 		return apiErrors.NotFound.SetInfo(err)

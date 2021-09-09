@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/gomodule/redigo/redis"
@@ -23,14 +24,14 @@ func getPageMetaKey(sessionID, pageID string) string {
 	return getPageKey(sessionID, pageID) + ".meta"
 }
 
-// ClearSession wipes the session from Redis.
-//
-// Removes all pages and the respective strokes on the pages
-func ClearSession(sessionID string) error {
-	conn := Pool.Get()
+func (h *handler) ClearSession(ctx context.Context, sessionID string) error {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
 
-	pages, err := GetPages(sessionID)
+	pages, err := h.GetPages(ctx, sessionID)
 	if err != nil {
 		return err
 	}
@@ -50,13 +51,11 @@ func ClearSession(sessionID string) error {
 	return nil
 }
 
-// Update board strokes in Redis.
-//
-// Creates a JSON encoding for each slice entry which
-// is stored to the database.
-// Delete the stroke with given id if stroke type is set to delete.
-func Update(sessionID string, strokes []*types.Stroke) error {
-	conn := Pool.Get()
+func (h *handler) Update(ctx context.Context, sessionID string, strokes []*types.Stroke) error {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
 
 	for i := range strokes {
@@ -80,12 +79,11 @@ func Update(sessionID string, strokes []*types.Stroke) error {
 	return nil
 }
 
-// FetchStrokesRaw Fetches all strokes of the specified page.
-//
-// Preserves the JSON encoding of Redis and returns an array of
-// a stringified stroke objects.
-func FetchStrokesRaw(sessionID, pageID string) ([][]byte, error) {
-	conn := Pool.Get()
+func (h *handler) FetchStrokesRaw(ctx context.Context, sessionID, pageID string) ([][]byte, error) {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer conn.Close()
 
 	pid := getPageKey(sessionID, pageID)
@@ -110,11 +108,11 @@ func FetchStrokesRaw(sessionID, pageID string) ([][]byte, error) {
 	return strokes, nil
 }
 
-// GetPages returns a list of all pageIDs for the current session.
-//
-// The PageIDs are maintained in a list in redis since the ordering is important
-func GetPages(sessionID string) ([]string, error) {
-	conn := Pool.Get()
+func (h *handler) GetPages(ctx context.Context, sessionID string) ([]string, error) {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer conn.Close()
 
 	pages, err := redis.Strings(
@@ -125,9 +123,11 @@ func GetPages(sessionID string) ([]string, error) {
 	return pages, nil
 }
 
-// GetPagesMeta returns a slice of all page meta data.
-func GetPagesMeta(sessionID string, pageIDs ...string) (map[string]*types.PageMeta, error) {
-	conn := Pool.Get()
+func (h *handler) GetPagesMeta(ctx context.Context, sessionID string, pageIDs ...string) (map[string]*types.PageMeta, error) {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer conn.Close()
 
 	metaPages := make(map[string]*types.PageMeta)
@@ -145,8 +145,11 @@ func GetPagesMeta(sessionID string, pageIDs ...string) (map[string]*types.PageMe
 	return metaPages, nil
 }
 
-func UpdatePageMeta(sessionID, pageID string, update *types.PageMeta) error {
-	conn := Pool.Get()
+func (h *handler) UpdatePageMeta(ctx context.Context, sessionID, pageID string, update *types.PageMeta) error {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
 
 	var meta types.PageMeta
@@ -178,13 +181,11 @@ func UpdatePageMeta(sessionID, pageID string, update *types.PageMeta) error {
 	return nil
 }
 
-// AddPage adds a page with pageID at position index.
-//
-// Other pages are moved and their score is reassigned
-// when pages are added in between
-func AddPage(sessionID, newPageID string,
-	index int, meta *types.PageMeta) error {
-	conn := Pool.Get()
+func (h *handler) AddPage(ctx context.Context, sessionID, newPageID string, index int, meta *types.PageMeta) error {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
 
 	if meta != nil {
@@ -200,7 +201,7 @@ func AddPage(sessionID, newPageID string,
 
 	// get all pageids
 	pageRankKey := getPageRankKey(sessionID)
-	pageIDs, err := GetPages(sessionID)
+	pageIDs, err := h.GetPages(ctx, sessionID)
 	if err != nil {
 		return err
 	}
@@ -242,10 +243,11 @@ func AddPage(sessionID, newPageID string,
 	return nil
 }
 
-// DeletePage deletes a page and the respective strokes on the page
-// and remove the PageID from the list.
-func DeletePage(sessionID, pageID string) error {
-	conn := Pool.Get()
+func (h *handler) DeletePage(ctx context.Context, sessionID, pageID string) error {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
 
 	if err := conn.Send(
@@ -265,10 +267,14 @@ func DeletePage(sessionID, pageID string) error {
 	return conn.Flush()
 }
 
-// ClearPage removes all strokes with given pageID.
-func ClearPage(sessionID, pageID string) error {
-	conn := Pool.Get()
+func (h *handler) ClearPage(ctx context.Context, sessionID, pageID string) error {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
-	_, err := conn.Do("DEL", getPageKey(sessionID, pageID))
-	return err
+	if _, err := conn.Do("DEL", getPageKey(sessionID, pageID)); err != nil {
+		return err
+	}
+	return nil
 }
