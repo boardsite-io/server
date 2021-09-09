@@ -1,13 +1,12 @@
 package session
 
 import (
-	"errors"
+	"context"
 	"log"
 	"sync"
 
-	"github.com/heat1q/boardsite/attachments"
-
 	"github.com/heat1q/boardsite/api/types"
+	"github.com/heat1q/boardsite/attachments"
 	"github.com/heat1q/boardsite/redis"
 )
 
@@ -15,12 +14,16 @@ import (
 type ControlBlock struct {
 	ID string
 
-	Broadcast chan *types.Message
-	Echo      chan *types.Message
+	Attachments attachments.Handler
+	Dispatcher  Dispatcher
 
-	DBUpdate chan []*types.Stroke
+	broadcast chan *types.Message
+	echo      chan *types.Message
 
-	SignalClose chan struct{}
+	cache    redis.Handler
+	dbUpdate chan []*types.Stroke
+
+	signalClose chan struct{}
 
 	muRdyUsr sync.RWMutex
 	// users that have previously been created via POST
@@ -32,119 +35,40 @@ type ControlBlock struct {
 	// and have an intact WS connection
 	users    map[string]*types.User
 	numUsers int
-
-	Attachments attachments.Handler
 }
 
 // NewControlBlock creates a new Session ControlBlock with unique ID.
-func NewControlBlock(sessionID string) *ControlBlock {
+func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatcher) *ControlBlock {
 	scb := &ControlBlock{
 		ID:          sessionID,
-		Broadcast:   make(chan *types.Message),
-		Echo:        make(chan *types.Message),
-		DBUpdate:    make(chan []*types.Stroke),
-		SignalClose: make(chan struct{}),
+		Attachments: attachments.NewLocalHandler(sessionID),
+		Dispatcher:  dispatcher,
+		broadcast:   make(chan *types.Message),
+		echo:        make(chan *types.Message),
+		cache:       cache,
+		dbUpdate:    make(chan []*types.Stroke),
+		signalClose: make(chan struct{}),
 		usersReady:  make(map[string]*types.User),
 		users:       make(map[string]*types.User),
-		Attachments: attachments.NewLocalHandler(sessionID),
 	}
 
 	// start goroutines for broadcasting and saving changes to board
-	go scb.broadcast()
-	go scb.updateDatabase()
+	go scb.broadcastLoop()
+	go scb.dbUpdateLoop()
 
 	return scb
 }
 
-// UserReady adds an user to the usersReady map.
-func (scb *ControlBlock) UserReady(u *types.User) {
-	scb.muRdyUsr.Lock()
-	scb.usersReady[u.ID] = u
-	scb.muRdyUsr.Unlock()
+// Close sends a close signal
+func (scb *ControlBlock) Close() {
+	scb.signalClose <- struct{}{}
 }
 
-// GetUserReady returns the user with userID ready to join a session.
-func (scb *ControlBlock) GetUserReady(userID string) (*types.User, error) {
-	scb.muRdyUsr.RLock()
-	defer scb.muRdyUsr.RUnlock()
-	u, ok := scb.usersReady[userID]
-	if !ok {
-		return nil, errors.New("ready user not found")
-	}
-	return u, nil
-}
-
-// IsUserReady checks if the user with userID is ready to join a session.
-func (scb *ControlBlock) IsUserReady(userID string) bool {
-	_, err := scb.GetUserReady(userID)
-	return err == nil
-}
-
-// UserConnect adds user from the userReady state to clients.
-//
-// Broadcast that user has connected to session.
-func (scb *ControlBlock) UserConnect(u *types.User) {
-	scb.muUsr.Lock()
-	scb.users[u.ID] = u
-	scb.numUsers++
-	scb.muUsr.Unlock()
-
-	// broadcast that user has joined
-	scb.Broadcast <- &types.Message{
-		Type:    types.MessageTypeUserConnected,
-		Content: u,
-	}
-}
-
-// UserDisconnect removes user from clients.
-//
-// Broadcast that user has disconnected from session.
-func (scb *ControlBlock) UserDisconnect(userID string) {
-	scb.muUsr.Lock()
-	u := scb.users[userID]
-	delete(scb.users, u.ID)
-	scb.numUsers--
-	numCl := scb.numUsers
-	scb.muUsr.Unlock()
-
-	// if session is empty after client disconnect
-	// the session needs to be set to inactive
-	if numCl == 0 {
-		Close(scb.ID)
-		return
-	}
-
-	// broadcast that user has left
-	scb.Broadcast <- &types.Message{
-		Type:    types.MessageTypeUserDisconnected,
-		Content: u,
-	}
-}
-
-// IsUserConnected checks if the user with userID is an active client in the session.
-func (scb *ControlBlock) IsUserConnected(userID string) bool {
-	scb.muUsr.RLock()
-	defer scb.muUsr.RUnlock()
-	_, ok := scb.users[userID]
-	return ok
-}
-
-// GetUsers returns all active users/clients in the session.
-func (scb *ControlBlock) GetUsers() map[string]*types.User {
-	users := make(map[string]*types.User)
-	scb.muUsr.RLock()
-	for id, u := range scb.users {
-		users[id] = u
-	}
-	scb.muUsr.RUnlock()
-	return users
-}
-
-// Broadcast Broadcasts board updates to all clients
-func (scb *ControlBlock) broadcast() {
+// broadcastLoop Broadcasts board updates to all clients
+func (scb *ControlBlock) broadcastLoop() {
 	for {
 		select {
-		case data := <-scb.Broadcast:
+		case data := <-scb.broadcast:
 			scb.muUsr.RLock()
 			for userID, user := range scb.users { // Send to all connected clients
 				// except the origin, i.e. the initiator of message
@@ -152,33 +76,35 @@ func (scb *ControlBlock) broadcast() {
 					if err := user.Conn.WriteJSON(data); err != nil {
 						log.Printf("%s :: cannot broadcast to %s: %v",
 							scb.ID, user.Conn.RemoteAddr(), err)
-						continue
 					}
 				}
 			}
 			scb.muUsr.RUnlock()
-		case data := <-scb.Echo:
+		case data := <-scb.echo:
 			// echo message back to origin
 			scb.muUsr.RLock()
 			if err := scb.users[data.Sender].Conn.WriteJSON(data); err != nil {
-				// log.Println("")
-				continue
+				log.Printf("error in broadcastLoop: %v", err)
 			}
 			scb.muUsr.RUnlock()
-		case <-scb.SignalClose:
+		case <-scb.signalClose:
 			return
 		}
 	}
 }
 
-// UpdateDatabase Updates database according to given Stroke values
-func (scb *ControlBlock) updateDatabase() {
+// dbUpdateLoop updates database according to given Stroke values
+func (scb *ControlBlock) dbUpdateLoop() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	for {
 		select {
-		case strokes := <-scb.DBUpdate:
-			redis.Update(scb.ID, strokes)
-		case <-scb.SignalClose:
-			redis.ClearSession(scb.ID)
+		case strokes := <-scb.dbUpdate:
+			if err := scb.cache.Update(ctx, scb.ID, strokes); err != nil {
+				log.Printf("error in dbUpdateLoop: %v", err)
+			}
+		case <-scb.signalClose:
+			_ = scb.cache.ClearSession(ctx, scb.ID)
 			return
 		}
 	}

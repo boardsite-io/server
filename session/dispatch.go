@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
+
+	"github.com/heat1q/boardsite/redis"
 )
 
 const (
@@ -23,18 +25,20 @@ type Dispatcher interface {
 	IsValid(sessionID string) bool
 }
 
-type sessionDispatcher struct {
+type sessionsDispatcher struct {
 	mu            sync.RWMutex
 	activeSession map[string]*ControlBlock
+	cache         redis.Handler
 }
 
-func NewDispatcher() Dispatcher {
-	return &sessionDispatcher{
+func NewDispatcher(cache redis.Handler) Dispatcher {
+	return &sessionsDispatcher{
 		activeSession: make(map[string]*ControlBlock),
+		cache:         cache,
 	}
 }
 
-func (d *sessionDispatcher) GetSCB(sessionID string) (*ControlBlock, error) {
+func (d *sessionsDispatcher) GetSCB(sessionID string) (*ControlBlock, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	scb, ok := d.activeSession[sessionID]
@@ -44,7 +48,7 @@ func (d *sessionDispatcher) GetSCB(sessionID string) (*ControlBlock, error) {
 	return scb, nil
 }
 
-func (d *sessionDispatcher) Create() (string, error) {
+func (d *sessionsDispatcher) Create() (string, error) {
 	var sid string
 	for {
 		id, err := gonanoid.Generate(alphabet, 8)
@@ -58,7 +62,7 @@ func (d *sessionDispatcher) Create() (string, error) {
 		}
 	}
 
-	scb := NewControlBlock(sid)
+	scb := NewControlBlock(sid, d.cache, d)
 	// assign to SessionControl struct
 	d.mu.Lock()
 	d.activeSession[scb.ID] = scb
@@ -68,12 +72,12 @@ func (d *sessionDispatcher) Create() (string, error) {
 	return sid, nil
 }
 
-func (d *sessionDispatcher) Close(sessionID string) error {
+func (d *sessionsDispatcher) Close(sessionID string) error {
 	scb, err := d.GetSCB(sessionID)
 	if err != nil {
 		return err
 	}
-	scb.SignalClose <- struct{}{}
+	scb.Close()
 	d.mu.Lock()
 	delete(d.activeSession, sessionID)
 	d.mu.Unlock()
@@ -87,7 +91,7 @@ func (d *sessionDispatcher) Close(sessionID string) error {
 	return nil
 }
 
-func (d *sessionDispatcher) IsValid(sessionID string) bool {
+func (d *sessionsDispatcher) IsValid(sessionID string) bool {
 	_, err := d.GetSCB(sessionID)
 	return err == nil
 }
