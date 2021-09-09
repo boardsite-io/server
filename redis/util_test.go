@@ -1,22 +1,33 @@
-package redis
+package redis_test
 
-/*
 import (
+	"context"
 	"math"
 	"math/rand"
-	"os"
+	"strconv"
 	"testing"
 
-	"github.com/heat1q/boardsite/api/types"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
+	"github.com/heat1q/boardsite/api/types"
+	"github.com/heat1q/boardsite/redis"
 )
 
-func setupConn() error {
-	os.Setenv("B_REDIS_HOST", "localhost")
-	os.Setenv("B_REDIS_PORT", "6379")
-
-	return InitPool()
+func setupHandler(t *testing.T) (*miniredis.Miniredis, redis.Handler) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	port, err := strconv.ParseInt(mr.Port(), 10, 32)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	h, err := redis.New(mr.Host(), uint16(port))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	return mr, h
 }
 
 func genRandStroke(id, pageID string, strokeType int) *types.Stroke {
@@ -37,14 +48,14 @@ func genRandStroke(id, pageID string, strokeType int) *types.Stroke {
 }
 
 func TestAddPages(t *testing.T) {
-	if err := setupConn(); err != nil {
-		t.Log("cannot connect to local Redis instance")
-		t.SkipNow()
-	}
-	defer ClosePool()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mr, h := setupHandler(t)
+	defer mr.Close()
+	defer h.ClosePool()
 
 	sid := "sid2"
-	ClearSession(sid)
+	_ = h.ClearSession(ctx, sid)
 
 	tests := []struct {
 		pid   string
@@ -60,13 +71,14 @@ func TestAddPages(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		AddPage(sid, test.pid, test.index, nil)
-		pids, err := GetPages(sid)
+		_ = h.AddPage(ctx, sid, test.pid, test.index, nil)
+		pids, err := h.GetPages(ctx, sid)
 		assert.NoError(t, err)
 		assert.Equal(t, test.want, pids, "pageRank is not correct")
 	}
 }
 
+/*
 func TestMetaPages(t *testing.T) {
 	if err := setupConn(); err != nil {
 		t.Log("cannot connect to local Redis instance")
