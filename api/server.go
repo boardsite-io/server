@@ -50,7 +50,12 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 
 	// configure CORS
 	handl := handlers.CORS(
-		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedOrigins(
+			[]string{
+				"https://boardsite.io",  // production
+				"http://localhost:3000", // testing
+			},
+		),
 		handlers.AllowedHeaders(
 			[]string{
 				"Content-Type",
