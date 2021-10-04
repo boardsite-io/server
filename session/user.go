@@ -2,9 +2,39 @@ package session
 
 import (
 	"errors"
+	"fmt"
+
+	gonanoid "github.com/matoous/go-nanoid/v2"
 
 	"github.com/heat1q/boardsite/api/types"
 )
+
+// NewUser generate a new user struct based on
+// the alias and color attribute
+//
+// Does some sanitize checks.
+func (scb *ControlBlock) NewUser(alias, color string) (*types.User, error) {
+	if len(alias) > 24 {
+		alias = alias[:24]
+	}
+	//TODO check if html color ?
+	if len(color) != 7 {
+		return nil, fmt.Errorf("incorrect html color")
+	}
+
+	id, err := gonanoid.New(16)
+	if err != nil {
+		return nil, err
+	}
+	user := &types.User{
+		ID:    id,
+		Alias: alias,
+		Color: color,
+	}
+	// set user waiting
+	scb.UserReady(user)
+	return user, err
+}
 
 // UserReady adds an user to the usersReady map.
 func (scb *ControlBlock) UserReady(u *types.User) {

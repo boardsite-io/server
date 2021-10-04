@@ -83,7 +83,7 @@ func (d *sessionsDispatcher) Close(sessionID string) error {
 	d.mu.Unlock()
 
 	if err := scb.Attachments.Clear(); err != nil {
-		log.Printf("cannot clear attachments for %s: %v\n", scb.ID, err)
+		log.Printf("cannot clear attachment for %s: %v\n", scb.ID, err)
 	}
 
 	log.Printf("Close session %s", scb.ID)

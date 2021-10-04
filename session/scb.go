@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/heat1q/boardsite/api/types"
-	"github.com/heat1q/boardsite/attachments"
+	"github.com/heat1q/boardsite/attachment"
 	"github.com/heat1q/boardsite/redis"
 )
 
@@ -14,7 +14,7 @@ import (
 type ControlBlock struct {
 	ID string
 
-	Attachments attachments.Handler
+	Attachments attachment.Handler
 	Dispatcher  Dispatcher
 
 	broadcast chan *types.Message
@@ -41,7 +41,7 @@ type ControlBlock struct {
 func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatcher) *ControlBlock {
 	scb := &ControlBlock{
 		ID:          sessionID,
-		Attachments: attachments.NewLocalHandler(sessionID),
+		Attachments: attachment.NewLocalHandler(sessionID),
 		Dispatcher:  dispatcher,
 		broadcast:   make(chan *types.Message),
 		echo:        make(chan *types.Message),

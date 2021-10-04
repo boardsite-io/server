@@ -1,4 +1,4 @@
-package attachments
+package attachment
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/heat1q/boardsite/api/types/errors"
 )
 
-const attachmentDir = "/tmp/attachments"
+const attachmentDir = "/tmp/attachment"
 
 var (
 	ErrCreate   = errors.New("cannot allocate resource")
@@ -23,7 +23,7 @@ type localAttachment struct {
 	baseDir string
 }
 
-// NewLocalHandler create a new attachment Handler for storing attachments in the local filesystem.
+// NewLocalHandler create a new attachment Handler for storing attachment in the local filesystem.
 func NewLocalHandler(sessionID string) Handler {
 	return &localAttachment{
 		baseDir: fmt.Sprintf("%s/%s", attachmentDir, sessionID),

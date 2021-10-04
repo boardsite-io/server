@@ -1,4 +1,4 @@
-package attachments
+package attachment
 
 type Handler interface {
 	Upload(data []byte) (string, error)
