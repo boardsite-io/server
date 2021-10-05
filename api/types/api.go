@@ -68,6 +68,14 @@ type ContentMouseMove struct {
 	Y float64 `json:"y"`
 }
 
+type CreateSessionResponse struct {
+	SessionID string `json:"sessionId"`
+}
+
+type AttachmentResponse struct {
+	AttachID string `json:"attachId"`
+}
+
 // type ContentUserSync map[string]*User
 // type ContentPageSync []string
 // type ContentPageClear []string
