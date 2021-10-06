@@ -11,7 +11,7 @@ go build -o /out/boardsite .
 
 FROM builder AS deploy
 ENV B_PORT=8000
-ENV B_CORS_ORIGINS="http://boardsite.io"
+ENV B_CORS_ORIGINS="https://boardsite.io"
 EXPOSE 8000
 CMD ["/out/boardsite"]
 
