@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
-	"github.com/heat1q/boardsite/session"
+	"strings"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
 	"github.com/heat1q/boardsite/api/config"
 	"github.com/heat1q/boardsite/redis"
+	"github.com/heat1q/boardsite/session"
 )
 
 type Server struct {
@@ -48,14 +48,10 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	// set routes
 	s.setRoutes()
 
+	strings.Split(s.cfg.Server.AllowedOrigins, ",")
 	// configure CORS
 	handl := handlers.CORS(
-		handlers.AllowedOrigins(
-			[]string{
-				"https://boardsite.io",  // production
-				"http://localhost:3000", // testing
-			},
-		),
+		handlers.AllowedOrigins(strings.Split(s.cfg.Server.AllowedOrigins, ",")),
 		handlers.AllowedHeaders(
 			[]string{
 				"Content-Type",

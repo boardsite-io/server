@@ -9,12 +9,10 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
 go build -o /out/boardsite .
 
-FROM builder AS unit-test
-RUN --mount=type=cache,target=/root/.cache/go-build \
-go test -v ./...
-
 FROM builder AS deploy
-ENV B_PORT=80
+ENV B_PORT=8000
+ENV B_CORS_ORIGINS="http://boardsite.io"
+EXPOSE 8000
 CMD ["/out/boardsite"]
 
 FROM scratch AS bin

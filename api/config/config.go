@@ -13,6 +13,10 @@ const (
 	serverPort        = "B_PORT"
 	defaultServerPort = "8000"
 
+	allowedOrigins = "B_CORS_ORIGINS"
+	// comma separated list of allowed origins
+	defaultOrigins = "*"
+
 	cacheHost        = "B_REDIS_HOST"
 	defaultCacheHost = "localhost"
 	cachePort        = "B_REDIS_PORT"
@@ -26,8 +30,9 @@ type Configuration struct {
 	}
 
 	Server struct {
-		Host string
-		Port uint16
+		Host           string
+		Port           uint16
+		AllowedOrigins string
 	}
 
 	Cache struct {
@@ -42,8 +47,11 @@ func New() (*Configuration, error) {
 	viper.AutomaticEnv()
 	set("app.name", "", name)
 	set("app.version", "", version)
+
 	set("server.host", serverHost, defaultServerHost)
 	set("server.port", serverPort, defaultServerPort)
+	set("server.allowedOrigins", allowedOrigins, defaultOrigins)
+
 	set("cache.host", cacheHost, defaultCacheHost)
 	set("cache.port", cachePort, defaultCachePort)
 
