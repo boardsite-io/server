@@ -7,6 +7,7 @@ services:
     environment: 
       - B_REDIS_HOST=redis
       - B_REDIS_PORT=6379
+      - B_CORS_ORIGINS=*
     ports:
       - "8000:8000"
     depends_on:

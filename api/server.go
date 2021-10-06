@@ -3,12 +3,11 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"strings"
-
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 
 	"github.com/heat1q/boardsite/api/config"
 	"github.com/heat1q/boardsite/redis"
@@ -48,10 +47,11 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	// set routes
 	s.setRoutes()
 
-	strings.Split(s.cfg.Server.AllowedOrigins, ",")
 	// configure CORS
+	origins := strings.Split(s.cfg.Server.AllowedOrigins, ",")
+	log.Printf("CORS: allowed origins: %v\n", origins)
 	handl := handlers.CORS(
-		handlers.AllowedOrigins(strings.Split(s.cfg.Server.AllowedOrigins, ",")),
+		handlers.AllowedOrigins(origins),
 		handlers.AllowedHeaders(
 			[]string{
 				"Content-Type",
