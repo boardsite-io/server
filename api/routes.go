@@ -5,10 +5,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/heat1q/boardsite/api/middleware"
-
 	"github.com/gorilla/mux"
 
+	"github.com/heat1q/boardsite/api/middleware"
 	"github.com/heat1q/boardsite/api/request"
 	"github.com/heat1q/boardsite/api/types"
 	apiErrors "github.com/heat1q/boardsite/api/types/errors"

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/heat1q/boardsite/api/types"
-
 	"github.com/gomodule/redigo/redis"
+
+	"github.com/heat1q/boardsite/api/types"
 )
 
 const (

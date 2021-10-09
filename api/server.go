@@ -6,13 +6,12 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/heat1q/boardsite/session"
-
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
 	"github.com/heat1q/boardsite/api/config"
 	"github.com/heat1q/boardsite/redis"
+	"github.com/heat1q/boardsite/session"
 )
 
 type Server struct {
