@@ -34,11 +34,12 @@ type ControlBlock struct {
 	// Active Client users that are in the session
 	// and have an intact WS connection
 	users    map[string]*types.User
+	maxUsers int
 	numUsers int
 }
 
 // NewControlBlock creates a new Session ControlBlock with unique ID.
-func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatcher) *ControlBlock {
+func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatcher, maxUsers int) *ControlBlock {
 	scb := &ControlBlock{
 		ID:          sessionID,
 		Attachments: attachment.NewLocalHandler(sessionID),
@@ -50,6 +51,7 @@ func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatche
 		signalClose: make(chan struct{}),
 		usersReady:  make(map[string]*types.User),
 		users:       make(map[string]*types.User),
+		maxUsers:    maxUsers,
 	}
 
 	// start goroutines for broadcasting and saving changes to board

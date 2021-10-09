@@ -32,15 +32,22 @@ func (scb *ControlBlock) NewUser(alias, color string) (*types.User, error) {
 		Color: color,
 	}
 	// set user waiting
-	scb.UserReady(user)
+	err = scb.UserReady(user)
 	return user, err
 }
 
 // UserReady adds an user to the usersReady map.
-func (scb *ControlBlock) UserReady(u *types.User) {
+func (scb *ControlBlock) UserReady(u *types.User) error {
+	scb.muUsr.RLock()
+	defer scb.muUsr.RUnlock()
+	if scb.numUsers >= scb.maxUsers {
+		return errors.New("maximum number of connected users in session has been reached")
+	}
+
 	scb.muRdyUsr.Lock()
 	scb.usersReady[u.ID] = u
 	scb.muRdyUsr.Unlock()
+	return nil
 }
 
 // GetUserReady returns the user with userID ready to join a session.

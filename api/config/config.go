@@ -21,6 +21,9 @@ const (
 	defaultCacheHost = "localhost"
 	cachePort        = "B_REDIS_PORT"
 	defaultCachePort = "6379"
+
+	// max number of users allowed in one session
+	sessionMaxUsers = 10
 )
 
 type Configuration struct {
@@ -39,6 +42,10 @@ type Configuration struct {
 		Host string
 		Port uint16
 	}
+
+	Session struct {
+		MaxUsers int
+	}
 }
 
 func New() (*Configuration, error) {
@@ -54,6 +61,8 @@ func New() (*Configuration, error) {
 
 	set("cache.host", cacheHost, defaultCacheHost)
 	set("cache.port", cachePort, defaultCachePort)
+
+	viper.Set("session.maxUsers", sessionMaxUsers)
 
 	if err := viper.Unmarshal(cfg); err != nil {
 		return nil, err

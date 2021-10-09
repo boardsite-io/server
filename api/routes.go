@@ -37,7 +37,7 @@ func (s *Server) setHandleFunc(path string, fn request.HandlerFunc) *mux.Route {
 // postCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
 func (s *Server) postCreateSession(c *request.Context) error {
-	idstr, err := s.dispatcher.Create()
+	idstr, err := s.dispatcher.Create(s.cfg.Session.MaxUsers)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (s *Server) postUsers(c *request.Context) error {
 	// new user struct with alias and color
 	user, err := scb.NewUser(userReq.Alias, userReq.Color)
 	if err != nil {
-		return err
+		return apiErrors.BadRequest.SetInfo(err)
 	}
 
 	return c.JSON(http.StatusCreated, user)

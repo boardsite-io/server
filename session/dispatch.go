@@ -18,7 +18,7 @@ type Dispatcher interface {
 	// GetSCB returns the session control block for given sessionID.
 	GetSCB(sessionID string) (*ControlBlock, error)
 	// Create creates and initializes a new SessionControl struct
-	Create() (string, error)
+	Create(maxUsers int) (string, error)
 	// Close removes the SCB from the activesession map and closes the session.
 	Close(sessionID string) error
 	// IsValid checks if session with sessionID exists.
@@ -48,7 +48,7 @@ func (d *sessionsDispatcher) GetSCB(sessionID string) (*ControlBlock, error) {
 	return scb, nil
 }
 
-func (d *sessionsDispatcher) Create() (string, error) {
+func (d *sessionsDispatcher) Create(maxUsers int) (string, error) {
 	var sid string
 	for {
 		id, err := gonanoid.Generate(alphabet, 8)
@@ -62,7 +62,7 @@ func (d *sessionsDispatcher) Create() (string, error) {
 		}
 	}
 
-	scb := NewControlBlock(sid, d.cache, d)
+	scb := NewControlBlock(sid, d.cache, d, maxUsers)
 	// assign to SessionControl struct
 	d.mu.Lock()
 	d.activeSession[scb.ID] = scb
