@@ -3,11 +3,12 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 
 	"github.com/heat1q/boardsite/api/config"
 	"github.com/heat1q/boardsite/redis"

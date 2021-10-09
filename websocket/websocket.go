@@ -5,10 +5,10 @@ import (
 	"log"
 	"net/http"
 
+	gws "github.com/gorilla/websocket"
+
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/session"
-
-	gws "github.com/gorilla/websocket"
 )
 
 var upgrader = gws.Upgrader{

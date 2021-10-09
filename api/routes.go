@@ -1,11 +1,13 @@
 package api
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 
 	"github.com/gorilla/mux"
 
+	"github.com/heat1q/boardsite/api/middleware"
 	"github.com/heat1q/boardsite/api/request"
 	"github.com/heat1q/boardsite/api/types"
 	apiErrors "github.com/heat1q/boardsite/api/types/errors"
@@ -28,8 +30,8 @@ func (s *Server) setRoutes() {
 	s.setHandleFunc("/b/{id}/attachments/{attachId}", s.getAttachment).Methods(http.MethodGet)
 }
 
-func (s *Server) setHandleFunc(path string, fn func(*request.Context) error) *mux.Route {
-	return s.router.HandleFunc(path, request.NewHandler(fn))
+func (s *Server) setHandleFunc(path string, fn request.HandlerFunc) *mux.Route {
+	return s.router.HandleFunc(path, request.NewHandler(fn, middleware.ErrorMapper, middleware.RequestLogger))
 }
 
 // postCreateSession handles the request for creating a new session.
@@ -39,7 +41,7 @@ func (s *Server) postCreateSession(c *request.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusCreated, idstr)
+	return c.JSON(http.StatusCreated, types.CreateSessionResponse{SessionID: idstr})
 }
 
 func (s *Server) getUsers(c *request.Context) error {
@@ -58,7 +60,8 @@ func (s *Server) postUsers(c *request.Context) error {
 	}
 
 	var userReq types.User
-	if err := types.DecodeMsgContent(c.Request().Body, &userReq); err != nil {
+
+	if err := json.NewDecoder(c.Request().Body).Decode(&userReq); err != nil {
 		return apiErrors.BadRequest
 	}
 
@@ -119,7 +122,7 @@ func (s *Server) postPages(c *request.Context) error {
 
 	// add a Page
 	var data types.ContentPageRequest
-	if err := types.DecodeMsgContent(c.Request().Body, &data); err != nil {
+	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.BadRequest.SetInfo(err)
 	}
 
@@ -137,7 +140,7 @@ func (s *Server) putPages(c *request.Context) error {
 	}
 
 	var data types.ContentPageRequest
-	if err := types.DecodeMsgContent(c.Request().Body, &data); err != nil {
+	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.BadRequest
 	}
 
@@ -155,7 +158,7 @@ func (s *Server) deletePages(c *request.Context) error {
 	}
 
 	var data types.ContentPageRequest
-	if err := types.DecodeMsgContent(c.Request().Body, &data); err != nil {
+	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.BadRequest
 	}
 
@@ -228,7 +231,7 @@ func (s *Server) postAttachment(c *request.Context) error {
 		return apiErrors.InternalServerError.SetInfo(err)
 	}
 
-	return c.JSON(http.StatusCreated, attachID)
+	return c.JSON(http.StatusCreated, types.AttachmentResponse{AttachID: attachID})
 }
 
 func (s *Server) getAttachment(c *request.Context) error {
