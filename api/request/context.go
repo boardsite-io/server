@@ -99,7 +99,7 @@ func NewHandler(handl HandlerFunc, mwFn ...func(fn HandlerFunc) HandlerFunc) htt
 		}
 
 		// error should be resolved at this point
-		if err := next(c); err != nil {
+		if err := next(c); err != nil && !isErrorStatusCode(c.statusCode) {
 			log.Printf("unhandeld error: %v", err)
 		}
 
@@ -114,4 +114,8 @@ func NewHandler(handl HandlerFunc, mwFn ...func(fn HandlerFunc) HandlerFunc) htt
 			c.w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
+}
+
+func isErrorStatusCode(status int) bool {
+	return status/100 == 4 || status/100 == 5
 }

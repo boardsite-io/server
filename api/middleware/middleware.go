@@ -48,6 +48,10 @@ func RequestLogger(next request.HandlerFunc) request.HandlerFunc {
 			}
 		}
 
+		if err != nil {
+			sb.WriteString(fmt.Sprintf(" -- error: %v", err))
+		}
+
 		elapsed := time.Since(start)
 		sb.WriteString(fmt.Sprintf(" -- took %s", elapsed))
 
@@ -64,9 +68,9 @@ func ErrorMapper(next request.HandlerFunc) request.HandlerFunc {
 		// write error response
 		if err != nil {
 			err = apiErrors.MaptoHTTPError(err)
-			return c.JSON(err.(*apiErrors.Wrapper).Code, err)
+			_ = c.JSON(err.(*apiErrors.Wrapper).StatusCode, err)
 		}
 
-		return nil
+		return err
 	}
 }

@@ -47,7 +47,7 @@ func (s *Server) postCreateSession(c *request.Context) error {
 func (s *Server) getUsers(c *request.Context) error {
 	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
-		return apiErrors.NotFound
+		return apiErrors.NotFound.SetInfo(err)
 	}
 	return c.JSON(http.StatusOK, scb.GetUsers())
 }
@@ -56,13 +56,13 @@ func (s *Server) getUsers(c *request.Context) error {
 func (s *Server) postUsers(c *request.Context) error {
 	scb, err := s.dispatcher.GetSCB(c.Vars()["id"])
 	if err != nil {
-		return apiErrors.NotFound
+		return apiErrors.NotFound.SetInfo(err)
 	}
 
 	var userReq types.User
 
 	if err := json.NewDecoder(c.Request().Body).Decode(&userReq); err != nil {
-		return apiErrors.BadRequest
+		return apiErrors.BadRequest.SetInfo(err)
 	}
 
 	// new user struct with alias and color
@@ -141,7 +141,7 @@ func (s *Server) putPages(c *request.Context) error {
 
 	var data types.ContentPageRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
-		return apiErrors.BadRequest
+		return apiErrors.BadRequest.SetInfo(err)
 	}
 
 	if err := scb.UpdatePages(c.Ctx(), data.PageID, data.Meta, data.Clear); err != nil {
@@ -159,7 +159,7 @@ func (s *Server) deletePages(c *request.Context) error {
 
 	var data types.ContentPageRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
-		return apiErrors.BadRequest
+		return apiErrors.BadRequest.SetInfo(err)
 	}
 
 	if err := scb.DeletePages(c.Ctx(), data.PageID...); err != nil {
