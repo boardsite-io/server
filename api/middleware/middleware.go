@@ -40,7 +40,8 @@ func RequestLogger(next request.HandlerFunc) request.HandlerFunc {
 
 		respBody, _ := io.ReadAll(c.ResponseBody())
 		if len(respBody) > 0 {
-			if json.Valid(respBody) {
+			// dont spam the logs with huge responses
+			if len(respBody) < 2<<10 && json.Valid(respBody) {
 				sb.WriteString(fmt.Sprintf(" -- resp body: %s", string(respBody)))
 			} else {
 				sb.WriteString(fmt.Sprintf(" -- resp body content length: %d", len(respBody)))
