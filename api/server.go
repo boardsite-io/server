@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -48,13 +49,10 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	s.setRoutes()
 
 	// configure CORS
+	origins := strings.Split(s.cfg.Server.AllowedOrigins, ",")
+	log.Printf("CORS: allowed origins: %v\n", origins)
 	handl := handlers.CORS(
-		handlers.AllowedOrigins(
-			[]string{
-				"https://boardsite.io",  // production
-				"http://localhost:3000", // testing
-			},
-		),
+		handlers.AllowedOrigins(origins),
 		handlers.AllowedHeaders(
 			[]string{
 				"Content-Type",

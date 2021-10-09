@@ -7,9 +7,10 @@ services:
     environment: 
       - B_REDIS_HOST=redis
       - B_REDIS_PORT=6379
+      - B_CORS_ORIGINS=*
     ports:
-      - "$COMPOSE_HOST_PORT:80"
-    depends_on: 
+      - "8000:8000"
+    depends_on:
       - redis
   redis:
     image: "redis:alpine"
