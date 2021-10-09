@@ -21,7 +21,7 @@ func main() {
 	run, shutdown := s.Serve(ctx)
 	defer shutdown()
 
-	stop := make(chan os.Signal)
+	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
 	go func() {
 		select {

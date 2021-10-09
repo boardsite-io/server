@@ -1,6 +1,12 @@
-name: Deploy
+name: Deploy to Testing
 
-on: workflow_dispatch
+on:
+  push:
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - ".gitignore"
+    branches: [ master ]
 
 jobs:
   build:
@@ -42,10 +48,10 @@ jobs:
             LogLevel ERROR
           END
         env:
-          SSH_USER: ${{ secrets.BOARDSITE_SSH_USER }}
-          SSH_KEY: ${{ secrets.BOARDSITE_SSH_KEY }}
-          SSH_HOST: ${{ secrets.BOARDSITE_SSH_HOST }}
-          SSH_PORT: ${{ secrets.BOARDSITE_SSH_PORT }}
+          SSH_USER: ${{ secrets.BOARDSITE_TESTING_SSH_USER }}
+          SSH_KEY: ${{ secrets.BOARDSITE_TESTING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.BOARDSITE_TESTING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.BOARDSITE_TESTING_SSH_PORT }}
       - name: Deploy
         run: |
           ssh deploy "cd ~/boardsite-io-deploy && make && make deploy"
