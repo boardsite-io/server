@@ -3,40 +3,12 @@ package websocket
 import (
 	"context"
 	"log"
-	"net/http"
 
 	gws "github.com/gorilla/websocket"
 
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/session"
 )
-
-var upgrader = gws.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin:     checkOrigin,
-}
-
-// UpgradeProtocol to websocket protocol
-func UpgradeProtocol(
-	ctx context.Context,
-	w http.ResponseWriter,
-	r *http.Request,
-	scb *session.ControlBlock,
-	userID string,
-) error {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return err
-	}
-	return initSocket(ctx, scb, userID, conn)
-}
-
-// For development purpose
-func checkOrigin(r *http.Request) bool {
-	_ = r
-	return true
-}
 
 func onClientConnect(scb *session.ControlBlock, userID string, conn *gws.Conn) error {
 	u, err := scb.GetUserReady(userID)
@@ -52,13 +24,12 @@ func onClientConnect(scb *session.ControlBlock, userID string, conn *gws.Conn) e
 func onClientDisconnect(scb *session.ControlBlock, userID string, conn *gws.Conn) {
 	scb.UserDisconnect(userID)
 	log.Println(scb.ID + " :: " + conn.RemoteAddr().String() + " disconnected")
-	conn.WriteMessage(gws.TextMessage, []byte("connection closed by host"))
-	// close the websocket connection
-	conn.Close()
+	_ = conn.WriteMessage(gws.TextMessage, []byte("connection closed by host"))
+	_ = conn.Close()
 }
 
-// initSocket starts the websocket
-func initSocket(ctx context.Context, scb *session.ControlBlock, userID string, conn *gws.Conn) error {
+// Subscribe subscribes to the websocket connection
+func Subscribe(ctx context.Context, conn *gws.Conn, scb *session.ControlBlock, userID string) error {
 	if err := onClientConnect(scb, userID, conn); err != nil {
 		return err
 	}

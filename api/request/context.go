@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	gws "github.com/gorilla/websocket"
 )
 
 type Context struct {
@@ -18,6 +19,7 @@ type Context struct {
 	statusCode int
 	Headers    http.Header
 	body       []byte
+	hijacked   bool
 }
 
 type HandlerFunc func(*Context) error
@@ -88,6 +90,25 @@ func (c *Context) NoContent(status int) error {
 	return nil
 }
 
+var upgrader = gws.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	// already checked by CORS middleware
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+// Upgrade upgrade a connection to a websocker connection
+func (c *Context) Upgrade(onConnectFn func(conn *gws.Conn) error) error {
+	conn, err := upgrader.Upgrade(c.w, c.r, nil)
+	if err != nil {
+		return err
+	}
+	c.hijacked = true
+	return onConnectFn(conn)
+}
+
 // NewHandler wraps a Context handler and returns an http handler functions
 func NewHandler(handl HandlerFunc, mwFn ...func(fn HandlerFunc) HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -104,14 +125,16 @@ func NewHandler(handl HandlerFunc, mwFn ...func(fn HandlerFunc) HandlerFunc) htt
 		}
 
 		// write response
-		for k, vals := range c.Headers {
-			for _, v := range vals {
-				c.w.Header().Add(k, v)
+		if !c.hijacked {
+			for k, vals := range c.Headers {
+				for _, v := range vals {
+					c.w.Header().Add(k, v)
+				}
 			}
-		}
-		c.w.WriteHeader(c.statusCode)
-		if _, err := c.w.Write(c.body); err != nil {
-			c.w.WriteHeader(http.StatusInternalServerError)
+			c.w.WriteHeader(c.statusCode)
+			if _, err := c.w.Write(c.body); err != nil {
+				c.w.WriteHeader(http.StatusInternalServerError)
+			}
 		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	gws "github.com/gorilla/websocket"
 
 	"github.com/heat1q/boardsite/api/middleware"
 	"github.com/heat1q/boardsite/api/request"
@@ -91,7 +92,11 @@ func (s *Server) getSocket(c *request.Context) error {
 		return apiErrors.NotFound.SetInfo(err)
 	}
 
-	return websocket.UpgradeProtocol(c.Ctx(), c.ResponseWriter(), c.Request(), scb, userID)
+	onConnect := func(conn *gws.Conn) error {
+		return websocket.Subscribe(c.Ctx(), conn, scb, userID)
+	}
+
+	return c.Upgrade(onConnect)
 }
 
 func (s *Server) getPages(c *request.Context) error {
