@@ -45,6 +45,8 @@ type PageBackground struct {
 
 // PageMeta declares some page meta data.
 type PageMeta struct {
+	Width      int            `json:"width"`
+	Height     int            `json:"height"`
 	Background PageBackground `json:"background"`
 }
 
