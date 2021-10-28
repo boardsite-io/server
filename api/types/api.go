@@ -38,15 +38,15 @@ type User struct {
 // PageStyle declares the style of the page background.
 type PageBackground struct {
 	// page background
-	Style    string `json:"style,omitempty"`
-	PageNum  int    `json:"documentPageNum"`
-	AttachId string `json:"attachId"`
+	Style     string `json:"style,omitempty"`
+	PageNum   int    `json:"documentPageNum"`
+	AttachURL string `json:"attachURL"`
 }
 
 // PageMeta declares some page meta data.
 type PageMeta struct {
-	Width      int            `json:"width"`
-	Height     int            `json:"height"`
+	Width      float64        `json:"width"`
+	Height     float64        `json:"height"`
 	Background PageBackground `json:"background"`
 }
 
