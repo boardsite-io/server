@@ -43,10 +43,14 @@ type PageBackground struct {
 	AttachURL string `json:"attachURL"`
 }
 
+type PageSize struct {
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
 // PageMeta declares some page meta data.
 type PageMeta struct {
-	Width      float64        `json:"width"`
-	Height     float64        `json:"height"`
+	PageSize   PageSize       `json:"size"`
 	Background PageBackground `json:"background"`
 }
 
