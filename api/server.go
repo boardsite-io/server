@@ -3,22 +3,22 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/heat1q/boardsite/api/config"
+	apimw "github.com/heat1q/boardsite/api/middleware"
 	"github.com/heat1q/boardsite/redis"
 	"github.com/heat1q/boardsite/session"
 )
 
 type Server struct {
-	cfg        *config.Configuration
-	router     *mux.Router
-	dispatcher session.Dispatcher
+	cfg     *config.Configuration
+	echo    *echo.Echo
+	session session.Handler
 }
 
 func NewServer() (*Server, error) {
@@ -28,59 +28,56 @@ func NewServer() (*Server, error) {
 	}
 
 	return &Server{
-		cfg:    cfg,
-		router: mux.NewRouter(),
+		cfg: cfg,
 	}, nil
 }
 
 // Serve wraps the main application
 func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
+	s.echo = echo.New()
+	s.echo.HTTPErrorHandler = apimw.GetCustomHTTPErrorHandler(s.echo)
+
 	// setup redis cache
 	redisHandler, err := redis.New(s.cfg.Cache.Host, s.cfg.Cache.Port)
 	if err != nil {
-		log.Fatal(err.Error())
+		s.echo.Logger.Fatalf("redis pool: %v", err)
 	}
-	log.Println("Redis connection pool initialized.")
+	s.echo.Logger.Info("Redis connection pool initialized.")
 
-	// set up session dipatcher/handler
-	s.dispatcher = session.NewDispatcher(redisHandler)
+	// set up session dispatcher/handler
+	s.session = session.NewHandler(s.cfg, redisHandler)
 
 	// set routes
 	s.setRoutes()
 
 	// configure CORS
 	origins := strings.Split(s.cfg.Server.AllowedOrigins, ",")
-	log.Printf("CORS: allowed origins: %v\n", origins)
-	handl := handlers.CORS(
-		handlers.AllowedOrigins(origins),
-		handlers.AllowedHeaders(
-			[]string{
-				"Content-Type",
-			},
-		),
-		handlers.AllowedMethods(
-			[]string{
-				"GET",
-				"HEAD",
-				"POST",
-				"PUT",
-				"DELETE",
-			},
-		),
-	)(s.router)
-	handl = handlers.ContentTypeHandler(
-		handl,
-		"text/plain",
-		"application/json",
-		"image/*",
-		"multipart/form-data",
-	)
+	s.echo.Logger.Infof("CORS: allowed origins: %v", origins)
 
-	serv := http.Server{Addr: fmt.Sprintf(":%d", s.cfg.Server.Port), Handler: handl}
-	log.Printf("Starting %s@%s listening on :%d\n", s.cfg.App.Name, s.cfg.App.Version, s.cfg.Server.Port)
+	s.echo.Use(s.mwCORS(), apimw.RequestLogger)
 
-	return serv.ListenAndServe, func() error {
-		redisHandler.ClosePool()
-		return serv.Shutdown(ctx)
-	}
+	//handl = handlers.ContentTypeHandler(
+	//	handl,
+	//	"text/plain",
+	//	"application/json",
+	//	"image/*",
+	//	"multipart/form-data",
+	//)
+
+	return func() error {
+			s.echo.Logger.Infof("Starting %s@%s listening on :%d\n", s.cfg.App.Name, s.cfg.App.Version, s.cfg.Server.Port)
+			return s.echo.Start(fmt.Sprintf(":%d", s.cfg.Server.Port))
+		}, func() error {
+			_ = redisHandler.ClosePool()
+			return s.echo.Shutdown(ctx)
+		}
+}
+
+func (s *Server) mwCORS() echo.MiddlewareFunc {
+	origins := strings.Split(s.cfg.Server.AllowedOrigins, ",")
+	return middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: origins,
+		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodDelete},
+		AllowHeaders: []string{echo.HeaderContentType},
+	})
 }

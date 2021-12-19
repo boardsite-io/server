@@ -1,13 +1,13 @@
 package attachment
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/h2non/filetype"
 	gonanoid "github.com/matoous/go-nanoid"
-
-	"github.com/heat1q/boardsite/api/types/errors"
 )
 
 const attachmentDir = "/tmp/attachment"
@@ -56,16 +56,17 @@ func (a *localAttachment) Upload(data []byte) (string, error) {
 	return attachID, nil
 }
 
-func (a *localAttachment) Get(attachID string) ([]byte, string, error) {
-	data, err := os.ReadFile(fmt.Sprintf("%s/%s", a.baseDir, attachID))
+func (a *localAttachment) Get(attachID string) (io.Reader, string, error) {
+	f, err := os.Open(fmt.Sprintf("%s/%s", a.baseDir, attachID))
 	if err != nil {
 		return nil, "", ErrNotFound
 	}
-	fType, err := filetype.Match(data)
+	fType, err := filetype.MatchReader(f)
 	if err != nil {
 		return nil, "", ErrNotFound
 	}
-	return data, fType.MIME.Value, nil
+	_, err = f.Seek(0, 0)
+	return f, fType.MIME.Value, err
 }
 
 func (a *localAttachment) Clear() error {

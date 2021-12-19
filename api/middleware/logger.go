@@ -4,26 +4,36 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"strings"
 	"time"
 
-	"github.com/heat1q/boardsite/api/request"
-	apiErrors "github.com/heat1q/boardsite/api/types/errors"
+	"github.com/labstack/echo/v4/middleware"
+
+	"github.com/labstack/echo/v4"
 )
 
-func RequestLogger(next request.HandlerFunc) request.HandlerFunc {
-	return func(c *request.Context) error {
+func RequestLogger(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
 		// measure response time
 		start := time.Now()
-		reqBody, _ := io.ReadAll(c.RequestBody())
+		var reqBody, respBody []byte
+		cfg := middleware.BodyDumpConfig{
+			Handler: func(c echo.Context, req []byte, resp []byte) {
+				reqBody = req
+				// only log JSON responses, no png etc.
+				if len(resp) < 2<<10 && json.Valid(resp) {
+					respBody = resp
+				}
+			},
+		}
+		bodyDump := middleware.BodyDumpWithConfig(cfg)
 
-		err := next(c)
+		err := bodyDump(next)(c)
 
 		sb := strings.Builder{}
 		sb.WriteString(fmt.Sprintf("-- incoming request (%d) %s %s -- %s",
-			c.StatusCode(),
+			c.Response().Status,
 			c.Request().Method,
 			c.Request().RequestURI,
 			c.Request().Header.Get("User-Agent"),
@@ -38,7 +48,6 @@ func RequestLogger(next request.HandlerFunc) request.HandlerFunc {
 			}
 		}
 
-		respBody, _ := io.ReadAll(c.ResponseBody())
 		if len(respBody) > 0 {
 			// dont spam the logs with huge responses
 			if len(respBody) < 2<<10 && json.Valid(respBody) {
@@ -56,20 +65,6 @@ func RequestLogger(next request.HandlerFunc) request.HandlerFunc {
 		sb.WriteString(fmt.Sprintf(" -- took %s", elapsed))
 
 		log.Println(sb.String())
-
-		return err
-	}
-}
-
-func ErrorMapper(next request.HandlerFunc) request.HandlerFunc {
-	return func(c *request.Context) error {
-		err := next(c)
-
-		// write error response
-		if err != nil {
-			err = apiErrors.MaptoHTTPError(err)
-			_ = c.JSON(err.(*apiErrors.Wrapper).StatusCode, err)
-		}
 
 		return err
 	}

@@ -1,16 +1,35 @@
-package websocket
+package session
 
 import (
 	"context"
 	"log"
+	"net/http"
 
 	gws "github.com/gorilla/websocket"
+	"github.com/labstack/echo/v4"
 
 	"github.com/heat1q/boardsite/api/types"
-	"github.com/heat1q/boardsite/session"
 )
 
-func onClientConnect(scb *session.ControlBlock, userID string, conn *gws.Conn) error {
+var upgrader = gws.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	// already checked by CORS middleware
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+// upgrade upgrade a connection to a websocker connection
+func upgrade(c echo.Context, onConnectFn func(conn *gws.Conn) error) error {
+	conn, err := upgrader.Upgrade(c.Response().Writer, c.Request(), nil)
+	if err != nil {
+		return err
+	}
+	return onConnectFn(conn)
+}
+
+func onClientConnect(scb *ControlBlock, userID string, conn *gws.Conn) error {
 	u, err := scb.GetUserReady(userID)
 	if err != nil {
 		return err
@@ -21,7 +40,7 @@ func onClientConnect(scb *session.ControlBlock, userID string, conn *gws.Conn) e
 	return nil
 }
 
-func onClientDisconnect(scb *session.ControlBlock, userID string, conn *gws.Conn) {
+func onClientDisconnect(scb *ControlBlock, userID string, conn *gws.Conn) {
 	scb.UserDisconnect(userID)
 	log.Println(scb.ID + " :: " + conn.RemoteAddr().String() + " disconnected")
 	_ = conn.WriteMessage(gws.TextMessage, []byte("connection closed by host"))
@@ -29,7 +48,7 @@ func onClientDisconnect(scb *session.ControlBlock, userID string, conn *gws.Conn
 }
 
 // Subscribe subscribes to the websocket connection
-func Subscribe(ctx context.Context, conn *gws.Conn, scb *session.ControlBlock, userID string) error {
+func Subscribe(ctx context.Context, conn *gws.Conn, scb *ControlBlock, userID string) error {
 	if err := onClientConnect(scb, userID, conn); err != nil {
 		return err
 	}

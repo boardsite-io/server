@@ -14,6 +14,10 @@ import (
 
 func main() {
 	ctx := context.Background()
+	runServer(ctx)
+}
+
+func runServer(ctx context.Context) {
 	s, err := api.NewServer()
 	if err != nil {
 		log.Fatal(err.Error())
