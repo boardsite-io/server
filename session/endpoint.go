@@ -43,7 +43,7 @@ func NewHandler(cfg *config.Configuration, cache redis.Handler) Handler {
 // PostCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
 func (h *handler) PostCreateSession(c echo.Context) error {
-	idstr, err := h.dispatcher.Create(h.cfg.Session.MaxUsers)
+	idstr, err := h.dispatcher.Create(c.Request().Context(), h.cfg.Session.MaxUsers)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/heat1q/boardsite/api/config"
+	"github.com/heat1q/boardsite/api/log"
 	apimw "github.com/heat1q/boardsite/api/middleware"
 	"github.com/heat1q/boardsite/redis"
 	"github.com/heat1q/boardsite/session"
@@ -35,7 +36,10 @@ func NewServer() (*Server, error) {
 // Serve wraps the main application
 func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	s.echo = echo.New()
+	s.echo.HideBanner = true
+	s.echo.Logger = log.New()
 	s.echo.HTTPErrorHandler = apimw.GetCustomHTTPErrorHandler(s.echo)
+	s.echo.Use(s.mwCORS())
 
 	// setup redis cache
 	redisHandler, err := redis.New(s.cfg.Cache.Host, s.cfg.Cache.Port)
@@ -53,8 +57,6 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	// configure CORS
 	origins := strings.Split(s.cfg.Server.AllowedOrigins, ",")
 	s.echo.Logger.Infof("CORS: allowed origins: %v", origins)
-
-	s.echo.Use(s.mwCORS(), apimw.RequestLogger)
 
 	//handl = handlers.ContentTypeHandler(
 	//	handl,
