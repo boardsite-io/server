@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -86,7 +87,7 @@ func (scb *ControlBlock) UserConnect(u *types.User) {
 // UserDisconnect removes user from clients.
 //
 // Broadcast that user has disconnected from session.
-func (scb *ControlBlock) UserDisconnect(userID string) {
+func (scb *ControlBlock) UserDisconnect(ctx context.Context, userID string) {
 	scb.muUsr.Lock()
 	u := scb.users[userID]
 	delete(scb.users, u.ID)
@@ -97,7 +98,7 @@ func (scb *ControlBlock) UserDisconnect(userID string) {
 	// if session is empty after client disconnect
 	// the session needs to be set to inactive
 	if numCl == 0 {
-		_ = scb.Dispatcher.Close(scb.ID)
+		_ = scb.Dispatcher.Close(ctx, scb.ID)
 		return
 	}
 

@@ -1,12 +1,13 @@
 package session
 
 import (
+	"context"
 	"errors"
-	"log"
 	"sync"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
+	"github.com/heat1q/boardsite/api/log"
 	"github.com/heat1q/boardsite/redis"
 )
 
@@ -18,9 +19,9 @@ type Dispatcher interface {
 	// GetSCB returns the session control block for given sessionID.
 	GetSCB(sessionID string) (*ControlBlock, error)
 	// Create creates and initializes a new SessionControl struct
-	Create(maxUsers int) (string, error)
+	Create(ctx context.Context, maxUsers int) (string, error)
 	// Close removes the SCB from the activesession map and closes the session.
-	Close(sessionID string) error
+	Close(ctx context.Context, sessionID string) error
 	// IsValid checks if session with sessionID exists.
 	IsValid(sessionID string) bool
 }
@@ -48,7 +49,7 @@ func (d *sessionsDispatcher) GetSCB(sessionID string) (*ControlBlock, error) {
 	return scb, nil
 }
 
-func (d *sessionsDispatcher) Create(maxUsers int) (string, error) {
+func (d *sessionsDispatcher) Create(ctx context.Context, maxUsers int) (string, error) {
 	var sid string
 	for {
 		id, err := gonanoid.Generate(alphabet, 8)
@@ -67,12 +68,12 @@ func (d *sessionsDispatcher) Create(maxUsers int) (string, error) {
 	d.mu.Lock()
 	d.activeSession[scb.ID] = scb
 	d.mu.Unlock()
-	log.Printf("Create Session with ID: %s\n", scb.ID)
+	log.Ctx(ctx).Infof("Create Session with ID: %s", scb.ID)
 
 	return sid, nil
 }
 
-func (d *sessionsDispatcher) Close(sessionID string) error {
+func (d *sessionsDispatcher) Close(ctx context.Context, sessionID string) error {
 	scb, err := d.GetSCB(sessionID)
 	if err != nil {
 		return err
@@ -83,10 +84,10 @@ func (d *sessionsDispatcher) Close(sessionID string) error {
 	d.mu.Unlock()
 
 	if err := scb.Attachments.Clear(); err != nil {
-		log.Printf("cannot clear attachment for %s: %v\n", scb.ID, err)
+		log.Ctx(ctx).Warnf("cannot clear attachment for %s: %v\n", scb.ID, err)
 	}
 
-	log.Printf("Close session %s", scb.ID)
+	log.Ctx(ctx).Infof("Close session %s", scb.ID)
 
 	return nil
 }
