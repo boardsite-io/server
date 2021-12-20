@@ -58,14 +58,6 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	origins := strings.Split(s.cfg.Server.AllowedOrigins, ",")
 	s.echo.Logger.Infof("CORS: allowed origins: %v", origins)
 
-	//handl = handlers.ContentTypeHandler(
-	//	handl,
-	//	"text/plain",
-	//	"application/json",
-	//	"image/*",
-	//	"multipart/form-data",
-	//)
-
 	return func() error {
 			s.echo.Logger.Infof("Starting %s@%s listening on :%d\n", s.cfg.App.Name, s.cfg.App.Version, s.cfg.Server.Port)
 			return s.echo.Start(fmt.Sprintf(":%d", s.cfg.Server.Port))

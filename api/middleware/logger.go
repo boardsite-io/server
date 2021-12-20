@@ -28,10 +28,7 @@ func RequestLogger(logger echo.Logger) func(echo.HandlerFunc) echo.HandlerFunc {
 			cfg := middleware.BodyDumpConfig{
 				Handler: func(c echo.Context, req []byte, resp []byte) {
 					reqBody = req
-					// only log JSON responses, no png etc.
-					if len(resp) < 2<<10 && json.Valid(resp) {
-						respBody = resp
-					}
+					respBody = resp
 				},
 			}
 			bodyDump := middleware.BodyDumpWithConfig(cfg)
@@ -58,7 +55,9 @@ func RequestLogger(logger echo.Logger) func(echo.HandlerFunc) echo.HandlerFunc {
 			if len(respBody) > 0 {
 				// dont spam the logs with huge responses
 				if len(respBody) < 2<<10 && json.Valid(respBody) {
-					sb.WriteString(fmt.Sprintf(" -- resp body: %s", string(respBody)))
+					var body bytes.Buffer
+					_ = json.Compact(&body, respBody)
+					sb.WriteString(fmt.Sprintf(" -- resp body: %s", body.String()))
 				} else {
 					sb.WriteString(fmt.Sprintf(" -- resp body content length: %d", len(respBody)))
 				}
