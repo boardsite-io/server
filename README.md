@@ -7,7 +7,7 @@
 Server source code for Boardsite. The server implements user sessions based on the websocket protocol, allowing to share notes with one or more participants.
 
 ## License
-This project is licensed under GNU GPLv3. See LICENSE for details.
+This project is licensed under GNU AGPLv3. See LICENSE for details.
 
 ## Development
 Run development server with ```make development```
