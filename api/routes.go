@@ -4,7 +4,7 @@ import "github.com/heat1q/boardsite/api/middleware"
 
 // setRoutes sets the api routes
 func (s *Server) setRoutes() {
-	boardGroup := s.echo.Group("/b", middleware.RequestLogger(s.echo.Logger))
+	boardGroup := s.echo.Group("/b", middleware.Monitoring(), middleware.RequestLogger())
 	boardGroup.POST( /*  */ "/create", s.session.PostCreateSession)
 	boardGroup.GET( /*   */ "/:id/users", s.session.GetUsers)
 	boardGroup.POST( /*  */ "/:id/users", s.session.PostUsers)

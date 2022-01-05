@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -14,15 +13,12 @@ import (
 	"github.com/heat1q/boardsite/api/log"
 )
 
-func RequestLogger(logger echo.Logger) func(echo.HandlerFunc) echo.HandlerFunc {
+func RequestLogger() func(echo.HandlerFunc) echo.HandlerFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// measure response time
 			start := time.Now()
-
-			// set logger to request context
-			ctx := context.WithValue(c.Request().Context(), log.ContextKey, logger)
-			c.SetRequest(c.Request().WithContext(ctx))
+			meta := make(map[string]interface{}, 32)
 
 			var reqBody, respBody []byte
 			cfg := middleware.BodyDumpConfig{
@@ -36,47 +32,61 @@ func RequestLogger(logger echo.Logger) func(echo.HandlerFunc) echo.HandlerFunc {
 			err := bodyDump(next)(c)
 
 			sb := strings.Builder{}
-			sb.WriteString(fmt.Sprintf("incoming request (%d) %s %s -- %s",
+			sb.WriteString(fmt.Sprintf("incoming request (%d) %s %s",
 				c.Response().Status,
 				c.Request().Method,
 				c.Request().RequestURI,
-				c.Request().Header.Get("User-Agent"),
 			))
 
-			if len(reqBody) > 0 {
-				var body bytes.Buffer
-				if err := json.Compact(&body, reqBody); err == nil {
-					sb.WriteString(fmt.Sprintf(" -- req body: %s", body.String()))
-				} else {
-					sb.WriteString(fmt.Sprintf(" -- req body content length: %d", len(reqBody)))
-				}
-			}
-
-			if len(respBody) > 0 {
-				// dont spam the logs with huge responses
-				if len(respBody) < 2<<10 && json.Valid(respBody) {
-					var body bytes.Buffer
-					_ = json.Compact(&body, respBody)
-					sb.WriteString(fmt.Sprintf(" -- resp body: %s", body.String()))
-				} else {
-					sb.WriteString(fmt.Sprintf(" -- resp body content length: %d", len(respBody)))
-				}
-			}
-
-			if err != nil {
-				sb.WriteString(fmt.Sprintf(" -- error: %v", err))
-			}
+			setRequestMeta(c, reqBody, meta)
+			setResponseMeta(c, respBody, meta)
 
 			elapsed := time.Since(start)
-			sb.WriteString(fmt.Sprintf(" -- took %s", elapsed))
+			meta["duration"] = elapsed.String()
 
 			if err != nil {
-				log.Ctx(c.Request().Context()).Error(sb.String())
+				meta["error"] = err.Error()
+				log.Ctx(c.Request().Context()).With(log.WithMeta(meta)...).Error(sb.String())
 			} else {
-				log.Ctx(c.Request().Context()).Info(sb.String())
+				log.Ctx(c.Request().Context()).With(log.WithMeta(meta)...).Info(sb.String())
 			}
 
 			return err
+		}
+	}
+}
+
+func setRequestMeta(c echo.Context, reqBody []byte, meta map[string]interface{}) {
+	meta["Req.HttpMethod"] = c.Request().Method
+	meta["Req.Path"] = c.Request().RequestURI
+
+	for k, v := range c.Request().Header {
+		meta[fmt.Sprintf("Req.Header.%s", k)] = strings.Join(v, ";")
+	}
+
+	if len(reqBody) > 0 {
+		var body bytes.Buffer
+		if err := json.Compact(&body, reqBody); err == nil {
+			meta["Req.Body"] = body.String()
+		} else {
+			meta["Req.ContentLength"] = c.Request().ContentLength
+		}
+	}
+}
+
+func setResponseMeta(c echo.Context, respBody []byte, meta map[string]interface{}) {
+	for k, v := range c.Response().Header() {
+		meta[fmt.Sprintf("Resp.Header.%s", k)] = strings.Join(v, ";")
+	}
+
+	if len(respBody) > 0 {
+		// dont spam the logs with huge responses
+		if len(respBody) < 2<<10 && json.Valid(respBody) {
+			var body bytes.Buffer
+			_ = json.Compact(&body, respBody)
+			meta["Resp.Body"] = body.String()
+		} else {
+			meta["Resp.ContentLength"] = c.Request().Response.ContentLength
 		}
 	}
 }
