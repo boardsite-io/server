@@ -3,8 +3,12 @@ package log
 import (
 	"context"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	"go.uber.org/zap"
+)
+
+const (
+	TagTraceID   = "trace-id"
+	TagSessionID = "session-id"
 )
 
 const (
@@ -12,20 +16,40 @@ const (
 )
 
 var (
-	currentLogger = New()
+	logger *zap.SugaredLogger
 )
 
-func New() echo.Logger {
-	logger := log.New("")
-	logger.SetHeader("${time_rfc3339} ${level} ⇨")
+func init() {
+	l, err := zap.NewProduction(zap.WithCaller(false))
+	if err != nil {
+		panic(err)
+	}
+	logger = l.Sugar()
+}
+
+func Ctx(ctx context.Context) *zap.SugaredLogger {
+	l, ok := ctx.Value(ContextKey).(*zap.SugaredLogger)
+	if !ok {
+		logger.Warn("Ctx doesn't contain logger")
+		return logger
+	}
+	return l
+}
+
+func Global() *zap.SugaredLogger {
 	return logger
 }
 
-func Ctx(ctx context.Context) echo.Logger {
-	logger, ok := ctx.Value(ContextKey).(echo.Logger)
-	if !ok {
-		currentLogger.Warn("Ctx doesn't contain logger")
-		return currentLogger
+// WithMeta sets logger meta tags
+func WithMeta(meta map[string]interface{}) []interface{} {
+	args := make([]interface{}, 0, 2*len(meta))
+	for k, v := range meta {
+		args = append(args, k, v)
 	}
-	return logger
+	return args
+}
+
+// WrapCtx wraps the current logger in a context
+func WrapCtx(ctx context.Context, meta map[string]interface{}) context.Context {
+	return context.WithValue(ctx, ContextKey, logger.With(WithMeta(meta)...))
 }

@@ -37,7 +37,6 @@ func NewServer() (*Server, error) {
 func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	s.echo = echo.New()
 	s.echo.HideBanner = true
-	s.echo.Logger = log.New()
 	s.echo.HTTPErrorHandler = apimw.GetCustomHTTPErrorHandler(s.echo)
 	s.echo.Use(s.mwCORS())
 
@@ -46,7 +45,7 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	if err != nil {
 		s.echo.Logger.Fatalf("redis pool: %v", err)
 	}
-	s.echo.Logger.Info("Redis connection pool initialized.")
+	log.Global().Info("Redis connection pool initialized.")
 
 	// set up session dispatcher/handler
 	s.session = session.NewHandler(s.cfg, redisHandler)
@@ -56,10 +55,10 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 
 	// configure CORS
 	origins := strings.Split(s.cfg.Server.AllowedOrigins, ",")
-	s.echo.Logger.Infof("CORS: allowed origins: %v", origins)
+	log.Global().Infof("CORS: allowed origins: %v", origins)
 
 	return func() error {
-			s.echo.Logger.Infof("Starting %s@%s listening on :%d\n", s.cfg.App.Name, s.cfg.App.Version, s.cfg.Server.Port)
+			log.Global().Infof("Starting %s@%s listening on :%d\n", s.cfg.App.Name, s.cfg.App.Version, s.cfg.Server.Port)
 			return s.echo.Start(fmt.Sprintf(":%d", s.cfg.Server.Port))
 		}, func() error {
 			_ = redisHandler.ClosePool()
