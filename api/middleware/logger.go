@@ -86,7 +86,7 @@ func setResponseMeta(c echo.Context, respBody []byte, meta map[string]interface{
 			_ = json.Compact(&body, respBody)
 			meta["Resp.Body"] = body.String()
 		} else {
-			meta["Resp.ContentLength"] = c.Request().Response.ContentLength
+			meta["Resp.ContentLength"] = c.Response().Size
 		}
 	}
 }

@@ -20,7 +20,10 @@ var (
 )
 
 func init() {
-	l, err := zap.NewProduction(zap.WithCaller(false))
+	cfg := zap.NewProductionConfig()
+	cfg.DisableStacktrace = true
+	cfg.DisableCaller = true
+	l, err := cfg.Build()
 	if err != nil {
 		panic(err)
 	}
