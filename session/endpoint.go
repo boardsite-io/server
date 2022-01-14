@@ -30,20 +30,20 @@ type Handler interface {
 
 type handler struct {
 	cfg        *config.Configuration
-	dispatcher Dispatcher
+	Dispatcher Dispatcher
 }
 
 func NewHandler(cfg *config.Configuration, cache redis.Handler) Handler {
 	return &handler{
 		cfg:        cfg,
-		dispatcher: NewDispatcher(cache),
+		Dispatcher: NewDispatcher(cache),
 	}
 }
 
 // PostCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
 func (h *handler) PostCreateSession(c echo.Context) error {
-	idstr, err := h.dispatcher.Create(c.Request().Context(), h.cfg.Session.MaxUsers)
+	idstr, err := h.Dispatcher.Create(c.Request().Context(), h.cfg.Session.MaxUsers)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (h *handler) PostCreateSession(c echo.Context) error {
 }
 
 func (h *handler) GetUsers(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -59,7 +59,7 @@ func (h *handler) GetUsers(c echo.Context) error {
 }
 
 func (h *handler) PostUsers(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -87,7 +87,7 @@ func (h *handler) GetSocket(c echo.Context) error {
 		userID    = c.Param("userId")
 	)
 
-	scb, err := h.dispatcher.GetSCB(sessionID)
+	scb, err := h.Dispatcher.GetSCB(sessionID)
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -104,7 +104,7 @@ func (h *handler) GetSocket(c echo.Context) error {
 }
 
 func (h *handler) GetPages(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -124,7 +124,7 @@ func (h *handler) GetPages(c echo.Context) error {
 
 // PostPages handles requests regarding adding or retrieving pages.
 func (h *handler) PostPages(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -143,7 +143,7 @@ func (h *handler) PostPages(c echo.Context) error {
 }
 
 func (h *handler) PutPages(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -161,7 +161,7 @@ func (h *handler) PutPages(c echo.Context) error {
 }
 
 func (h *handler) DeletePages(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -179,7 +179,7 @@ func (h *handler) DeletePages(c echo.Context) error {
 }
 
 func (h *handler) GetPageUpdate(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -198,7 +198,7 @@ func (h *handler) GetPageUpdate(c echo.Context) error {
 }
 
 func (h *handler) DeletePageUpdate(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -216,7 +216,7 @@ func (h *handler) DeletePageUpdate(c echo.Context) error {
 }
 
 func (h *handler) PostAttachment(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -246,7 +246,7 @@ func (h *handler) PostAttachment(c echo.Context) error {
 }
 
 func (h *handler) GetAttachment(c echo.Context) error {
-	scb, err := h.dispatcher.GetSCB(c.Param("id"))
+	scb, err := h.Dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
