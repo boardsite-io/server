@@ -19,6 +19,7 @@ func (s *Server) setRoutes() {
 	sessionGroup := s.echo.Group("/b/:id",
 		middleware.Monitoring(),
 		middleware.RequestLogger(),
+		middleware.Session(s.dispatcher),
 		middleware.RateLimiting(rpmSession, middleware.WithUserID()))
 	sessionGroup.GET( /*   */ "/users", s.session.GetUsers)
 	sessionGroup.GET( /*   */ "/users/:userId/socket", s.session.GetSocket)

@@ -60,6 +60,10 @@ func ipExtractor(c echo.Context) (string, error) {
 func userIDExtractor(c echo.Context) (string, error) {
 	userId := c.Request().Header.Get(HeaderUserID)
 	if userId == "" {
+		// userid could also be in params
+		userId = c.Param("userId")
+	}
+	if userId == "" {
 		return "", errors.New("no userId in header")
 	}
 	return userId, nil

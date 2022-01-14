@@ -17,9 +17,10 @@ import (
 )
 
 type Server struct {
-	cfg     *config.Configuration
-	echo    *echo.Echo
-	session session.Handler
+	cfg        *config.Configuration
+	echo       *echo.Echo
+	session    session.Handler
+	dispatcher session.Dispatcher
 }
 
 func NewServer() (*Server, error) {
@@ -47,8 +48,10 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	}
 	log.Global().Info("Redis connection pool initialized.")
 
+	s.dispatcher = session.NewDispatcher(redisHandler)
+
 	// set up session dispatcher/handler
-	s.session = session.NewHandler(s.cfg, redisHandler)
+	s.session = session.NewHandler(s.cfg, s.dispatcher)
 
 	// set routes
 	s.setRoutes()
@@ -71,6 +74,6 @@ func (s *Server) mwCORS() echo.MiddlewareFunc {
 	return middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: origins,
 		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodDelete},
-		AllowHeaders: []string{echo.HeaderContentType},
+		AllowHeaders: []string{echo.HeaderContentType, apimw.HeaderUserID},
 	})
 }

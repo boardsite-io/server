@@ -10,12 +10,37 @@ import (
 	"github.com/heat1q/boardsite/redis"
 )
 
-// ControlBlock holds the information and channels for sessions
-type ControlBlock struct {
-	ID string
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+//counterfeiter:generate . Controller
+type Controller interface {
+	ID() string
+	GetPages(ctx context.Context) ([]string, map[string]*types.PageMeta, error)
+	GetPagesSet(ctx context.Context) map[string]struct{}
+	IsValidPage(ctx context.Context, pageID ...string) bool
+	AddPages(ctx context.Context, pageIDs []string, index []int, meta map[string]*types.PageMeta) error
+	DeletePages(ctx context.Context, pageID ...string) error
+	UpdatePages(ctx context.Context, pageIDs []string, meta map[string]*types.PageMeta, clear bool) error
+	SyncPages(ctx context.Context) error
+	NewUser(alias string, color string) (*types.User, error)
+	UserReady(u *types.User) error
+	GetUserReady(userID string) (*types.User, error)
+	IsUserReady(userID string) bool
+	UserConnect(u *types.User)
+	UserDisconnect(ctx context.Context, userID string)
+	IsUserConnected(userID string) bool
+	GetUsers() map[string]*types.User
+	Close()
+	GetStrokes(ctx context.Context, pageID string) ([]types.Stroke, error)
+	Receive(ctx context.Context, msg *types.Message) error
+	Attachments() attachment.Handler
+}
 
-	Attachments attachment.Handler
-	Dispatcher  Dispatcher
+// controlBlock holds the information and channels for sessions
+type controlBlock struct {
+	id string
+
+	attachments attachment.Handler
+	dispatcher  Dispatcher
 
 	broadcast chan *types.Message
 	echo      chan *types.Message
@@ -38,12 +63,14 @@ type ControlBlock struct {
 	numUsers int
 }
 
-// NewControlBlock creates a new Session ControlBlock with unique ID.
-func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatcher, maxUsers int) *ControlBlock {
-	scb := &ControlBlock{
-		ID:          sessionID,
-		Attachments: attachment.NewLocalHandler(sessionID),
-		Dispatcher:  dispatcher,
+var _ Controller = (*controlBlock)(nil)
+
+// NewControlBlock creates a new Session controlBlock with unique ID.
+func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatcher, maxUsers int) *controlBlock {
+	scb := &controlBlock{
+		id:          sessionID,
+		attachments: attachment.NewLocalHandler(sessionID),
+		dispatcher:  dispatcher,
 		broadcast:   make(chan *types.Message),
 		echo:        make(chan *types.Message),
 		cache:       cache,
@@ -62,12 +89,20 @@ func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatche
 }
 
 // Close sends a close signal
-func (scb *ControlBlock) Close() {
+func (scb *controlBlock) Close() {
 	scb.signalClose <- struct{}{}
 }
 
+func (scb *controlBlock) ID() string {
+	return scb.id
+}
+
+func (scb *controlBlock) Attachments() attachment.Handler {
+	return scb.attachments
+}
+
 // broadcastLoop Broadcasts board updates to all clients
-func (scb *ControlBlock) broadcastLoop() {
+func (scb *controlBlock) broadcastLoop() {
 	for {
 		select {
 		case data := <-scb.broadcast:
@@ -77,7 +112,7 @@ func (scb *ControlBlock) broadcastLoop() {
 				if userID != data.Sender {
 					if err := user.Conn.WriteJSON(data); err != nil {
 						log.Printf("%s :: cannot broadcast to %s: %v",
-							scb.ID, user.Conn.RemoteAddr(), err)
+							scb.id, user.Conn.RemoteAddr(), err)
 					}
 				}
 			}
@@ -96,17 +131,17 @@ func (scb *ControlBlock) broadcastLoop() {
 }
 
 // dbUpdateLoop updates database according to given Stroke values
-func (scb *ControlBlock) dbUpdateLoop() {
+func (scb *controlBlock) dbUpdateLoop() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for {
 		select {
 		case strokes := <-scb.dbUpdate:
-			if err := scb.cache.Update(ctx, scb.ID, strokes); err != nil {
+			if err := scb.cache.Update(ctx, scb.id, strokes); err != nil {
 				log.Printf("error in dbUpdateLoop: %v", err)
 			}
 		case <-scb.signalClose:
-			_ = scb.cache.ClearSession(ctx, scb.ID)
+			_ = scb.cache.ClearSession(ctx, scb.id)
 			return
 		}
 	}
