@@ -15,9 +15,11 @@ const (
 	alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+//counterfeiter:generate . Dispatcher
 type Dispatcher interface {
 	// GetSCB returns the session control block for given sessionID.
-	GetSCB(sessionID string) (*ControlBlock, error)
+	GetSCB(sessionID string) (Controller, error)
 	// Create creates and initializes a new SessionControl struct
 	Create(ctx context.Context, maxUsers int) (string, error)
 	// Close removes the SCB from the activesession map and closes the session.
@@ -28,18 +30,20 @@ type Dispatcher interface {
 
 type sessionsDispatcher struct {
 	mu            sync.RWMutex
-	activeSession map[string]*ControlBlock
+	activeSession map[string]Controller
 	cache         redis.Handler
 }
 
+var _ Dispatcher = (*sessionsDispatcher)(nil)
+
 func NewDispatcher(cache redis.Handler) Dispatcher {
 	return &sessionsDispatcher{
-		activeSession: make(map[string]*ControlBlock),
+		activeSession: make(map[string]Controller),
 		cache:         cache,
 	}
 }
 
-func (d *sessionsDispatcher) GetSCB(sessionID string) (*ControlBlock, error) {
+func (d *sessionsDispatcher) GetSCB(sessionID string) (Controller, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	scb, ok := d.activeSession[sessionID]
@@ -66,9 +70,9 @@ func (d *sessionsDispatcher) Create(ctx context.Context, maxUsers int) (string, 
 	scb := NewControlBlock(sid, d.cache, d, maxUsers)
 	// assign to SessionControl struct
 	d.mu.Lock()
-	d.activeSession[scb.ID] = scb
+	d.activeSession[scb.id] = scb
 	d.mu.Unlock()
-	log.Ctx(ctx).Infof("Create Session with ID: %s", scb.ID)
+	log.Ctx(ctx).Infof("Create Session with ID: %s", scb.id)
 
 	return sid, nil
 }
@@ -83,11 +87,11 @@ func (d *sessionsDispatcher) Close(ctx context.Context, sessionID string) error 
 	delete(d.activeSession, sessionID)
 	d.mu.Unlock()
 
-	if err := scb.Attachments.Clear(); err != nil {
-		log.Ctx(ctx).Warnf("cannot clear attachment for %s: %v\n", scb.ID, err)
+	if err := scb.Attachments().Clear(); err != nil {
+		log.Ctx(ctx).Warnf("cannot clear attachment for %s: %v\n", scb.ID(), err)
 	}
 
-	log.Ctx(ctx).Infof("Close session %s", scb.ID)
+	log.Ctx(ctx).Infof("Close session %s", scb.ID())
 
 	return nil
 }

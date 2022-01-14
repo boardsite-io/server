@@ -14,7 +14,7 @@ import (
 // the alias and color attribute
 //
 // Does some sanitize checks.
-func (scb *ControlBlock) NewUser(alias, color string) (*types.User, error) {
+func (scb *controlBlock) NewUser(alias, color string) (*types.User, error) {
 	if len(alias) > 24 {
 		alias = alias[:24]
 	}
@@ -38,7 +38,7 @@ func (scb *ControlBlock) NewUser(alias, color string) (*types.User, error) {
 }
 
 // UserReady adds an user to the usersReady map.
-func (scb *ControlBlock) UserReady(u *types.User) error {
+func (scb *controlBlock) UserReady(u *types.User) error {
 	scb.muUsr.RLock()
 	defer scb.muUsr.RUnlock()
 	if scb.numUsers >= scb.maxUsers {
@@ -52,7 +52,7 @@ func (scb *ControlBlock) UserReady(u *types.User) error {
 }
 
 // GetUserReady returns the user with userID ready to join a session.
-func (scb *ControlBlock) GetUserReady(userID string) (*types.User, error) {
+func (scb *controlBlock) GetUserReady(userID string) (*types.User, error) {
 	scb.muRdyUsr.RLock()
 	defer scb.muRdyUsr.RUnlock()
 	u, ok := scb.usersReady[userID]
@@ -63,7 +63,7 @@ func (scb *ControlBlock) GetUserReady(userID string) (*types.User, error) {
 }
 
 // IsUserReady checks if the user with userID is ready to join a session.
-func (scb *ControlBlock) IsUserReady(userID string) bool {
+func (scb *controlBlock) IsUserReady(userID string) bool {
 	_, err := scb.GetUserReady(userID)
 	return err == nil
 }
@@ -71,7 +71,7 @@ func (scb *ControlBlock) IsUserReady(userID string) bool {
 // UserConnect adds user from the userReady state to clients.
 //
 // Broadcast that user has connected to session.
-func (scb *ControlBlock) UserConnect(u *types.User) {
+func (scb *controlBlock) UserConnect(u *types.User) {
 	scb.muUsr.Lock()
 	scb.users[u.ID] = u
 	scb.numUsers++
@@ -87,7 +87,7 @@ func (scb *ControlBlock) UserConnect(u *types.User) {
 // UserDisconnect removes user from clients.
 //
 // Broadcast that user has disconnected from session.
-func (scb *ControlBlock) UserDisconnect(ctx context.Context, userID string) {
+func (scb *controlBlock) UserDisconnect(ctx context.Context, userID string) {
 	scb.muUsr.Lock()
 	u := scb.users[userID]
 	delete(scb.users, u.ID)
@@ -98,7 +98,7 @@ func (scb *ControlBlock) UserDisconnect(ctx context.Context, userID string) {
 	// if session is empty after client disconnect
 	// the session needs to be set to inactive
 	if numCl == 0 {
-		_ = scb.Dispatcher.Close(ctx, scb.ID)
+		_ = scb.dispatcher.Close(ctx, scb.id)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (scb *ControlBlock) UserDisconnect(ctx context.Context, userID string) {
 }
 
 // IsUserConnected checks if the user with userID is an active client in the session.
-func (scb *ControlBlock) IsUserConnected(userID string) bool {
+func (scb *controlBlock) IsUserConnected(userID string) bool {
 	scb.muUsr.RLock()
 	defer scb.muUsr.RUnlock()
 	_, ok := scb.users[userID]
@@ -118,7 +118,7 @@ func (scb *ControlBlock) IsUserConnected(userID string) bool {
 }
 
 // GetUsers returns all active users/clients in the session.
-func (scb *ControlBlock) GetUsers() map[string]*types.User {
+func (scb *controlBlock) GetUsers() map[string]*types.User {
 	users := make(map[string]*types.User)
 	scb.muUsr.RLock()
 	for id, u := range scb.users {

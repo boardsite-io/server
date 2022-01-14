@@ -10,8 +10,8 @@ import (
 )
 
 // GetStrokes fetches all stroke data for specified page.
-func (scb *ControlBlock) GetStrokes(ctx context.Context, pageID string) ([]types.Stroke, error) {
-	strokesRaw, err := scb.cache.FetchStrokesRaw(ctx, scb.ID, pageID)
+func (scb *controlBlock) GetStrokes(ctx context.Context, pageID string) ([]types.Stroke, error) {
+	strokesRaw, err := scb.cache.FetchStrokesRaw(ctx, scb.id, pageID)
 	if err != nil {
 		return nil, errors.New("unable to fetch strokes")
 	}
@@ -27,7 +27,7 @@ func (scb *ControlBlock) GetStrokes(ctx context.Context, pageID string) ([]types
 
 // Receive is the entry point when a message is received in
 // the session via the websocket.
-func (scb *ControlBlock) Receive(ctx context.Context, msg *types.Message) error {
+func (scb *controlBlock) Receive(ctx context.Context, msg *types.Message) error {
 	if !scb.IsUserConnected(msg.Sender) {
 		return errors.New("invalid sender userId")
 	}
@@ -49,7 +49,7 @@ func (scb *ControlBlock) Receive(ctx context.Context, msg *types.Message) error 
 // sanitizeStrokes parses the stroke content of the message.
 //
 // It further checks if the strokes have a valid pageId and userId.
-func (scb *ControlBlock) sanitizeStrokes(ctx context.Context, msg *types.Message) error {
+func (scb *controlBlock) sanitizeStrokes(ctx context.Context, msg *types.Message) error {
 	var strokes []*types.Stroke
 	if err := msg.UnmarshalContent(&strokes); err != nil {
 		return err
@@ -77,7 +77,7 @@ func (scb *ControlBlock) sanitizeStrokes(ctx context.Context, msg *types.Message
 // userID indicates the initiator of the message, which is
 // to be excluded in the broadcast. The strokes are scheduled for an
 // update to Redis.
-func (scb *ControlBlock) updateStrokes(userID string, strokes []*types.Stroke) {
+func (scb *controlBlock) updateStrokes(userID string, strokes []*types.Stroke) {
 	// broadcast changes
 	scb.broadcast <- &types.Message{
 		Type:    types.MessageTypeStroke,
@@ -90,7 +90,7 @@ func (scb *ControlBlock) updateStrokes(userID string, strokes []*types.Stroke) {
 }
 
 // mouseMove broadcast mouse move events.
-func (scb *ControlBlock) mouseMove(msg *types.Message) error {
+func (scb *controlBlock) mouseMove(msg *types.Message) error {
 	var mouseUpdate types.ContentMouseMove
 	if err := msg.UnmarshalContent(&mouseUpdate); err != nil {
 		return err
