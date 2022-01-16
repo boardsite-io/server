@@ -53,6 +53,22 @@ func WithUserID() RateLimitingOption {
 	}
 }
 
+// WithUserIP extracts the id from the userId header + real ip.
+// This functional option is passed to RateLimiting.
+func WithUserIP() RateLimitingOption {
+	return func(cfg *echomw.RateLimiterConfig) {
+		fn := func(c echo.Context) (string, error) {
+			userId, _ := userIDExtractor(c)
+			ip, err := ipExtractor(c)
+			if err != nil {
+				return "", err
+			}
+			return userId + ":" + ip, nil
+		}
+		cfg.IdentifierExtractor = fn
+	}
+}
+
 func ipExtractor(c echo.Context) (string, error) {
 	return c.RealIP(), nil
 }

@@ -50,4 +50,16 @@ func TestRateLimiting(t *testing.T) {
 		_ = fn(c)
 		assert.Equal(t, http.StatusTooManyRequests, rr.Code)
 	})
+
+	t.Run("based on usedId plus ip", func(t *testing.T) {
+		fn := middleware.RateLimiting(1, middleware.WithUserIP())(handler)
+
+		rr, c := getContext(e)
+		_ = fn(c)
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		rr, c = getContext(e)
+		_ = fn(c)
+		assert.Equal(t, http.StatusTooManyRequests, rr.Code)
+	})
 }
