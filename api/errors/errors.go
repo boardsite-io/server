@@ -21,6 +21,7 @@ type HTTPError struct {
 	Status   int    `json:"-"`
 	Message  string `json:"message"`
 	internal error
+	Code     uint32 `json:"code,omitempty"`
 }
 
 var _ error = (*HTTPError)(nil)
@@ -36,6 +37,17 @@ func New(status int, message ...string) *HTTPError {
 		Status:  status,
 		Message: msg,
 	}
+}
+
+// From creates a new HTTPError from a specific error code.
+func From(code uint32) *HTTPError {
+	status, ok := codeStatusMap[code]
+	if !ok {
+		status = http.StatusInternalServerError
+	}
+	httpErr := New(status)
+	httpErr.Code = code
+	return httpErr
 }
 
 type ErrorOption func(e *HTTPError)
@@ -62,6 +74,14 @@ func WithError(err error) ErrorOption {
 	}
 }
 
+// WithCode sets the error code.
+// This functional argument is passed to the HTTPError.Wrap method.
+func WithCode(code uint32) ErrorOption {
+	return func(e *HTTPError) {
+		e.Code = code
+	}
+}
+
 // WithErrorf formats an internal error.
 // This functional argument is passed to the HTTPError.Wrap method.
 func WithErrorf(format string, a ...interface{}) ErrorOption {
@@ -70,7 +90,7 @@ func WithErrorf(format string, a ...interface{}) ErrorOption {
 
 func (e *HTTPError) Error() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("status=%d", e.Status))
+	sb.WriteString(fmt.Sprintf("status=%d code=%d", e.Status, e.Code))
 	if e.Message != "" {
 		sb.WriteString(fmt.Sprintf(": %s", e.Message))
 	}
@@ -85,7 +105,7 @@ func (e HTTPError) Is(err error) bool {
 	if !ok {
 		return false
 	}
-	return e.Status == target.Status
+	return e.Status == target.Status && e.Code == target.Code
 }
 
 // Wrap wraps any optional argument in the HTTPError

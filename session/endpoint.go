@@ -222,7 +222,7 @@ func (h *handler) PostAttachment(c echo.Context) error {
 	}
 
 	if err := c.Request().ParseMultipartForm(2 << 20); err != nil {
-		return apiErrors.ErrBadRequest.Wrap(
+		return apiErrors.From(apiErrors.CodeAttachmentSizeExceeded).Wrap(
 			apiErrors.WithMessage("file size exceeded limit of 2MB"),
 			apiErrors.WithError(err))
 	}

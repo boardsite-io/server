@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	apiErrors "github.com/heat1q/boardsite/api/errors"
+
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
@@ -25,8 +27,12 @@ func RateLimiting(rpm uint16, options ...RateLimitingOption) echo.MiddlewareFunc
 		Store:               echomw.NewRateLimiterMemoryStoreWithConfig(memstoreCfg),
 		Skipper:             echomw.DefaultSkipper,
 		IdentifierExtractor: ipExtractor,
-		ErrorHandler: func(context echo.Context, err error) error {
-			return echo.ErrForbidden
+		ErrorHandler: func(_ echo.Context, err error) error {
+			return apiErrors.From(apiErrors.CodeMissingIdentifier).Wrap(apiErrors.WithError(err))
+		},
+		DenyHandler: func(_ echo.Context, identifier string, err error) error {
+			return apiErrors.From(apiErrors.CodeRateLimitExceeded).Wrap(
+				apiErrors.WithErrorf("rate limiter: denied %s: %w", identifier, err))
 		},
 	}
 

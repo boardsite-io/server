@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -38,8 +37,12 @@ func NewServer() (*Server, error) {
 func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	s.echo = echo.New()
 	s.echo.HideBanner = true
-	s.echo.HTTPErrorHandler = apimw.GetCustomHTTPErrorHandler(s.echo)
-	s.echo.Use(s.mwCORS())
+	s.echo.HTTPErrorHandler = apimw.NewErrorHandler()
+	s.echo.Use(
+		middleware.Recover(),
+		middleware.Gzip(),
+		middleware.Secure(),
+		apimw.CORS(s.cfg.Server.AllowedOrigins))
 
 	// setup redis cache
 	redisHandler, err := redis.New(s.cfg.Cache.Host, s.cfg.Cache.Port)
@@ -67,13 +70,4 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 			_ = redisHandler.ClosePool()
 			return s.echo.Shutdown(ctx)
 		}
-}
-
-func (s *Server) mwCORS() echo.MiddlewareFunc {
-	origins := strings.Split(s.cfg.Server.AllowedOrigins, ",")
-	return middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: origins,
-		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodDelete},
-		AllowHeaders: []string{echo.HeaderContentType, apimw.HeaderUserID},
-	})
 }

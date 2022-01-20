@@ -25,6 +25,7 @@ func handler(c echo.Context) error {
 
 func TestRateLimiting(t *testing.T) {
 	e := echo.New()
+	e.HTTPErrorHandler = middleware.NewErrorHandler()
 	defer e.Close()
 
 	t.Run("based on ip", func(t *testing.T) {
