@@ -10,13 +10,15 @@ import (
 	"github.com/heat1q/boardsite/api/types"
 )
 
+const maxNameLen = 32
+
 // NewUser generate a new user struct based on
 // the alias and color attribute
 //
 // Does some sanitize checks.
 func (scb *controlBlock) NewUser(alias, color string) (*types.User, error) {
-	if len(alias) > 24 {
-		alias = alias[:24]
+	if len(alias) > maxNameLen {
+		alias = alias[:maxNameLen]
 	}
 	//TODO check if html color ?
 	if len(color) != 7 {

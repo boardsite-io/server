@@ -1,19 +1,36 @@
 package middleware
 
 import (
-	"github.com/heat1q/boardsite/api/errors"
+	"errors"
+	"net/http"
+
+	apiErrors "github.com/heat1q/boardsite/api/errors"
+	"github.com/heat1q/boardsite/api/log"
 	"github.com/labstack/echo/v4"
 )
 
-func GetCustomHTTPErrorHandler(echoServer *echo.Echo) func(err error, c echo.Context) {
+func NewErrorHandler() func(err error, c echo.Context) {
 	return func(err error, c echo.Context) {
-		if e, ok := err.(*errors.HTTPError); ok {
-			if e.Message != "" {
-				err = echo.NewHTTPError(e.Status, e.Message)
+		if c.Response().Committed {
+			return
+		}
+
+		httpErr := &apiErrors.HTTPError{}
+		if ok := errors.As(err, &httpErr); !ok {
+			echoErr := &echo.HTTPError{}
+			if ok := errors.As(err, &echoErr); !ok {
+				httpErr = apiErrors.ErrInternalServerError
 			} else {
-				err = echo.NewHTTPError(e.Status)
+				httpErr.Status = echoErr.Code
 			}
 		}
-		echoServer.DefaultHTTPErrorHandler(err, c)
+
+		if httpErr.Message == "" {
+			httpErr.Message = http.StatusText(httpErr.Status)
+		}
+
+		if err := c.JSON(httpErr.Status, httpErr); err != nil {
+			log.Ctx(c.Request().Context()).Warn("failed to write error response")
+		}
 	}
 }
