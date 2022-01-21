@@ -22,6 +22,13 @@ const (
 	cachePort        = "B_REDIS_PORT"
 	defaultCachePort = "6379"
 
+	metricsRoute           = "B_METRICS_ROUTE"
+	defaultMetricsRoute    = "/metrics"
+	metricsUser            = "B_METRICS_USER"
+	defaultMetricsUser     = "admin"
+	metricsPassword        = "B_METRICS_USER"
+	defaultMetricsPassword = "admin"
+
 	// max number of users allowed in one session
 	sessionMaxUsers = 10
 )
@@ -36,6 +43,11 @@ type Configuration struct {
 		Host           string
 		Port           uint16
 		AllowedOrigins string
+		Metrics        struct {
+			Route    string
+			User     string
+			Password string
+		}
 	}
 
 	Cache struct {
@@ -58,6 +70,9 @@ func New() (*Configuration, error) {
 	set("server.host", serverHost, defaultServerHost)
 	set("server.port", serverPort, defaultServerPort)
 	set("server.allowedOrigins", allowedOrigins, defaultOrigins)
+	set("server.metrics.route", metricsRoute, defaultMetricsRoute)
+	set("server.metrics.user", metricsUser, defaultMetricsUser)
+	set("server.metrics.password", metricsPassword, defaultMetricsPassword)
 
 	set("cache.host", cacheHost, defaultCacheHost)
 	set("cache.port", cachePort, defaultCachePort)

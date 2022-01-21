@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
@@ -18,6 +19,7 @@ import (
 type Server struct {
 	cfg        *config.Configuration
 	echo       *echo.Echo
+	prom       *prometheus.Prometheus
 	session    session.Handler
 	dispatcher session.Dispatcher
 }
@@ -38,11 +40,13 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	s.echo = echo.New()
 	s.echo.HideBanner = true
 	s.echo.HTTPErrorHandler = apimw.NewErrorHandler()
+
+	s.prom = prometheus.NewPrometheus("echo", nil)
 	s.echo.Use(
 		middleware.Recover(),
-		middleware.Gzip(),
 		middleware.Secure(),
-		apimw.CORS(s.cfg.Server.AllowedOrigins))
+		apimw.CORS(s.cfg.Server.AllowedOrigins),
+		apimw.Monitoring(s.prom))
 
 	// setup redis cache
 	redisHandler, err := redis.New(s.cfg.Cache.Host, s.cfg.Cache.Port)
