@@ -69,7 +69,7 @@ func (h *handler) PostUsers(c echo.Context) error {
 	// new user struct with alias and color
 	user, err := scb.NewUser(userReq.Alias, userReq.Color)
 	if err != nil {
-		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
+		return err
 	}
 
 	return c.JSON(http.StatusCreated, user)

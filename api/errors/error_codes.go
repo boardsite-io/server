@@ -8,6 +8,7 @@ const (
 	CodeRateLimitExceeded
 	CodeMissingIdentifier
 	CodeAttachmentSizeExceeded
+	CodeMaxNumberOfUsersReached
 )
 
 // Server error codes
@@ -16,7 +17,8 @@ const (
 )
 
 var codeStatusMap = map[uint32]int{
-	CodeRateLimitExceeded:      http.StatusTooManyRequests,
-	CodeMissingIdentifier:      http.StatusForbidden,
-	CodeAttachmentSizeExceeded: http.StatusBadRequest,
+	CodeRateLimitExceeded:       http.StatusTooManyRequests,
+	CodeMissingIdentifier:       http.StatusForbidden,
+	CodeAttachmentSizeExceeded:  http.StatusBadRequest,
+	CodeMaxNumberOfUsersReached: http.StatusBadRequest,
 }

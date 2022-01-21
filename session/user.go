@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	apiErrors "github.com/heat1q/boardsite/api/errors"
+
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
 	"github.com/heat1q/boardsite/api/types"
@@ -44,7 +46,8 @@ func (scb *controlBlock) UserReady(u *types.User) error {
 	scb.muUsr.RLock()
 	defer scb.muUsr.RUnlock()
 	if scb.numUsers >= scb.maxUsers {
-		return errors.New("maximum number of connected users in session has been reached")
+		return apiErrors.From(apiErrors.CodeMaxNumberOfUsersReached).Wrap(
+			apiErrors.WithErrorf("maximum number of connected users reached"))
 	}
 
 	scb.muRdyUsr.Lock()
