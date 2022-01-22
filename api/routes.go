@@ -17,7 +17,7 @@ func (s *Server) setRoutes() {
 	usersGroup.GET( /*   */ "/:userId/socket", s.session.GetSocket, middleware.Session(s.dispatcher))
 
 	pagesGroup := boardGroup.Group("/:id/pages", middleware.Session(s.dispatcher))
-	pagesGroup.GET( /*   */ "", s.session.GetPages)
+	pagesGroup.GET( /*   */ "", s.session.GetPages) // get page rank
 	pagesGroup.POST( /*  */ "", s.session.PostPages)
 	pagesGroup.PUT( /*   */ "", s.session.PutPages)
 	pagesGroup.DELETE( /**/ "", s.session.DeletePages)

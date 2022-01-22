@@ -5,10 +5,11 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/heat1q/boardsite/attachment"
+
 	gws "github.com/gorilla/websocket"
 	"github.com/heat1q/boardsite/api/config"
 	apiErrors "github.com/heat1q/boardsite/api/errors"
-	"github.com/heat1q/boardsite/api/types"
 	"github.com/labstack/echo/v4"
 )
 
@@ -51,7 +52,7 @@ func (h *handler) PostCreateSession(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusCreated, types.CreateSessionResponse{SessionID: idstr})
+	return c.JSON(http.StatusCreated, CreateSessionResponse{SessionId: idstr})
 }
 
 func (h *handler) PostUsers(c echo.Context) error {
@@ -60,7 +61,7 @@ func (h *handler) PostUsers(c echo.Context) error {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
 
-	var userReq types.User
+	var userReq User
 
 	if err := json.NewDecoder(c.Request().Body).Decode(&userReq); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
@@ -115,7 +116,7 @@ func (h *handler) GetPages(c echo.Context) error {
 	}
 
 	// return pagerank array
-	pages := types.ContentPageSync{
+	pages := ContentPageSync{
 		PageRank: pageRank,
 		Meta:     meta,
 	}
@@ -130,7 +131,7 @@ func (h *handler) PostPages(c echo.Context) error {
 	}
 
 	// add a Page
-	var data types.ContentPageRequest
+	var data ContentPageRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
@@ -148,7 +149,7 @@ func (h *handler) PutPages(c echo.Context) error {
 		return err
 	}
 
-	var data types.ContentPageRequest
+	var data ContentPageRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
@@ -166,7 +167,7 @@ func (h *handler) DeletePages(c echo.Context) error {
 		return err
 	}
 
-	var data types.ContentPageRequest
+	var data ContentPageRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
@@ -194,6 +195,7 @@ func (h *handler) GetPageUpdate(c echo.Context) error {
 		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
 	}
 
+	// TODO return page struct
 	return c.JSON(http.StatusOK, strokes)
 }
 
@@ -242,7 +244,7 @@ func (h *handler) PostAttachment(c echo.Context) error {
 		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
 	}
 
-	return c.JSON(http.StatusCreated, types.AttachmentResponse{AttachID: attachID})
+	return c.JSON(http.StatusCreated, attachment.AttachmentResponse{AttachID: attachID})
 }
 
 func (h *handler) GetAttachment(c echo.Context) error {
@@ -267,8 +269,8 @@ func getSCB(c echo.Context) (*controlBlock, error) {
 	return scb, nil
 }
 
-func getUser(c echo.Context) (*types.User, error) {
-	scb, ok := c.Get(UserCtxKey).(*types.User)
+func getUser(c echo.Context) (*User, error) {
+	scb, ok := c.Get(UserCtxKey).(*User)
 	if !ok {
 		return nil, echo.ErrForbidden
 	}

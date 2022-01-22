@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-
-	"github.com/heat1q/boardsite/api/types"
 )
 
 const (
@@ -20,30 +18,30 @@ type Handler interface {
 	//
 	// Removes all pages and the respective strokes on the pages
 	ClearSession(ctx context.Context, sessionID string) error
-	// Update board strokes in Redis.
+	// UpdateStrokes adds board strokes in Redis.
 	//
 	// Creates a JSON encoding for each slice entry which
 	// is stored to the database.
 	// Delete the stroke with given id if stroke type is set to delete.
-	Update(ctx context.Context, sessionID string, strokes []*types.Stroke) error
-	// FetchStrokesRaw Fetches all strokes of the specified page.
+	UpdateStrokes(ctx context.Context, sessionId string, strokes ...Stroke) error
+	// GetStrokesRaw Fetches all strokes of the specified page.
 	//
 	// Preserves the JSON encoding of Redis and returns an array of
 	// a stringified stroke objects.
-	FetchStrokesRaw(ctx context.Context, sessionID, pageID string) ([][]byte, error)
-	// GetPages returns a list of all pageIDs for the current session.
+	GetStrokesRaw(ctx context.Context, sessionID, pageID string) ([][]byte, error)
+	// GetPageRank returns a list of all pageIDs for the current session.
 	//
 	// The PageIDs are maintained in a list in redis since the ordering is important
-	GetPages(ctx context.Context, sessionID string) ([]string, error)
-	// GetPagesMeta returns a slice of all page meta data.
-	GetPagesMeta(ctx context.Context, sessionID string, pageIDs ...string) (map[string]*types.PageMeta, error)
-	// UpdatePageMeta updates a page meta data.
-	UpdatePageMeta(ctx context.Context, sessionID, pageID string, update *types.PageMeta) error
+	GetPageRank(ctx context.Context, sessionID string) ([]string, error)
+	// GetPageMeta returns a slice of all page meta data.
+	GetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error
+	// SetPageMeta sets the page meta data
+	SetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error
 	// AddPage adds a page with pageID at position index.
 	//
 	// Other pages are moved and their score is reassigned
 	// when pages are added in between
-	AddPage(ctx context.Context, sessionID, newPageID string, index int, meta *types.PageMeta) error
+	AddPage(ctx context.Context, sessionID, newPageID string, index int, meta interface{}) error
 	// DeletePage deletes a page and the respective strokes on the page and remove the PageID from the list.
 	DeletePage(ctx context.Context, sessionID, pageID string) error
 	// ClearPage removes all strokes with given pageID.
@@ -92,4 +90,14 @@ func (h *handler) Ping() error {
 		return fmt.Errorf("PING redis failed: %v", err)
 	}
 	return nil
+}
+
+func (h *handler) Do(ctx context.Context, cmd string, args ...interface{}) (interface{}, error) {
+	conn, err := h.pool.GetContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	return conn.Do(cmd, args...)
 }

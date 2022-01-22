@@ -7,10 +7,11 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/heat1q/boardsite/session"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/redis"
 )
 
@@ -30,20 +31,20 @@ func setupHandler(t *testing.T) (*miniredis.Miniredis, redis.Handler) {
 	return mr, h
 }
 
-func genRandStroke(id, pageID string, strokeType int) *types.Stroke {
+func genRandStroke(id, pageID string, strokeType int) *session.Stroke {
 	pts := make([]float64, 20)
 	for i := range pts {
 		pts[i] = math.Floor(rand.Float64()*1e3) / 10.0
 	}
 
-	return &types.Stroke{
+	return &session.Stroke{
 		ID:     id,
 		PageID: pageID,
 		Type:   strokeType,
 		X:      math.Floor(rand.Float64()*1e3) / 10.0,
 		Y:      math.Floor(rand.Float64()*1e3) / 10.0,
 		Points: pts,
-		Style:  types.Style{Color: "#00beef", Width: 3.0},
+		Style:  session.Style{Color: "#00beef", Width: 3.0},
 	}
 }
 
@@ -72,7 +73,7 @@ func TestAddPages(t *testing.T) {
 
 	for _, test := range tests {
 		_ = h.AddPage(ctx, sid, test.pid, test.index, nil)
-		pids, err := h.GetPages(ctx, sid)
+		pids, err := h.GetPageRank(ctx, sid)
 		assert.NoError(t, err)
 		assert.Equal(t, test.want, pids, "pageRank is not correct")
 	}

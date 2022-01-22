@@ -11,13 +11,13 @@ import (
 )
 
 type FakeController struct {
-	AddPagesStub        func(context.Context, []string, []int, map[string]*types.PageMeta) error
+	AddPagesStub        func(context.Context, []string, []int, map[string]*session.PageMeta) error
 	addPagesMutex       sync.RWMutex
 	addPagesArgsForCall []struct {
 		arg1 context.Context
 		arg2 []string
 		arg3 []int
-		arg4 map[string]*types.PageMeta
+		arg4 map[string]*session.PageMeta
 	}
 	addPagesReturns struct {
 		result1 error
@@ -51,19 +51,19 @@ type FakeController struct {
 	deletePagesReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetPagesStub        func(context.Context) ([]string, map[string]*types.PageMeta, error)
+	GetPagesStub        func(context.Context) ([]string, map[string]*session.PageMeta, error)
 	getPagesMutex       sync.RWMutex
 	getPagesArgsForCall []struct {
 		arg1 context.Context
 	}
 	getPagesReturns struct {
 		result1 []string
-		result2 map[string]*types.PageMeta
+		result2 map[string]*session.PageMeta
 		result3 error
 	}
 	getPagesReturnsOnCall map[int]struct {
 		result1 []string
-		result2 map[string]*types.PageMeta
+		result2 map[string]*session.PageMeta
 		result3 error
 	}
 	GetPagesSetStub        func(context.Context) map[string]struct{}
@@ -77,42 +77,42 @@ type FakeController struct {
 	getPagesSetReturnsOnCall map[int]struct {
 		result1 map[string]struct{}
 	}
-	GetStrokesStub        func(context.Context, string) ([]types.Stroke, error)
+	GetStrokesStub        func(context.Context, string) ([]*session.Stroke, error)
 	getStrokesMutex       sync.RWMutex
 	getStrokesArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 	}
 	getStrokesReturns struct {
-		result1 []types.Stroke
+		result1 []*session.Stroke
 		result2 error
 	}
 	getStrokesReturnsOnCall map[int]struct {
-		result1 []types.Stroke
+		result1 []*session.Stroke
 		result2 error
 	}
-	GetUserReadyStub        func(string) (*types.User, error)
+	GetUserReadyStub        func(string) (*session.User, error)
 	getUserReadyMutex       sync.RWMutex
 	getUserReadyArgsForCall []struct {
 		arg1 string
 	}
 	getUserReadyReturns struct {
-		result1 *types.User
+		result1 *session.User
 		result2 error
 	}
 	getUserReadyReturnsOnCall map[int]struct {
-		result1 *types.User
+		result1 *session.User
 		result2 error
 	}
-	GetUsersStub        func() map[string]*types.User
+	GetUsersStub        func() map[string]*session.User
 	getUsersMutex       sync.RWMutex
 	getUsersArgsForCall []struct {
 	}
 	getUsersReturns struct {
-		result1 map[string]*types.User
+		result1 map[string]*session.User
 	}
 	getUsersReturnsOnCall map[int]struct {
-		result1 map[string]*types.User
+		result1 map[string]*session.User
 	}
 	IDStub        func() string
 	iDMutex       sync.RWMutex
@@ -158,18 +158,18 @@ type FakeController struct {
 	isValidPageReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	NewUserStub        func(string, string) (*types.User, error)
+	NewUserStub        func(string, string) (*session.User, error)
 	newUserMutex       sync.RWMutex
 	newUserArgsForCall []struct {
 		arg1 string
 		arg2 string
 	}
 	newUserReturns struct {
-		result1 *types.User
+		result1 *session.User
 		result2 error
 	}
 	newUserReturnsOnCall map[int]struct {
-		result1 *types.User
+		result1 *session.User
 		result2 error
 	}
 	ReceiveStub        func(context.Context, *types.Message) error
@@ -195,12 +195,12 @@ type FakeController struct {
 	syncPagesReturnsOnCall map[int]struct {
 		result1 error
 	}
-	UpdatePagesStub        func(context.Context, []string, map[string]*types.PageMeta, bool) error
+	UpdatePagesStub        func(context.Context, []string, map[string]*session.PageMeta, bool) error
 	updatePagesMutex       sync.RWMutex
 	updatePagesArgsForCall []struct {
 		arg1 context.Context
 		arg2 []string
-		arg3 map[string]*types.PageMeta
+		arg3 map[string]*session.PageMeta
 		arg4 bool
 	}
 	updatePagesReturns struct {
@@ -209,10 +209,10 @@ type FakeController struct {
 	updatePagesReturnsOnCall map[int]struct {
 		result1 error
 	}
-	UserConnectStub        func(*types.User)
+	UserConnectStub        func(*session.User)
 	userConnectMutex       sync.RWMutex
 	userConnectArgsForCall []struct {
-		arg1 *types.User
+		arg1 *session.User
 	}
 	UserDisconnectStub        func(context.Context, string)
 	userDisconnectMutex       sync.RWMutex
@@ -220,10 +220,10 @@ type FakeController struct {
 		arg1 context.Context
 		arg2 string
 	}
-	UserReadyStub        func(*types.User) error
+	UserReadyStub        func(*session.User) error
 	userReadyMutex       sync.RWMutex
 	userReadyArgsForCall []struct {
-		arg1 *types.User
+		arg1 *session.User
 	}
 	userReadyReturns struct {
 		result1 error
@@ -235,7 +235,7 @@ type FakeController struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeController) AddPages(arg1 context.Context, arg2 []string, arg3 []int, arg4 map[string]*types.PageMeta) error {
+func (fake *FakeController) AddPages(arg1 context.Context, arg2 []string, arg3 []int, arg4 map[string]*session.PageMeta) error {
 	var arg2Copy []string
 	if arg2 != nil {
 		arg2Copy = make([]string, len(arg2))
@@ -252,7 +252,7 @@ func (fake *FakeController) AddPages(arg1 context.Context, arg2 []string, arg3 [
 		arg1 context.Context
 		arg2 []string
 		arg3 []int
-		arg4 map[string]*types.PageMeta
+		arg4 map[string]*session.PageMeta
 	}{arg1, arg2Copy, arg3Copy, arg4})
 	stub := fake.AddPagesStub
 	fakeReturns := fake.addPagesReturns
@@ -273,13 +273,13 @@ func (fake *FakeController) AddPagesCallCount() int {
 	return len(fake.addPagesArgsForCall)
 }
 
-func (fake *FakeController) AddPagesCalls(stub func(context.Context, []string, []int, map[string]*types.PageMeta) error) {
+func (fake *FakeController) AddPagesCalls(stub func(context.Context, []string, []int, map[string]*session.PageMeta) error) {
 	fake.addPagesMutex.Lock()
 	defer fake.addPagesMutex.Unlock()
 	fake.AddPagesStub = stub
 }
 
-func (fake *FakeController) AddPagesArgsForCall(i int) (context.Context, []string, []int, map[string]*types.PageMeta) {
+func (fake *FakeController) AddPagesArgsForCall(i int) (context.Context, []string, []int, map[string]*session.PageMeta) {
 	fake.addPagesMutex.RLock()
 	defer fake.addPagesMutex.RUnlock()
 	argsForCall := fake.addPagesArgsForCall[i]
@@ -448,7 +448,7 @@ func (fake *FakeController) DeletePagesReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeController) GetPages(arg1 context.Context) ([]string, map[string]*types.PageMeta, error) {
+func (fake *FakeController) GetPages(arg1 context.Context) ([]string, map[string]*session.PageMeta, error) {
 	fake.getPagesMutex.Lock()
 	ret, specificReturn := fake.getPagesReturnsOnCall[len(fake.getPagesArgsForCall)]
 	fake.getPagesArgsForCall = append(fake.getPagesArgsForCall, struct {
@@ -473,7 +473,7 @@ func (fake *FakeController) GetPagesCallCount() int {
 	return len(fake.getPagesArgsForCall)
 }
 
-func (fake *FakeController) GetPagesCalls(stub func(context.Context) ([]string, map[string]*types.PageMeta, error)) {
+func (fake *FakeController) GetPagesCalls(stub func(context.Context) ([]string, map[string]*session.PageMeta, error)) {
 	fake.getPagesMutex.Lock()
 	defer fake.getPagesMutex.Unlock()
 	fake.GetPagesStub = stub
@@ -486,31 +486,31 @@ func (fake *FakeController) GetPagesArgsForCall(i int) context.Context {
 	return argsForCall.arg1
 }
 
-func (fake *FakeController) GetPagesReturns(result1 []string, result2 map[string]*types.PageMeta, result3 error) {
+func (fake *FakeController) GetPagesReturns(result1 []string, result2 map[string]*session.PageMeta, result3 error) {
 	fake.getPagesMutex.Lock()
 	defer fake.getPagesMutex.Unlock()
 	fake.GetPagesStub = nil
 	fake.getPagesReturns = struct {
 		result1 []string
-		result2 map[string]*types.PageMeta
+		result2 map[string]*session.PageMeta
 		result3 error
 	}{result1, result2, result3}
 }
 
-func (fake *FakeController) GetPagesReturnsOnCall(i int, result1 []string, result2 map[string]*types.PageMeta, result3 error) {
+func (fake *FakeController) GetPagesReturnsOnCall(i int, result1 []string, result2 map[string]*session.PageMeta, result3 error) {
 	fake.getPagesMutex.Lock()
 	defer fake.getPagesMutex.Unlock()
 	fake.GetPagesStub = nil
 	if fake.getPagesReturnsOnCall == nil {
 		fake.getPagesReturnsOnCall = make(map[int]struct {
 			result1 []string
-			result2 map[string]*types.PageMeta
+			result2 map[string]*session.PageMeta
 			result3 error
 		})
 	}
 	fake.getPagesReturnsOnCall[i] = struct {
 		result1 []string
-		result2 map[string]*types.PageMeta
+		result2 map[string]*session.PageMeta
 		result3 error
 	}{result1, result2, result3}
 }
@@ -576,7 +576,7 @@ func (fake *FakeController) GetPagesSetReturnsOnCall(i int, result1 map[string]s
 	}{result1}
 }
 
-func (fake *FakeController) GetStrokes(arg1 context.Context, arg2 string) ([]types.Stroke, error) {
+func (fake *FakeController) GetStrokes(arg1 context.Context, arg2 string) ([]*session.Stroke, error) {
 	fake.getStrokesMutex.Lock()
 	ret, specificReturn := fake.getStrokesReturnsOnCall[len(fake.getStrokesArgsForCall)]
 	fake.getStrokesArgsForCall = append(fake.getStrokesArgsForCall, struct {
@@ -602,7 +602,7 @@ func (fake *FakeController) GetStrokesCallCount() int {
 	return len(fake.getStrokesArgsForCall)
 }
 
-func (fake *FakeController) GetStrokesCalls(stub func(context.Context, string) ([]types.Stroke, error)) {
+func (fake *FakeController) GetStrokesCalls(stub func(context.Context, string) ([]*session.Stroke, error)) {
 	fake.getStrokesMutex.Lock()
 	defer fake.getStrokesMutex.Unlock()
 	fake.GetStrokesStub = stub
@@ -615,33 +615,33 @@ func (fake *FakeController) GetStrokesArgsForCall(i int) (context.Context, strin
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeController) GetStrokesReturns(result1 []types.Stroke, result2 error) {
+func (fake *FakeController) GetStrokesReturns(result1 []*session.Stroke, result2 error) {
 	fake.getStrokesMutex.Lock()
 	defer fake.getStrokesMutex.Unlock()
 	fake.GetStrokesStub = nil
 	fake.getStrokesReturns = struct {
-		result1 []types.Stroke
+		result1 []*session.Stroke
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeController) GetStrokesReturnsOnCall(i int, result1 []types.Stroke, result2 error) {
+func (fake *FakeController) GetStrokesReturnsOnCall(i int, result1 []*session.Stroke, result2 error) {
 	fake.getStrokesMutex.Lock()
 	defer fake.getStrokesMutex.Unlock()
 	fake.GetStrokesStub = nil
 	if fake.getStrokesReturnsOnCall == nil {
 		fake.getStrokesReturnsOnCall = make(map[int]struct {
-			result1 []types.Stroke
+			result1 []*session.Stroke
 			result2 error
 		})
 	}
 	fake.getStrokesReturnsOnCall[i] = struct {
-		result1 []types.Stroke
+		result1 []*session.Stroke
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeController) GetUserReady(arg1 string) (*types.User, error) {
+func (fake *FakeController) GetUserReady(arg1 string) (*session.User, error) {
 	fake.getUserReadyMutex.Lock()
 	ret, specificReturn := fake.getUserReadyReturnsOnCall[len(fake.getUserReadyArgsForCall)]
 	fake.getUserReadyArgsForCall = append(fake.getUserReadyArgsForCall, struct {
@@ -666,7 +666,7 @@ func (fake *FakeController) GetUserReadyCallCount() int {
 	return len(fake.getUserReadyArgsForCall)
 }
 
-func (fake *FakeController) GetUserReadyCalls(stub func(string) (*types.User, error)) {
+func (fake *FakeController) GetUserReadyCalls(stub func(string) (*session.User, error)) {
 	fake.getUserReadyMutex.Lock()
 	defer fake.getUserReadyMutex.Unlock()
 	fake.GetUserReadyStub = stub
@@ -679,33 +679,33 @@ func (fake *FakeController) GetUserReadyArgsForCall(i int) string {
 	return argsForCall.arg1
 }
 
-func (fake *FakeController) GetUserReadyReturns(result1 *types.User, result2 error) {
+func (fake *FakeController) GetUserReadyReturns(result1 *session.User, result2 error) {
 	fake.getUserReadyMutex.Lock()
 	defer fake.getUserReadyMutex.Unlock()
 	fake.GetUserReadyStub = nil
 	fake.getUserReadyReturns = struct {
-		result1 *types.User
+		result1 *session.User
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeController) GetUserReadyReturnsOnCall(i int, result1 *types.User, result2 error) {
+func (fake *FakeController) GetUserReadyReturnsOnCall(i int, result1 *session.User, result2 error) {
 	fake.getUserReadyMutex.Lock()
 	defer fake.getUserReadyMutex.Unlock()
 	fake.GetUserReadyStub = nil
 	if fake.getUserReadyReturnsOnCall == nil {
 		fake.getUserReadyReturnsOnCall = make(map[int]struct {
-			result1 *types.User
+			result1 *session.User
 			result2 error
 		})
 	}
 	fake.getUserReadyReturnsOnCall[i] = struct {
-		result1 *types.User
+		result1 *session.User
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeController) GetUsers() map[string]*types.User {
+func (fake *FakeController) GetUsers() map[string]*session.User {
 	fake.getUsersMutex.Lock()
 	ret, specificReturn := fake.getUsersReturnsOnCall[len(fake.getUsersArgsForCall)]
 	fake.getUsersArgsForCall = append(fake.getUsersArgsForCall, struct {
@@ -729,32 +729,32 @@ func (fake *FakeController) GetUsersCallCount() int {
 	return len(fake.getUsersArgsForCall)
 }
 
-func (fake *FakeController) GetUsersCalls(stub func() map[string]*types.User) {
+func (fake *FakeController) GetUsersCalls(stub func() map[string]*session.User) {
 	fake.getUsersMutex.Lock()
 	defer fake.getUsersMutex.Unlock()
 	fake.GetUsersStub = stub
 }
 
-func (fake *FakeController) GetUsersReturns(result1 map[string]*types.User) {
+func (fake *FakeController) GetUsersReturns(result1 map[string]*session.User) {
 	fake.getUsersMutex.Lock()
 	defer fake.getUsersMutex.Unlock()
 	fake.GetUsersStub = nil
 	fake.getUsersReturns = struct {
-		result1 map[string]*types.User
+		result1 map[string]*session.User
 	}{result1}
 }
 
-func (fake *FakeController) GetUsersReturnsOnCall(i int, result1 map[string]*types.User) {
+func (fake *FakeController) GetUsersReturnsOnCall(i int, result1 map[string]*session.User) {
 	fake.getUsersMutex.Lock()
 	defer fake.getUsersMutex.Unlock()
 	fake.GetUsersStub = nil
 	if fake.getUsersReturnsOnCall == nil {
 		fake.getUsersReturnsOnCall = make(map[int]struct {
-			result1 map[string]*types.User
+			result1 map[string]*session.User
 		})
 	}
 	fake.getUsersReturnsOnCall[i] = struct {
-		result1 map[string]*types.User
+		result1 map[string]*session.User
 	}{result1}
 }
 
@@ -995,7 +995,7 @@ func (fake *FakeController) IsValidPageReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
-func (fake *FakeController) NewUser(arg1 string, arg2 string) (*types.User, error) {
+func (fake *FakeController) NewUser(arg1 string, arg2 string) (*session.User, error) {
 	fake.newUserMutex.Lock()
 	ret, specificReturn := fake.newUserReturnsOnCall[len(fake.newUserArgsForCall)]
 	fake.newUserArgsForCall = append(fake.newUserArgsForCall, struct {
@@ -1021,7 +1021,7 @@ func (fake *FakeController) NewUserCallCount() int {
 	return len(fake.newUserArgsForCall)
 }
 
-func (fake *FakeController) NewUserCalls(stub func(string, string) (*types.User, error)) {
+func (fake *FakeController) NewUserCalls(stub func(string, string) (*session.User, error)) {
 	fake.newUserMutex.Lock()
 	defer fake.newUserMutex.Unlock()
 	fake.NewUserStub = stub
@@ -1034,28 +1034,28 @@ func (fake *FakeController) NewUserArgsForCall(i int) (string, string) {
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeController) NewUserReturns(result1 *types.User, result2 error) {
+func (fake *FakeController) NewUserReturns(result1 *session.User, result2 error) {
 	fake.newUserMutex.Lock()
 	defer fake.newUserMutex.Unlock()
 	fake.NewUserStub = nil
 	fake.newUserReturns = struct {
-		result1 *types.User
+		result1 *session.User
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeController) NewUserReturnsOnCall(i int, result1 *types.User, result2 error) {
+func (fake *FakeController) NewUserReturnsOnCall(i int, result1 *session.User, result2 error) {
 	fake.newUserMutex.Lock()
 	defer fake.newUserMutex.Unlock()
 	fake.NewUserStub = nil
 	if fake.newUserReturnsOnCall == nil {
 		fake.newUserReturnsOnCall = make(map[int]struct {
-			result1 *types.User
+			result1 *session.User
 			result2 error
 		})
 	}
 	fake.newUserReturnsOnCall[i] = struct {
-		result1 *types.User
+		result1 *session.User
 		result2 error
 	}{result1, result2}
 }
@@ -1183,7 +1183,7 @@ func (fake *FakeController) SyncPagesReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeController) UpdatePages(arg1 context.Context, arg2 []string, arg3 map[string]*types.PageMeta, arg4 bool) error {
+func (fake *FakeController) UpdatePages(arg1 context.Context, arg2 []string, arg3 map[string]*session.PageMeta, arg4 bool) error {
 	var arg2Copy []string
 	if arg2 != nil {
 		arg2Copy = make([]string, len(arg2))
@@ -1194,7 +1194,7 @@ func (fake *FakeController) UpdatePages(arg1 context.Context, arg2 []string, arg
 	fake.updatePagesArgsForCall = append(fake.updatePagesArgsForCall, struct {
 		arg1 context.Context
 		arg2 []string
-		arg3 map[string]*types.PageMeta
+		arg3 map[string]*session.PageMeta
 		arg4 bool
 	}{arg1, arg2Copy, arg3, arg4})
 	stub := fake.UpdatePagesStub
@@ -1216,13 +1216,13 @@ func (fake *FakeController) UpdatePagesCallCount() int {
 	return len(fake.updatePagesArgsForCall)
 }
 
-func (fake *FakeController) UpdatePagesCalls(stub func(context.Context, []string, map[string]*types.PageMeta, bool) error) {
+func (fake *FakeController) UpdatePagesCalls(stub func(context.Context, []string, map[string]*session.PageMeta, bool) error) {
 	fake.updatePagesMutex.Lock()
 	defer fake.updatePagesMutex.Unlock()
 	fake.UpdatePagesStub = stub
 }
 
-func (fake *FakeController) UpdatePagesArgsForCall(i int) (context.Context, []string, map[string]*types.PageMeta, bool) {
+func (fake *FakeController) UpdatePagesArgsForCall(i int) (context.Context, []string, map[string]*session.PageMeta, bool) {
 	fake.updatePagesMutex.RLock()
 	defer fake.updatePagesMutex.RUnlock()
 	argsForCall := fake.updatePagesArgsForCall[i]
@@ -1252,10 +1252,10 @@ func (fake *FakeController) UpdatePagesReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeController) UserConnect(arg1 *types.User) {
+func (fake *FakeController) UserConnect(arg1 *session.User) {
 	fake.userConnectMutex.Lock()
 	fake.userConnectArgsForCall = append(fake.userConnectArgsForCall, struct {
-		arg1 *types.User
+		arg1 *session.User
 	}{arg1})
 	stub := fake.UserConnectStub
 	fake.recordInvocation("UserConnect", []interface{}{arg1})
@@ -1271,13 +1271,13 @@ func (fake *FakeController) UserConnectCallCount() int {
 	return len(fake.userConnectArgsForCall)
 }
 
-func (fake *FakeController) UserConnectCalls(stub func(*types.User)) {
+func (fake *FakeController) UserConnectCalls(stub func(*session.User)) {
 	fake.userConnectMutex.Lock()
 	defer fake.userConnectMutex.Unlock()
 	fake.UserConnectStub = stub
 }
 
-func (fake *FakeController) UserConnectArgsForCall(i int) *types.User {
+func (fake *FakeController) UserConnectArgsForCall(i int) *session.User {
 	fake.userConnectMutex.RLock()
 	defer fake.userConnectMutex.RUnlock()
 	argsForCall := fake.userConnectArgsForCall[i]
@@ -1317,11 +1317,11 @@ func (fake *FakeController) UserDisconnectArgsForCall(i int) (context.Context, s
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeController) UserReady(arg1 *types.User) error {
+func (fake *FakeController) UserReady(arg1 *session.User) error {
 	fake.userReadyMutex.Lock()
 	ret, specificReturn := fake.userReadyReturnsOnCall[len(fake.userReadyArgsForCall)]
 	fake.userReadyArgsForCall = append(fake.userReadyArgsForCall, struct {
-		arg1 *types.User
+		arg1 *session.User
 	}{arg1})
 	stub := fake.UserReadyStub
 	fakeReturns := fake.userReadyReturns
@@ -1342,13 +1342,13 @@ func (fake *FakeController) UserReadyCallCount() int {
 	return len(fake.userReadyArgsForCall)
 }
 
-func (fake *FakeController) UserReadyCalls(stub func(*types.User) error) {
+func (fake *FakeController) UserReadyCalls(stub func(*session.User) error) {
 	fake.userReadyMutex.Lock()
 	defer fake.userReadyMutex.Unlock()
 	fake.UserReadyStub = stub
 }
 
-func (fake *FakeController) UserReadyArgsForCall(i int) *types.User {
+func (fake *FakeController) UserReadyArgsForCall(i int) *session.User {
 	fake.userReadyMutex.RLock()
 	defer fake.userReadyMutex.RUnlock()
 	argsForCall := fake.userReadyArgsForCall[i]

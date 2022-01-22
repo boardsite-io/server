@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/heat1q/boardsite/api/middleware"
-	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/session"
 	"github.com/heat1q/boardsite/session/sessionfakes"
 )
@@ -21,7 +20,7 @@ func TestSession(t *testing.T) {
 
 		scb := &sessionfakes.FakeController{}
 		scb.IDReturns(sessionId)
-		scb.GetUserReadyReturns(&types.User{
+		scb.GetUserReadyReturns(&session.User{
 			ID: userId,
 		}, nil)
 		dispatcher := &sessionfakes.FakeDispatcher{}
@@ -33,7 +32,7 @@ func TestSession(t *testing.T) {
 		defer s.Close()
 		handler := func(c echo.Context) error {
 			assert.Equal(t, sessionId, c.Get(session.SessionCtxKey).(session.Controller).ID())
-			assert.Equal(t, userId, c.Get(session.UserCtxKey).(*types.User).ID)
+			assert.Equal(t, userId, c.Get(session.UserCtxKey).(*session.User).ID)
 			return c.NoContent(http.StatusOK)
 		}
 		e.GET("/b/:id", handler)
