@@ -5,8 +5,6 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-
-	gws "github.com/gorilla/websocket"
 )
 
 // Message type definitions.
@@ -26,65 +24,6 @@ type Message struct {
 	Sender  string      `json:"sender,omitempty"`
 	Content interface{} `json:"content,omitempty"`
 }
-
-// User declares some information about connected users.
-type User struct {
-	ID    string    `json:"id"`
-	Alias string    `json:"alias"`
-	Color string    `json:"color"`
-	Conn  *gws.Conn `json:"-"`
-}
-
-// PageStyle declares the style of the page background.
-type PageBackground struct {
-	// page background
-	Style    string `json:"style,omitempty"`
-	PageNum  int    `json:"documentPageNum"`
-	AttachId string `json:"attachId"`
-}
-
-type PageSize struct {
-	Width  float64 `json:"width"`
-	Height float64 `json:"height"`
-}
-
-// PageMeta declares some page meta data.
-type PageMeta struct {
-	PageSize   PageSize       `json:"size"`
-	Background PageBackground `json:"background"`
-}
-
-// ContentPageRequest declares the message content for page requests.
-type ContentPageRequest struct {
-	PageID []string             `json:"pageId"`
-	Index  []int                `json:"index,omitempty"`
-	Clear  bool                 `json:"clear,omitempty"`
-	Meta   map[string]*PageMeta `json:"meta"`
-}
-
-// ContentPageSync message content for page sync.
-type ContentPageSync struct {
-	PageRank []string             `json:"pageRank"`
-	Meta     map[string]*PageMeta `json:"meta"`
-}
-
-// ContentMouseMove declares mouse move updates.
-type ContentMouseMove struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
-}
-
-type CreateSessionResponse struct {
-	SessionID string `json:"sessionId"`
-}
-
-type AttachmentResponse struct {
-	AttachID string `json:"attachId"`
-}
-
-// type ContentUserSync map[string]*User
-// type ContentPageSync []string
-// type ContentPageClear []string
 
 // NewMessage creates a new Message with any JSON encodable content,
 // a message type and an optional sender.

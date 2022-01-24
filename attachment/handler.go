@@ -7,3 +7,7 @@ type Handler interface {
 	Get(attachID string) (io.Reader, string, error)
 	Clear() error
 }
+
+type AttachmentResponse struct {
+	AttachID string `json:"attachId"`
+}

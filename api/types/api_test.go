@@ -38,26 +38,32 @@ func TestUnmarshalMsg(t *testing.T) {
 	}
 }
 
+type testStroke struct {
+	Type   int    `json:"type"`
+	Id     string `json:"id"`
+	UserId string `json:"userId"`
+}
+
 func TestUnmarshalMsgContent(t *testing.T) {
 	tests := []struct {
 		msg  string
-		want Stroke
+		want testStroke
 		err  error
 	}{
-		{"", Stroke{}, assert.AnError},
-		{"{}", Stroke{}, assert.AnError},
-		{`{{"content": {}`, Stroke{}, assert.AnError},
-		{`{"content": null}`, Stroke{}, assert.AnError},
-		{`{"content": {"type": "0}}`, Stroke{}, assert.AnError},
+		{"", testStroke{}, assert.AnError},
+		{"{}", testStroke{}, assert.AnError},
+		{`{{"content": {}`, testStroke{}, assert.AnError},
+		{`{"content": null}`, testStroke{}, assert.AnError},
+		{`{"content": {"type": "0}}`, testStroke{}, assert.AnError},
 		{
 			`{"type":"sometype","sender":"heat","content":{"type":0,"id":"id1","userId":"user1"}}`,
-			Stroke{ID: "id1", UserID: "user1", Type: 0},
+			testStroke{Id: "id1", UserId: "user1", Type: 0},
 			nil,
 		},
 	}
 
 	for _, test := range tests {
-		var c Stroke
+		var c testStroke
 		if test.err != nil {
 			assert.Error(t, UnmarshalMsgContent([]byte(test.msg), &c))
 		} else {

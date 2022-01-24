@@ -5,20 +5,28 @@ import (
 	"errors"
 	"fmt"
 
-	apiErrors "github.com/heat1q/boardsite/api/errors"
-
+	gws "github.com/gorilla/websocket"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
+	apiErrors "github.com/heat1q/boardsite/api/errors"
 	"github.com/heat1q/boardsite/api/types"
 )
 
 const maxNameLen = 32
 
+// User declares some information about connected users.
+type User struct {
+	ID    string    `json:"id"`
+	Alias string    `json:"alias"`
+	Color string    `json:"color"`
+	Conn  *gws.Conn `json:"-"`
+}
+
 // NewUser generate a new user struct based on
 // the alias and color attribute
 //
 // Does some sanitize checks.
-func (scb *controlBlock) NewUser(alias, color string) (*types.User, error) {
+func (scb *controlBlock) NewUser(alias, color string) (*User, error) {
 	if len(alias) > maxNameLen {
 		alias = alias[:maxNameLen]
 	}
@@ -31,7 +39,7 @@ func (scb *controlBlock) NewUser(alias, color string) (*types.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	user := &types.User{
+	user := &User{
 		ID:    id,
 		Alias: alias,
 		Color: color,
@@ -42,7 +50,7 @@ func (scb *controlBlock) NewUser(alias, color string) (*types.User, error) {
 }
 
 // UserReady adds an user to the usersReady map.
-func (scb *controlBlock) UserReady(u *types.User) error {
+func (scb *controlBlock) UserReady(u *User) error {
 	scb.muUsr.RLock()
 	defer scb.muUsr.RUnlock()
 	if scb.numUsers >= scb.maxUsers {
@@ -57,7 +65,7 @@ func (scb *controlBlock) UserReady(u *types.User) error {
 }
 
 // GetUserReady returns the user with userID ready to join a session.
-func (scb *controlBlock) GetUserReady(userID string) (*types.User, error) {
+func (scb *controlBlock) GetUserReady(userID string) (*User, error) {
 	scb.muRdyUsr.RLock()
 	defer scb.muRdyUsr.RUnlock()
 	u, ok := scb.usersReady[userID]
@@ -76,7 +84,7 @@ func (scb *controlBlock) IsUserReady(userID string) bool {
 // UserConnect adds user from the userReady state to clients.
 //
 // Broadcast that user has connected to session.
-func (scb *controlBlock) UserConnect(u *types.User) {
+func (scb *controlBlock) UserConnect(u *User) {
 	scb.muUsr.Lock()
 	scb.users[u.ID] = u
 	scb.numUsers++
@@ -123,8 +131,8 @@ func (scb *controlBlock) IsUserConnected(userID string) bool {
 }
 
 // GetUsers returns all active users/clients in the session.
-func (scb *controlBlock) GetUsers() map[string]*types.User {
-	users := make(map[string]*types.User)
+func (scb *controlBlock) GetUsers() map[string]*User {
+	users := make(map[string]*User)
 	scb.muUsr.RLock()
 	for id, u := range scb.users {
 		users[id] = u

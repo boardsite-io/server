@@ -10,27 +10,31 @@ import (
 	"github.com/heat1q/boardsite/redis"
 )
 
+type CreateSessionResponse struct {
+	SessionId string `json:"sessionId"`
+}
+
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
 //counterfeiter:generate . Controller
 type Controller interface {
 	ID() string
-	GetPages(ctx context.Context) ([]string, map[string]*types.PageMeta, error)
+	GetPages(ctx context.Context) ([]string, map[string]*PageMeta, error)
 	GetPagesSet(ctx context.Context) map[string]struct{}
 	IsValidPage(ctx context.Context, pageID ...string) bool
-	AddPages(ctx context.Context, pageIDs []string, index []int, meta map[string]*types.PageMeta) error
+	AddPages(ctx context.Context, pageIDs []string, index []int, meta map[string]*PageMeta) error
 	DeletePages(ctx context.Context, pageID ...string) error
-	UpdatePages(ctx context.Context, pageIDs []string, meta map[string]*types.PageMeta, clear bool) error
+	UpdatePages(ctx context.Context, pageIDs []string, meta map[string]*PageMeta, clear bool) error
 	SyncPages(ctx context.Context) error
-	NewUser(alias string, color string) (*types.User, error)
-	UserReady(u *types.User) error
-	GetUserReady(userID string) (*types.User, error)
+	NewUser(alias string, color string) (*User, error)
+	UserReady(u *User) error
+	GetUserReady(userID string) (*User, error)
 	IsUserReady(userID string) bool
-	UserConnect(u *types.User)
+	UserConnect(u *User)
 	UserDisconnect(ctx context.Context, userID string)
 	IsUserConnected(userID string) bool
-	GetUsers() map[string]*types.User
+	GetUsers() map[string]*User
 	Close()
-	GetStrokes(ctx context.Context, pageID string) ([]types.Stroke, error)
+	GetStrokes(ctx context.Context, pageID string) ([]*Stroke, error)
 	Receive(ctx context.Context, msg *types.Message) error
 	Attachments() attachment.Handler
 }
@@ -46,19 +50,19 @@ type controlBlock struct {
 	echo      chan *types.Message
 
 	cache    redis.Handler
-	dbUpdate chan []*types.Stroke
+	dbUpdate chan []redis.Stroke
 
 	signalClose chan struct{}
 
 	muRdyUsr sync.RWMutex
 	// users that have previously been created via POST
 	// and have not yet joined the session
-	usersReady map[string]*types.User
+	usersReady map[string]*User
 
 	muUsr sync.RWMutex
 	// Active Client users that are in the session
 	// and have an intact WS connection
-	users    map[string]*types.User
+	users    map[string]*User
 	maxUsers int
 	numUsers int
 }
@@ -74,10 +78,10 @@ func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatche
 		broadcast:   make(chan *types.Message),
 		echo:        make(chan *types.Message),
 		cache:       cache,
-		dbUpdate:    make(chan []*types.Stroke),
+		dbUpdate:    make(chan []redis.Stroke),
 		signalClose: make(chan struct{}),
-		usersReady:  make(map[string]*types.User),
-		users:       make(map[string]*types.User),
+		usersReady:  make(map[string]*User),
+		users:       make(map[string]*User),
 		maxUsers:    maxUsers,
 	}
 
@@ -137,7 +141,7 @@ func (scb *controlBlock) dbUpdateLoop() {
 	for {
 		select {
 		case strokes := <-scb.dbUpdate:
-			if err := scb.cache.Update(ctx, scb.id, strokes); err != nil {
+			if err := scb.cache.UpdateStrokes(ctx, scb.id, strokes...); err != nil {
 				log.Printf("error in dbUpdateLoop: %v", err)
 			}
 		case <-scb.signalClose:
