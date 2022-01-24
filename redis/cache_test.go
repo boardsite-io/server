@@ -2,8 +2,7 @@ package redis_test
 
 import (
 	"context"
-	"math"
-	"math/rand"
+	"encoding/json"
 	"strconv"
 	"testing"
 
@@ -31,26 +30,101 @@ func setupHandler(t *testing.T) (*miniredis.Miniredis, redis.Handler) {
 	return mr, h
 }
 
-func genRandStroke(id, pageID string, strokeType int) *session.Stroke {
-	pts := make([]float64, 20)
-	for i := range pts {
-		pts[i] = math.Floor(rand.Float64()*1e3) / 10.0
-	}
-
+func genStroke(id, pageID string, strokeType int) *session.Stroke {
 	return &session.Stroke{
 		ID:     id,
 		PageID: pageID,
 		Type:   strokeType,
-		X:      math.Floor(rand.Float64()*1e3) / 10.0,
-		Y:      math.Floor(rand.Float64()*1e3) / 10.0,
-		Points: pts,
+		X:      2.32,
+		Y:      5.23,
+		Points: []float64{324.42, 426.23, 123.34, 316.3, 324.42, 426.23, 123.34, 316.3},
 		Style:  session.Style{Color: "#00beef", Width: 3.0},
 	}
 }
 
-func TestAddPages(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func Test_handler_UpdateStrokes(t *testing.T) {
+	ctx := context.Background()
+	mr, h := setupHandler(t)
+	defer mr.Close()
+	defer h.ClosePool()
+	sid := "sid"
+	pageId := "pageId"
+
+	tests := []struct {
+		name    string
+		strokes []redis.Stroke
+		updates []redis.Stroke
+		want    []*session.Stroke
+		wantErr bool
+	}{
+		{
+			name: "add a stroke",
+			updates: []redis.Stroke{
+				genStroke("stroke1", pageId, 1),
+			},
+			want: []*session.Stroke{
+				genStroke("stroke1", pageId, 1),
+			},
+		},
+		{
+			name: "delete a stroke",
+			strokes: []redis.Stroke{
+				genStroke("stroke1", pageId, 1),
+			},
+			updates: []redis.Stroke{
+				genStroke("stroke1", pageId, 0),
+			},
+			want: []*session.Stroke{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mr.FlushAll()
+			_ = h.UpdateStrokes(ctx, sid, tt.strokes...)
+
+			err := h.UpdateStrokes(ctx, sid, tt.updates...)
+
+			assert.NoError(t, err)
+			strokes, err := h.GetStrokesRaw(ctx, sid, pageId)
+			assert.NoError(t, err)
+			assert.Equal(t, len(tt.want), len(strokes))
+			for i, s := range strokes {
+				var got session.Stroke
+				err = json.Unmarshal(s, &got)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want[i], &got)
+			}
+		})
+	}
+}
+
+func Test_handler_GetStrokesRaw(t *testing.T) {
+	ctx := context.Background()
+	mr, h := setupHandler(t)
+	defer mr.Close()
+	defer h.ClosePool()
+	sid := "sid"
+	pageId := "pageId"
+	want := genStroke("stroke1", pageId, 1)
+
+	err := h.AddPage(ctx, sid, pageId, -1, nil)
+	assert.NoError(t, err)
+	err = h.UpdateStrokes(ctx, sid, want)
+	assert.NoError(t, err)
+
+	strokes, err := h.GetStrokesRaw(ctx, sid, pageId)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(strokes))
+
+	var got session.Stroke
+	err = json.Unmarshal(strokes[0], &got)
+	assert.NoError(t, err)
+	assert.Equal(t, want, &got)
+}
+
+func Test_handler_AddPage(t *testing.T) {
+	ctx := context.Background()
 	mr, h := setupHandler(t)
 	defer mr.Close()
 	defer h.ClosePool()
@@ -79,246 +153,81 @@ func TestAddPages(t *testing.T) {
 	}
 }
 
-/*
-func TestMetaPages(t *testing.T) {
-	if err := setupConn(); err != nil {
-		t.Log("cannot connect to local Redis instance")
-		t.SkipNow()
-	}
-	defer ClosePool()
-
-	sid := "sid2"
-	ClearSession(sid)
-
-	tests := []struct {
-		meta  types.PageMeta
-		index int
-		want  types.PageMeta
-	}{
-		{
-			meta:  types.PageMeta{Background: types.PageBackground{Style: "doc", PageNum: 1, AttachId: "12345potato"}},
-			index: 0,
-			want:  types.PageMeta{Background: types.PageBackground{Style: "doc", PageNum: 1, AttachId: "12345potato"}},
+func Test_handler_Get_SetPageMeta(t *testing.T) {
+	ctx := context.Background()
+	mr, h := setupHandler(t)
+	defer mr.Close()
+	defer h.ClosePool()
+	sid := "sid"
+	pageId := "pageId"
+	want := session.PageMeta{
+		PageSize: session.PageSize{
+			Width:  786,
+			Height: 1024,
+		},
+		Background: session.PageBackground{
+			Style:    "doc",
+			PageNum:  0,
+			AttachId: "attachId",
 		},
 	}
 
-	for _, test := range tests {
-		AddPage(sid, "pid1", test.index, &test.meta)
-		meta, err := GetPagesMeta(sid, "pid1")
-		assert.NoError(t, err)
-		assert.Equal(t, test.want, *meta["pid1"], "pageRank is not correct")
-	}
+	err := h.AddPage(ctx, sid, pageId, -1, nil)
+	assert.NoError(t, err)
+
+	err = h.SetPageMeta(ctx, sid, pageId, &want)
+	assert.NoError(t, err)
+
+	var got session.PageMeta
+	err = h.GetPageMeta(ctx, sid, pageId, &got)
+	assert.NoError(t, err)
+	assert.Equal(t, want, got)
 }
 
-func TestUpdateAndFetchStroke(t *testing.T) {
-	if err := setupConn(); err != nil {
-		t.Log("cannot connect to local Redis instance")
-		t.SkipNow()
-	}
-	defer ClosePool()
+func Test_handler_DeletePage(t *testing.T) {
+	ctx := context.Background()
+	mr, h := setupHandler(t)
+	defer mr.Close()
+	defer h.ClosePool()
+	sid := "sid"
+	pageId := "pageId"
 
-	ClearSession("sid1")
-	refStroke := genRandStroke("id1", "pid1", 1)
+	err := h.AddPage(ctx, sid, pageId, -1, nil)
+	assert.NoError(t, err)
+	err = h.UpdateStrokes(ctx, sid, genStroke("stroke1", pageId, 1))
+	assert.NoError(t, err)
 
-	setData := []*types.Stroke{
-		refStroke,
-		genRandStroke("id2", "pid1", rand.Intn(10)+1),
-		genRandStroke("id3", "pid1", rand.Intn(10)+1),
-		genRandStroke("id4", "pid1", rand.Intn(10)+1),
-		genRandStroke("id5", "pid1", rand.Intn(10)+1),
-	}
-	require.NoError(t, Update("sid1", setData))
+	err = h.DeletePage(ctx, sid, pageId)
 
-	clearData := []*types.Stroke{
-		// delete strokes
-		{ID: "id2", PageID: "pid1", Type: 0},
-		{ID: "id5", PageID: "pid1", Type: 0},
-		{ID: "id4", PageID: "pid1", Type: 0},
-		{ID: "id3", PageID: "pid1", Type: 0},
-	}
-	require.NoError(t, Update("sid1", clearData))
-
-	refStrokeStr, errRef := refStroke.JSONStringify()
-	require.NoError(t, errRef)
-
-	raw, errFetch := FetchStrokesRaw("sid1", "pid1")
-	require.NoError(t, errFetch)
-	assert.Equal(
-		t,
-		refStrokeStr,
-		raw[0],
-		"incorrect json stringified array of strokes objects",
-	)
+	assert.NoError(t, err)
+	pageRank, err := h.GetPageRank(ctx, sid)
+	assert.NoError(t, err)
+	assert.Empty(t, pageRank)
+	strokes, err := h.GetStrokesRaw(ctx, sid, pageId)
+	assert.NoError(t, err)
+	assert.Empty(t, strokes)
 }
 
-func TestFetchStrokesRaw(t *testing.T) {
-	if err := setupConn(); err != nil {
-		t.Log("cannot connect to local Redis instance")
-		t.SkipNow()
-	}
-	defer ClosePool()
+func Test_handler_ClearSession(t *testing.T) {
+	ctx := context.Background()
+	mr, h := setupHandler(t)
+	defer mr.Close()
+	defer h.ClosePool()
+	sid := "sid"
+	pageId := "pageId"
 
-	setData := []*types.Stroke{
-		genRandStroke("id1", "pid1", rand.Intn(10)+1),
-		genRandStroke("id2", "pid1", rand.Intn(10)+1),
-		genRandStroke("id3", "pid2", rand.Intn(10)+1),
-		genRandStroke("id4", "pid1", rand.Intn(10)+1),
-		genRandStroke("id5", "pid2", rand.Intn(10)+1),
-	}
-	require.NoError(t, Update("sid1", setData))
+	err := h.AddPage(ctx, sid, pageId, -1, nil)
+	assert.NoError(t, err)
+	err = h.UpdateStrokes(ctx, sid, genStroke("stroke1", pageId, 1))
+	assert.NoError(t, err)
 
-	tests := []struct {
-		sid     string
-		pid     string
-		wantLen int
-	}{
-		{"", "", 0},
-		{"sid0", "pid1", 0},
-		{"sid1", "pid1", 3},
-		{"sid1", "pid2", 2},
-		{"sid1", "pid3", 0},
-	}
+	err = h.ClearSession(ctx, sid)
 
-	for _, test := range tests {
-		raw, err := FetchStrokesRaw(test.sid, test.pid)
-		assert.NoError(t, err)
-		assert.Equal(t, test.wantLen, len(raw), "wrong number of fetched strokes")
-	}
+	assert.NoError(t, err)
+	pageRank, err := h.GetPageRank(ctx, sid)
+	assert.NoError(t, err)
+	assert.Empty(t, pageRank)
+	strokes, err := h.GetStrokesRaw(ctx, sid, pageId)
+	assert.NoError(t, err)
+	assert.Empty(t, strokes)
 }
-
-func TestDeletePage(t *testing.T) {
-	if err := setupConn(); err != nil {
-		t.Log("cannot connect to local Redis instance")
-		t.SkipNow()
-	}
-	defer ClosePool()
-
-	sid := "sid1"
-	tests := []struct {
-		pidAdd    string
-		wantPid   string
-		wantEmtpy bool
-	}{
-		{"pid1", "pid1", true},
-		{"pid1", "pid2", false},
-		{"pid2", "pid2", true},
-	}
-
-	for _, test := range tests {
-		assert.NoError(t, ClearSession(sid))
-		assert.NoError(t,
-			AddPage(sid, test.pidAdd, 0,
-				&types.PageMeta{Background: types.PageBackground{Style: "bg", PageNum: 0, AttachId: ""}}), "cannot add page")
-		assert.NoError(t,
-			Update(sid, []*types.Stroke{genRandStroke("id1", test.pidAdd, 1)}))
-
-		assert.NoError(t, DeletePage(sid, test.wantPid))
-
-		_, err := GetPagesMeta(sid, test.pidAdd)
-		if test.wantEmtpy {
-			assert.Error(t, err, "meta data not empty after deletion")
-		} else {
-			assert.NoError(t, err, "meta data should not be emtpy")
-		}
-
-		strokes, errF := FetchStrokesRaw(sid, test.pidAdd)
-		assert.NoError(t, errF)
-		if test.wantEmtpy {
-			assert.Empty(t, strokes, "strokes from page not removed")
-		} else {
-			assert.NotEmpty(t, strokes, "strokes should not be removed")
-		}
-
-		pids, err := GetPages(sid)
-		assert.NoError(t, err)
-		if test.wantEmtpy {
-			assert.Empty(t, pids, "page not removed")
-		} else {
-			assert.NotEmpty(t, pids, "page should not be removed")
-		}
-	}
-}
-
-func TestClearSession(t *testing.T) {
-	if err := setupConn(); err != nil {
-		t.Log("cannot connect to local Redis instance")
-		t.SkipNow()
-	}
-	defer ClosePool()
-
-	sid := "sid1"
-	pid := "pid1"
-
-	assert.NoError(t, ClearSession(sid))
-	assert.NoError(t, ClearSession(sid))
-
-	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{Style: "bg2", PageNum: 0, AttachId: ""}})
-	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
-
-	assert.NoError(t, ClearSession(sid))
-
-	_, err := GetPagesMeta(sid, pid)
-	assert.Error(t, err, "meta data not empty after deletion")
-	strokes, _ := FetchStrokesRaw(sid, pid)
-	assert.Empty(t, strokes, "strokes from page not removed")
-	pids, _ := GetPages(sid)
-	assert.Empty(t, pids, "page not removed")
-}
-
-func TestClearPage(t *testing.T) {
-	if err := setupConn(); err != nil {
-		t.Log("cannot connect to local Redis instance")
-		t.SkipNow()
-	}
-	defer ClosePool()
-
-	sid := "sid1"
-	pid := "pid1"
-	ClearSession(sid)
-	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{Style: "bg2", PageNum: 0, AttachId: ""}})
-	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
-
-	assert.NoError(t, ClearPage(sid, pid))
-	strokes, _ := FetchStrokesRaw(sid, pid)
-	assert.Empty(t, strokes, "strokes from page not cleared")
-}
-
-func TestUpdatePageMeta(t *testing.T) {
-	if err := setupConn(); err != nil {
-		t.Log("cannot connect to local Redis instance")
-		t.SkipNow()
-	}
-	defer ClosePool()
-
-	sid := "sid1"
-	pid := "pid1"
-	ClearSession(sid)
-	AddPage(sid, pid, 0, &types.PageMeta{Background: types.PageBackground{Style: "bg", PageNum: 1}})
-	Update(sid, []*types.Stroke{genRandStroke("id1", pid, 1)})
-
-	tests := []struct {
-		update   types.PageMeta
-		wantMeta types.PageMeta
-	}{
-		{
-			update:   types.PageMeta{Background: types.PageBackground{}},
-			wantMeta: types.PageMeta{Background: types.PageBackground{Style: "bg"}},
-		},
-		{
-			update:   types.PageMeta{Background: types.PageBackground{PageNum: 1}},
-			wantMeta: types.PageMeta{Background: types.PageBackground{Style: "bg", PageNum: 1}},
-		},
-		{
-			update:   types.PageMeta{Background: types.PageBackground{Style: "bg2"}},
-			wantMeta: types.PageMeta{Background: types.PageBackground{Style: "bg2"}},
-		},
-	}
-
-	for _, test := range tests {
-		assert.NoError(t, UpdatePageMeta(sid, pid, &test.update))
-		meta, err := GetPagesMeta(sid, pid)
-		assert.NoError(t, err)
-		assert.Equal(t, test.wantMeta, *meta[pid])
-	}
-}
-*/

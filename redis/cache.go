@@ -29,26 +29,6 @@ func getPageMetaKey(sessionId, pageId string) string {
 	return fmt.Sprintf("%s.%s.meta", sessionId, pageId)
 }
 
-func (h *handler) ClearSession(ctx context.Context, sessionId string) error {
-	pageRank, err := h.GetPageRank(ctx, sessionId)
-	if err != nil {
-		return err
-	}
-
-	if len(pageRank) == 0 { // nothing to do
-		return nil
-	}
-
-	query := make([]interface{}, 1, len(pageRank)*2+1)
-	query[0] = getPageRankKey(sessionId)
-	for _, pid := range pageRank {
-		query = append(query, getStrokesKey(sessionId, pid), getPageMetaKey(sessionId, pid))
-	}
-
-	_, err = h.Do(ctx, "DEL", query...)
-	return err
-}
-
 func (h *handler) UpdateStrokes(ctx context.Context, sessionId string, strokes ...Stroke) error {
 	conn, err := h.pool.GetContext(ctx)
 	if err != nil {
@@ -207,6 +187,26 @@ func (h *handler) DeletePage(ctx context.Context, sessionId, pageId string) erro
 		return err
 	}
 	return conn.Flush()
+}
+
+func (h *handler) ClearSession(ctx context.Context, sessionId string) error {
+	pageRank, err := h.GetPageRank(ctx, sessionId)
+	if err != nil {
+		return err
+	}
+
+	if len(pageRank) == 0 { // nothing to do
+		return nil
+	}
+
+	query := make([]interface{}, 1, len(pageRank)*2+1)
+	query[0] = getPageRankKey(sessionId)
+	for _, pid := range pageRank {
+		query = append(query, getStrokesKey(sessionId, pid), getPageMetaKey(sessionId, pid))
+	}
+
+	_, err = h.Do(ctx, "DEL", query...)
+	return err
 }
 
 func (h *handler) ClearPage(ctx context.Context, sessionId, pageId string) error {
