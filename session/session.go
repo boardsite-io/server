@@ -10,6 +10,15 @@ import (
 	"github.com/heat1q/boardsite/redis"
 )
 
+// Message type definitions.
+const (
+	MessageTypeStroke           = "stroke"
+	MessageTypeUserConnected    = "userconn"
+	MessageTypeUserDisconnected = "userdisc"
+	MessageTypePageSync         = "pagesync"
+	MessageTypeMouseMove        = "mmove"
+)
+
 // ContentMouseMove declares mouse move updates.
 type ContentMouseMove struct {
 	X float64 `json:"x"`
@@ -86,10 +95,10 @@ func (scb *controlBlock) Receive(ctx context.Context, msg *types.Message) error 
 
 	var err error
 	switch msg.Type {
-	case types.MessageTypeStroke:
+	case MessageTypeStroke:
 		err = scb.sanitizeStrokes(ctx, msg)
 
-	case types.MessageTypeMouseMove:
+	case MessageTypeMouseMove:
 		err = scb.mouseMove(msg)
 
 	default:
@@ -132,7 +141,7 @@ func (scb *controlBlock) sanitizeStrokes(ctx context.Context, msg *types.Message
 func (scb *controlBlock) updateStrokes(userID string, strokes []redis.Stroke) {
 	// broadcast changes
 	scb.broadcast <- &types.Message{
-		Type:    types.MessageTypeStroke,
+		Type:    MessageTypeStroke,
 		Sender:  userID,
 		Content: strokes,
 	}
@@ -148,7 +157,7 @@ func (scb *controlBlock) mouseMove(msg *types.Message) error {
 		return err
 	}
 	scb.broadcast <- &types.Message{
-		Type:    types.MessageTypeMouseMove,
+		Type:    MessageTypeMouseMove,
 		Sender:  msg.Sender,
 		Content: mouseUpdate,
 	}

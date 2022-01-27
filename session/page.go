@@ -303,7 +303,7 @@ func (scb *controlBlock) broadcastPageSync(ctx context.Context, pageIds []string
 	}
 
 	scb.broadcast <- &types.Message{
-		Type:    types.MessageTypePageSync,
+		Type:    MessageTypePageSync,
 		Sender:  "", // send to all clients
 		Content: sync,
 	}

@@ -92,7 +92,7 @@ func (scb *controlBlock) UserConnect(u *User) {
 
 	// broadcast that user has joined
 	scb.broadcast <- &types.Message{
-		Type:    types.MessageTypeUserConnected,
+		Type:    MessageTypeUserConnected,
 		Content: u,
 	}
 }
@@ -117,7 +117,7 @@ func (scb *controlBlock) UserDisconnect(ctx context.Context, userID string) {
 
 	// broadcast that user has left
 	scb.broadcast <- &types.Message{
-		Type:    types.MessageTypeUserDisconnected,
+		Type:    MessageTypeUserDisconnected,
 		Content: u,
 	}
 }

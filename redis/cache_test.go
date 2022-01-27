@@ -85,7 +85,7 @@ func Test_handler_UpdateStrokes(t *testing.T) {
 			err := h.UpdateStrokes(ctx, sid, tt.updates...)
 
 			assert.NoError(t, err)
-			strokes, err := h.GetStrokesRaw(ctx, sid, pageId)
+			strokes, err := h.GetPageStrokes(ctx, sid, pageId)
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want), len(strokes))
 			for i, s := range strokes {
@@ -112,7 +112,7 @@ func Test_handler_GetStrokesRaw(t *testing.T) {
 	err = h.UpdateStrokes(ctx, sid, want)
 	assert.NoError(t, err)
 
-	strokes, err := h.GetStrokesRaw(ctx, sid, pageId)
+	strokes, err := h.GetPageStrokes(ctx, sid, pageId)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(strokes))
@@ -203,7 +203,7 @@ func Test_handler_DeletePage(t *testing.T) {
 	pageRank, err := h.GetPageRank(ctx, sid)
 	assert.NoError(t, err)
 	assert.Empty(t, pageRank)
-	strokes, err := h.GetStrokesRaw(ctx, sid, pageId)
+	strokes, err := h.GetPageStrokes(ctx, sid, pageId)
 	assert.NoError(t, err)
 	assert.Empty(t, strokes)
 }
@@ -227,7 +227,7 @@ func Test_handler_ClearSession(t *testing.T) {
 	pageRank, err := h.GetPageRank(ctx, sid)
 	assert.NoError(t, err)
 	assert.Empty(t, pageRank)
-	strokes, err := h.GetStrokesRaw(ctx, sid, pageId)
+	strokes, err := h.GetPageStrokes(ctx, sid, pageId)
 	assert.NoError(t, err)
 	assert.Empty(t, strokes)
 }
