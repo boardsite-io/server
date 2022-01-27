@@ -7,7 +7,22 @@ import (
 	"fmt"
 	"strings"
 
+	apiErrors "github.com/heat1q/boardsite/api/errors"
+
+	"github.com/heat1q/boardsite/redis"
+
+	"github.com/heat1q/boardsite/api/log"
 	"github.com/heat1q/boardsite/api/types"
+)
+
+const (
+	queryKeyUpdate = "update"
+)
+
+const (
+	updateOperationMeta   = "meta"
+	updateOperationClear  = "clear"
+	updateOperationDelete = "delete"
 )
 
 // PageStyle declares the style of the page background.
@@ -29,45 +44,75 @@ type PageMeta struct {
 	Background PageBackground `json:"background"`
 }
 
-// ContentPageRequest declares the message content for page requests.
-type ContentPageRequest struct {
+type Page struct {
+	PageId  string    `json:"pageId"`
+	Meta    *PageMeta `json:"meta"`
+	Strokes []*Stroke `json:"strokes,omitempty"`
+}
+
+// PageRequest declares the message content for page requests.
+type PageRequest struct {
 	PageID []string             `json:"pageId"`
 	Index  []int                `json:"index,omitempty"`
-	Clear  bool                 `json:"clear,omitempty"`
 	Meta   map[string]*PageMeta `json:"meta"`
 }
 
-// ContentPageSync message content for page sync.
-type ContentPageSync struct {
-	PageRank []string             `json:"pageRank"`
-	Meta     map[string]*PageMeta `json:"meta"`
+type PageSync struct {
+	PageRank []string         `json:"pageRank"`
+	Pages    map[string]*Page `json:"pages"`
 }
 
-//type Page struct {
-//	PageId  string          `json:"pageId"`
-//	Strokes []*Stroke       `json:"strokes"`
-//	Meta    *PageMeta `json:"meta"`
-//}
+func (scb *controlBlock) GetPage(ctx context.Context, pageId string, withStrokes bool) (*Page, error) {
+	page := Page{
+		PageId: pageId,
+		Meta:   &PageMeta{},
+	}
 
-// GetPages returns all pageIDs in order.
-func (scb *controlBlock) GetPages(ctx context.Context) ([]string, map[string]*PageMeta, error) {
-	pageRank, err := scb.cache.GetPageRank(ctx, scb.id)
+	err := scb.cache.GetPageMeta(ctx, scb.id, pageId, page.Meta)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cache: get page rank: %w", err)
+		return nil, err
 	}
-	meta := make(map[string]*PageMeta, len(pageRank))
-	for _, pid := range pageRank {
-		var m PageMeta
-		if err := scb.cache.GetPageMeta(ctx, scb.id, pid, &m); err != nil {
-			return nil, nil, fmt.Errorf("cache: get page meta: %w", err)
+
+	if withStrokes {
+		page.Strokes, err = scb.getStrokes(ctx, pageId)
+	}
+
+	return &page, err
+}
+
+func (scb *controlBlock) getPages(ctx context.Context, pageIds []string, withStrokes bool) (map[string]*Page, error) {
+	pages := make(map[string]*Page, len(pageIds))
+	for _, pid := range pageIds {
+		page, err := scb.GetPage(ctx, pid, withStrokes)
+		if err != nil {
+			return nil, err
 		}
-		meta[pid] = &m
+		pages[pid] = page
 	}
-	return pageRank, meta, nil
+
+	return pages, nil
+}
+
+func (scb *controlBlock) getStrokes(ctx context.Context, pageId string) ([]*Stroke, error) {
+	strokeBytes, err := scb.cache.GetPageStrokes(ctx, scb.id, pageId)
+	if err != nil {
+		return nil, err
+	}
+
+	strokes := make([]*Stroke, len(strokeBytes))
+	for i, s := range strokeBytes {
+		var stroke Stroke
+		if err := json.Unmarshal(s, &stroke); err != nil {
+			return nil, err
+		}
+		strokes[i] = &stroke
+	}
+
+	return strokes, nil
 }
 
 // GetPagesSet returns all pageIDs in a map for fast verification.
-func (scb *controlBlock) GetPagesSet(ctx context.Context) map[string]struct{} {
+func (scb *controlBlock) getPagesSet(ctx context.Context) map[string]struct{} {
 	pageIDs, _ := scb.cache.GetPageRank(ctx, scb.id)
 	pageIDSet := make(map[string]struct{})
 
@@ -80,7 +125,7 @@ func (scb *controlBlock) GetPagesSet(ctx context.Context) map[string]struct{} {
 
 // IsValidPage checks if a pageID is valid, i.e. the page exists.
 func (scb *controlBlock) IsValidPage(ctx context.Context, pageID ...string) bool {
-	pages := scb.GetPagesSet(ctx)
+	pages := scb.getPagesSet(ctx)
 	for _, pid := range pageID {
 		if _, ok := pages[pid]; !ok {
 			return false
@@ -91,22 +136,22 @@ func (scb *controlBlock) IsValidPage(ctx context.Context, pageID ...string) bool
 
 // AddPages adds a page with pageID to the session and broadcasts
 // the change to all connected clients.
-func (scb *controlBlock) AddPages(ctx context.Context, pageIDs []string, index []int, meta map[string]*PageMeta) error {
-	if len(pageIDs) != len(index) {
-		return errors.New("cannot find page index")
+func (scb *controlBlock) AddPages(ctx context.Context, pageRequest PageRequest) error {
+	if len(pageRequest.PageID) != len(pageRequest.Index) {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("cannot find page index"))
 	}
-	if scb.IsValidPage(ctx, pageIDs...) {
-		return errors.New("some pages already exist")
+	if scb.IsValidPage(ctx, pageRequest.PageID...) {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("some pages already exist"))
 	}
 
-	defer scb.SyncPages(ctx)
+	defer scb.broadcastPageSync(ctx, pageRequest.PageID, false)
 
-	for i, pid := range pageIDs {
-		pMeta, ok := meta[pid]
+	for i, pid := range pageRequest.PageID {
+		pMeta, ok := pageRequest.Meta[pid]
 		if !ok {
-			return fmt.Errorf("no meta given for page %s", pid)
+			return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("no meta given for page %s", pid))
 		}
-		if err := scb.cache.AddPage(ctx, scb.id, pid, index[i], pMeta); err != nil {
+		if err := scb.cache.AddPage(ctx, scb.id, pid, pageRequest.Index[i], pMeta); err != nil {
 			return errors.New("cannot add page")
 		}
 	}
@@ -114,10 +159,60 @@ func (scb *controlBlock) AddPages(ctx context.Context, pageIDs []string, index [
 	return nil
 }
 
+// UpdatePages modifies the page meta data and/or clears the content.
+func (scb *controlBlock) UpdatePages(ctx context.Context, pageRequest PageRequest, operation string) error {
+	switch operation {
+	case updateOperationMeta:
+		return scb.updatePagesMeta(ctx, pageRequest.Meta)
+
+	case updateOperationDelete:
+		return scb.deletePages(ctx, pageRequest.PageID...)
+
+	case updateOperationClear:
+		return scb.clearPages(ctx, pageRequest.PageID...)
+
+	default:
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("unknown operation: %s", operation))
+	}
+}
+
+func (scb *controlBlock) updatePagesMeta(ctx context.Context, meta map[string]*PageMeta) error {
+	updates := make([]string, 0, len(meta))
+
+	defer scb.broadcastPageSync(ctx, updates, false)
+
+	for pid, m := range meta {
+		if !scb.IsValidPage(ctx, pid) {
+			continue
+		}
+
+		// update db
+		var newMeta PageMeta
+		if err := scb.cache.GetPageMeta(ctx, scb.id, pid, &newMeta); err != nil {
+			return err
+		}
+		tmp, err := json.Marshal(m)
+		if err != nil {
+			return err
+		}
+		// overwrite non-zero values
+		if err := json.Unmarshal(tmp, &newMeta); err != nil {
+			return err
+		}
+		if err := scb.cache.SetPageMeta(ctx, scb.id, pid, newMeta); err != nil {
+			return err
+		}
+
+		updates = append(updates, pid)
+	}
+
+	return nil
+}
+
 // DeletePages delete pages with pageID and broadcasts
 // the change to all connected clients.
-func (scb *controlBlock) DeletePages(ctx context.Context, pageID ...string) error {
-	defer scb.SyncPages(ctx)
+func (scb *controlBlock) deletePages(ctx context.Context, pageID ...string) error {
+	defer scb.broadcastPageSync(ctx, nil, false)
 
 	var sb strings.Builder
 	// go through all pages even if some fail
@@ -138,56 +233,60 @@ func (scb *controlBlock) DeletePages(ctx context.Context, pageID ...string) erro
 	return nil
 }
 
-// UpdatePages modifies the page meta data and/or clears the content.
-func (scb *controlBlock) UpdatePages(ctx context.Context, pageIDs []string, meta map[string]*PageMeta, clear bool) error {
-	var pageIDsUpdate []string
+func (scb *controlBlock) clearPages(ctx context.Context, pageIds ...string) error {
+	defer scb.broadcastPageSync(ctx, pageIds, true)
+	for _, pid := range pageIds {
+		if err := scb.cache.ClearPage(ctx, scb.id, pid); err != nil {
+			return fmt.Errorf("clear page %s: %w", pid, err)
+		}
+	}
+	return nil
+}
 
-	defer func() {
-		if len(pageIDsUpdate) == 0 {
-			return
-		}
-		scb.broadcast <- &types.Message{
-			Type:   types.MessageTypePageUpdate,
-			Sender: "", // send to all clients
-			Content: ContentPageRequest{
-				PageID: pageIDsUpdate,
-				Clear:  clear,
-				Meta:   meta,
-			},
-		}
-	}()
+func (scb *controlBlock) GetPageSync(ctx context.Context, pageIds []string, withStrokes bool) (*PageSync, error) {
+	var (
+		sync PageSync
+		err  error
+	)
 
-	for _, pid := range pageIDs {
-		if !scb.IsValidPage(ctx, pid) {
-			return fmt.Errorf("page %s does not exits", pid)
+	sync.PageRank, err = scb.cache.GetPageRank(ctx, scb.id)
+	if err != nil {
+		return nil, err
+	}
+
+	sync.Pages, err = scb.getPages(ctx, pageIds, withStrokes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &sync, nil
+}
+
+func (scb *controlBlock) SyncSession(ctx context.Context, sync PageSync) error {
+	if err := scb.cache.ClearSession(ctx, scb.id); err != nil {
+		return err
+	}
+
+	defer scb.broadcastPageSync(ctx, sync.PageRank, true)
+
+	for _, pid := range sync.PageRank {
+		page, ok := sync.Pages[pid]
+		if !ok {
+			return fmt.Errorf("page %s not found", pid)
 		}
-		if clear {
-			if err := scb.cache.ClearPage(ctx, scb.id, pid); err != nil {
-				return fmt.Errorf("cannot clear page %s", pid)
-			}
-		} else {
-			pMeta, ok := meta[pid]
-			if !ok {
-				return fmt.Errorf("no meta given for page %s", pid)
-			}
-			// update db
-			var newMeta PageMeta
-			if err := scb.cache.GetPageMeta(ctx, scb.id, pid, &newMeta); err != nil {
-				return err
-			}
-			tmp, err := json.Marshal(pMeta)
-			if err != nil {
-				return err
-			}
-			// overwrite non-zero values
-			if err := json.Unmarshal(tmp, &newMeta); err != nil {
-				return err
-			}
-			if err := scb.cache.SetPageMeta(ctx, scb.id, pid, newMeta); err != nil {
-				return err
-			}
+
+		if err := scb.cache.AddPage(ctx, scb.id, pid, -1, page.Meta); err != nil {
+			return err
 		}
-		pageIDsUpdate = append(pageIDsUpdate, pid)
+
+		strokes := make([]redis.Stroke, 0, len(page.Strokes))
+		for _, s := range page.Strokes {
+			strokes = append(strokes, s)
+		}
+
+		if err := scb.cache.UpdateStrokes(ctx, scb.id, strokes...); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -195,19 +294,17 @@ func (scb *controlBlock) UpdatePages(ctx context.Context, pageIDs []string, meta
 
 // SyncPages broadcasts the current PageRank to all connected
 // clients indicating an update in the pages (or ordering).
-func (scb *controlBlock) SyncPages(ctx context.Context) error {
-	pageRank, meta, err := scb.GetPages(ctx)
+// page with ids specified in the pageIds slice will be broadcasted
+func (scb *controlBlock) broadcastPageSync(ctx context.Context, pageIds []string, withStrokes bool) {
+	sync, err := scb.GetPageSync(ctx, pageIds, withStrokes)
 	if err != nil {
-		return err
+		log.Ctx(ctx).Errorf("failed to broadcast page sync: get sync: %v", err)
+		return
 	}
 
 	scb.broadcast <- &types.Message{
-		Type:   types.MessageTypePageSync,
-		Sender: "", // send to all clients
-		Content: &ContentPageSync{
-			PageRank: pageRank,
-			Meta:     meta,
-		},
+		Type:    types.MessageTypePageSync,
+		Sender:  "", // send to all clients
+		Content: sync,
 	}
-	return nil
 }

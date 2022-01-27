@@ -18,13 +18,10 @@ type CreateSessionResponse struct {
 //counterfeiter:generate . Controller
 type Controller interface {
 	ID() string
-	GetPages(ctx context.Context) ([]string, map[string]*PageMeta, error)
-	GetPagesSet(ctx context.Context) map[string]struct{}
+	GetPage(ctx context.Context, pageId string, withStrokes bool) (*Page, error)
 	IsValidPage(ctx context.Context, pageID ...string) bool
-	AddPages(ctx context.Context, pageIDs []string, index []int, meta map[string]*PageMeta) error
-	DeletePages(ctx context.Context, pageID ...string) error
-	UpdatePages(ctx context.Context, pageIDs []string, meta map[string]*PageMeta, clear bool) error
-	SyncPages(ctx context.Context) error
+	AddPages(ctx context.Context, pageRequest PageRequest) error
+	UpdatePages(ctx context.Context, pageRequest PageRequest, operation string) error
 	NewUser(alias string, color string) (*User, error)
 	UserReady(u *User) error
 	GetUserReady(userID string) (*User, error)

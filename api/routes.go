@@ -25,12 +25,12 @@ func (s *Server) setRoutes() {
 	usersGroup.GET( /*   */ "/:userId/socket", s.session.GetSocket, middleware.Session(s.dispatcher))
 
 	pagesGroup := boardGroup.Group("/:id/pages", middleware.Session(s.dispatcher))
-	pagesGroup.GET( /*   */ "", s.session.GetPages) // get page rank
+	pagesGroup.GET( /*   */ "", s.session.GetPageRank)
 	pagesGroup.POST( /*  */ "", s.session.PostPages)
 	pagesGroup.PUT( /*   */ "", s.session.PutPages)
-	pagesGroup.DELETE( /**/ "", s.session.DeletePages)
-	pagesGroup.GET( /*   */ "/:pageId", s.session.GetPageUpdate)
-	pagesGroup.DELETE( /**/ "/:pageId", s.session.DeletePageUpdate)
+	pagesGroup.GET( /*   */ "/:pageId", s.session.GetPage)
+	pagesGroup.GET( /*   */ "/sync", s.session.GetPageSync)
+	pagesGroup.POST( /*  */ "/sync", s.session.PostPageSync)
 
 	attachGroup := boardGroup.Group("/:id/attachments", middleware.Session(s.dispatcher))
 	attachGroup.POST( /**/ "", s.session.PostAttachment, middleware.RateLimiting(1, middleware.WithUserIP()))

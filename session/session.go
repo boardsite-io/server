@@ -61,7 +61,7 @@ func (s *Stroke) PageId() string {
 
 // GetStrokes fetches all stroke data for specified page.
 func (scb *controlBlock) GetStrokes(ctx context.Context, pageID string) ([]*Stroke, error) {
-	strokesRaw, err := scb.cache.GetStrokesRaw(ctx, scb.id, pageID)
+	strokesRaw, err := scb.cache.GetPageStrokes(ctx, scb.id, pageID)
 	if err != nil {
 		return nil, errors.New("unable to fetch strokes")
 	}
@@ -108,7 +108,7 @@ func (scb *controlBlock) sanitizeStrokes(ctx context.Context, msg *types.Message
 	}
 
 	validStrokes := make([]redis.Stroke, 0, len(strokes))
-	pageIDs := scb.GetPagesSet(ctx)
+	pageIDs := scb.getPagesSet(ctx)
 
 	for _, stroke := range strokes {
 		if _, ok := pageIDs[stroke.PageId()]; ok { // valid pageID
