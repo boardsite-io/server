@@ -110,7 +110,7 @@ func (h *handler) GetPageRank(c echo.Context) error {
 		return err
 	}
 
-	pageRank, err := scb.cache.GetPageRank(c.Request().Context(), scb.id)
+	pageRank, err := scb.GetPageRank(c.Request().Context())
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func (h *handler) GetPageSync(c echo.Context) error {
 		return err
 	}
 
-	pageRank, err := scb.cache.GetPageRank(c.Request().Context(), scb.id)
+	pageRank, err := scb.GetPageRank(c.Request().Context())
 	if err != nil {
 		return err
 	}
@@ -236,7 +236,7 @@ func (h *handler) PostAttachment(c echo.Context) error {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
 
-	attachID, err := scb.attachments.Upload(data)
+	attachID, err := scb.Attachments().Upload(data)
 	if err != nil {
 		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
 	}
@@ -250,7 +250,7 @@ func (h *handler) GetAttachment(c echo.Context) error {
 		return err
 	}
 	attachID := c.Param("attachId")
-	data, MIMEType, err := scb.attachments.Get(attachID)
+	data, MIMEType, err := scb.Attachments().Get(attachID)
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -258,8 +258,8 @@ func (h *handler) GetAttachment(c echo.Context) error {
 	return c.Stream(http.StatusOK, MIMEType, data)
 }
 
-func getSCB(c echo.Context) (*controlBlock, error) {
-	scb, ok := c.Get(SessionCtxKey).(*controlBlock)
+func getSCB(c echo.Context) (Controller, error) {
+	scb, ok := c.Get(SessionCtxKey).(Controller)
 	if !ok {
 		return nil, echo.ErrForbidden
 	}

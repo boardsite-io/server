@@ -2,13 +2,15 @@ package session
 
 import (
 	"context"
-	"log"
+	"errors"
 	"sync"
 
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/attachment"
 	"github.com/heat1q/boardsite/redis"
 )
+
+const defaultMaxUsers = 10
 
 type CreateSessionResponse struct {
 	SessionId string `json:"sessionId"`
@@ -17,22 +19,41 @@ type CreateSessionResponse struct {
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
 //counterfeiter:generate . Controller
 type Controller interface {
+	// ID returns the session id
 	ID() string
+
+	// GetPageRank returns the current page rank of a session
+	GetPageRank(ctx context.Context) ([]string, error)
+	// GetPage returns a page from the session
 	GetPage(ctx context.Context, pageId string, withStrokes bool) (*Page, error)
-	IsValidPage(ctx context.Context, pageID ...string) bool
+	// AddPages adds pages to the session
 	AddPages(ctx context.Context, pageRequest PageRequest) error
+	// UpdatePages perform an operation on the given pages.
+	// Operations include: clear, delete and update meta data
 	UpdatePages(ctx context.Context, pageRequest PageRequest, operation string) error
+	// GetPageSync returns the page rank and all pages from the session (optionally with all strokes)
+	GetPageSync(ctx context.Context, pageIds []string, withStrokes bool) (*PageSync, error)
+	// SyncSession synchronizes the session with the given page rank and pages
+	SyncSession(ctx context.Context, sync PageSync) error
+	// IsValidPage checks if the given page ids are valid pages
+	IsValidPage(ctx context.Context, pageID ...string) bool
+
+	// NewUser creates a new ready user for the session
 	NewUser(alias string, color string) (*User, error)
-	UserReady(u *User) error
+	// GetUserReady returns the current ready user for the given user id
 	GetUserReady(userID string) (*User, error)
-	IsUserReady(userID string) bool
+	// UserConnect connects a ready user to the session
 	UserConnect(u *User)
+	// UserDisconnect disconnects a user from the session
 	UserDisconnect(ctx context.Context, userID string)
-	IsUserConnected(userID string) bool
+	// GetUsers returns all active users in the session
 	GetUsers() map[string]*User
+
+	// Close closes a session
 	Close()
-	GetStrokes(ctx context.Context, pageID string) ([]*Stroke, error)
+	// Receive handles data received in the session
 	Receive(ctx context.Context, msg *types.Message) error
+	// Attachments returns the session's attachment handler
 	Attachments() attachment.Handler
 	// NumUsers returns the number of active users in the session
 	NumUsers() int
@@ -44,14 +65,9 @@ type controlBlock struct {
 
 	attachments attachment.Handler
 	dispatcher  Dispatcher
+	broadcaster Broadcaster
 
-	broadcast chan *types.Message
-	echo      chan *types.Message
-
-	cache    redis.Handler
-	dbUpdate chan []redis.Stroke
-
-	signalClose chan struct{}
+	cache redis.Handler
 
 	muRdyUsr sync.RWMutex
 	// users that have previously been created via POST
@@ -68,32 +84,81 @@ type controlBlock struct {
 
 var _ Controller = (*controlBlock)(nil)
 
+type ControlBlockOption = func(scb *controlBlock)
+
+// WithMaxUsers sets the maximum numbers of users allowed in a session
+// This functional argument is passed to NewControlBlock.
+func WithMaxUsers(maxUsers int) ControlBlockOption {
+	return func(scb *controlBlock) {
+		scb.maxUsers = maxUsers
+	}
+}
+
+// WithCache sets the redis.Handler
+// This functional argument is passed to NewControlBlock.
+func WithCache(cache redis.Handler) ControlBlockOption {
+	return func(scb *controlBlock) {
+		scb.cache = cache
+	}
+}
+
+// WithDispatcher sets the Dispatcher
+// This functional argument is passed to NewControlBlock.
+func WithDispatcher(dispatcher Dispatcher) ControlBlockOption {
+	return func(scb *controlBlock) {
+		scb.dispatcher = dispatcher
+	}
+}
+
+// WithAttachments sets the attachment.Handler
+// This functional argument is passed to NewControlBlock.
+func WithAttachments(attachments attachment.Handler) ControlBlockOption {
+	return func(scb *controlBlock) {
+		scb.attachments = attachments
+	}
+}
+
+// WithBroadcaster sets the Broadcaster
+// This functional argument is passed to NewControlBlock.
+func WithBroadcaster(broadcaster Broadcaster) ControlBlockOption {
+	return func(scb *controlBlock) {
+		scb.broadcaster = broadcaster
+	}
+}
+
 // NewControlBlock creates a new Session controlBlock with unique ID.
-func NewControlBlock(sessionID string, cache redis.Handler, dispatcher Dispatcher, maxUsers int) *controlBlock {
+func NewControlBlock(sessionId string, options ...ControlBlockOption) (*controlBlock, error) {
 	scb := &controlBlock{
-		id:          sessionID,
-		attachments: attachment.NewLocalHandler(sessionID),
-		dispatcher:  dispatcher,
-		broadcast:   make(chan *types.Message),
-		echo:        make(chan *types.Message),
-		cache:       cache,
-		dbUpdate:    make(chan []redis.Stroke),
-		signalClose: make(chan struct{}),
-		usersReady:  make(map[string]*User),
-		users:       make(map[string]*User),
-		maxUsers:    maxUsers,
+		id:         sessionId,
+		usersReady: make(map[string]*User),
+		users:      make(map[string]*User),
+		maxUsers:   defaultMaxUsers,
 	}
 
-	// start goroutines for broadcasting and saving changes to board
-	go scb.broadcastLoop()
-	go scb.dbUpdateLoop()
+	for _, o := range options {
+		o(scb)
+	}
 
-	return scb
+	if scb.cache == nil || scb.dispatcher == nil || scb.attachments == nil {
+		return nil, errors.New("some of the required handlers are not set")
+	}
+
+	if scb.broadcaster == nil {
+		scb.broadcaster = NewBroadcaster(scb.cache)
+	}
+
+	return scb, nil
+}
+
+// Start starts a session when the first user has joined.
+// It binds the broadcaster and starts its goroutines.
+func (scb *controlBlock) Start() {
+	scb.broadcaster.Bind(scb)
 }
 
 // Close sends a close signal
 func (scb *controlBlock) Close() {
-	scb.signalClose <- struct{}{}
+	scb.broadcaster.Close() <- struct{}{}
 }
 
 func (scb *controlBlock) ID() string {
@@ -106,50 +171,4 @@ func (scb *controlBlock) Attachments() attachment.Handler {
 
 func (scb *controlBlock) NumUsers() int {
 	return scb.numUsers
-}
-
-// broadcastLoop Broadcasts board updates to all clients
-func (scb *controlBlock) broadcastLoop() {
-	for {
-		select {
-		case data := <-scb.broadcast:
-			scb.muUsr.RLock()
-			for userID, user := range scb.users { // Send to all connected clients
-				// except the origin, i.e. the initiator of message
-				if userID != data.Sender {
-					if err := user.Conn.WriteJSON(data); err != nil {
-						log.Printf("%s :: cannot broadcast to %s: %v",
-							scb.id, user.Conn.RemoteAddr(), err)
-					}
-				}
-			}
-			scb.muUsr.RUnlock()
-		case data := <-scb.echo:
-			// echo message back to origin
-			scb.muUsr.RLock()
-			if err := scb.users[data.Sender].Conn.WriteJSON(data); err != nil {
-				log.Printf("error in broadcastLoop: %v", err)
-			}
-			scb.muUsr.RUnlock()
-		case <-scb.signalClose:
-			return
-		}
-	}
-}
-
-// dbUpdateLoop updates database according to given Stroke values
-func (scb *controlBlock) dbUpdateLoop() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	for {
-		select {
-		case strokes := <-scb.dbUpdate:
-			if err := scb.cache.UpdateStrokes(ctx, scb.id, strokes...); err != nil {
-				log.Printf("error in dbUpdateLoop: %v", err)
-			}
-		case <-scb.signalClose:
-			_ = scb.cache.ClearSession(ctx, scb.id)
-			return
-		}
-	}
 }

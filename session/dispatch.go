@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -71,7 +72,10 @@ func (d *sessionsDispatcher) Create(ctx context.Context, maxUsers int) (string, 
 		}
 	}
 
-	scb := NewControlBlock(sid, d.cache, d, maxUsers)
+	scb, err := NewControlBlock(sid, WithCache(d.cache), WithDispatcher(d), WithMaxUsers(maxUsers))
+	if err != nil {
+		return "", fmt.Errorf("new session control: %w", err)
+	}
 	// assign to SessionControl struct
 	d.mu.Lock()
 	d.activeSession[scb.id] = scb

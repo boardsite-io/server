@@ -13,6 +13,8 @@ const (
 	maxIdleTimeoutSec     = 5
 )
 
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+//counterfeiter:generate . Handler
 type Handler interface {
 	// ClearSession wipes the session from Redis.
 	//
