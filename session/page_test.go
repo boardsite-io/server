@@ -72,12 +72,12 @@ func Test_controlBlock_GetPageSync(t *testing.T) {
 				"pid1": {
 					PageId:  "pid1",
 					Meta:    &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Style: "ruled"}},
-					Strokes: []*session.Stroke{{ID: "stroke1"}},
+					Strokes: &[]*session.Stroke{{ID: "stroke1"}},
 				},
 				"pid2": {
 					PageId:  "pid2",
 					Meta:    &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Style: "ruled"}},
-					Strokes: []*session.Stroke{{ID: "stroke2"}},
+					Strokes: &[]*session.Stroke{{ID: "stroke2"}},
 				},
 			},
 		}
@@ -98,9 +98,9 @@ func Test_controlBlock_GetPageSync(t *testing.T) {
 			}
 			return assert.AnError
 		})
-		strokepid1, _ := json.Marshal(want.Pages["pid1"].Strokes[0])
+		strokepid1, _ := json.Marshal((*want.Pages["pid1"].Strokes)[0])
 		fakeCache.GetPageStrokesReturnsOnCall(0, [][]byte{strokepid1}, nil)
-		strokepid2, _ := json.Marshal(want.Pages["pid2"].Strokes[0])
+		strokepid2, _ := json.Marshal((*want.Pages["pid2"].Strokes)[0])
 		fakeCache.GetPageStrokesReturnsOnCall(1, [][]byte{strokepid2}, nil)
 
 		got, err := scb.GetPageSync(ctx, []string{"pid1", "pid2"}, true)
@@ -116,18 +116,18 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 	sessionId := "sid1"
 	fakeDispatcher := &sessionfakes.FakeDispatcher{}
 	fakeBroadcaster := &sessionfakes.FakeBroadcaster{}
-	fakeCache := &redisfakes.FakeHandler{}
 	fakeAttachments := &attachmentfakes.FakeHandler{}
-
-	scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
-		session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
-	assert.NoError(t, err)
 
 	broadcast := make(chan types.Message, 10)
 	defer close(broadcast)
 	fakeBroadcaster.BroadcastReturns(broadcast)
 
 	t.Run("update pages meta", func(t *testing.T) {
+		fakeCache := &redisfakes.FakeHandler{}
+		scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+			session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
+		assert.NoError(t, err)
+
 		pageRequest := session.PageRequest{
 			Meta: map[string]*session.PageMeta{
 				"pid1": {PageSize: session.PageSize{1234, 5678}},
@@ -135,7 +135,10 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 		}
 		want := &session.PageMeta{PageSize: session.PageSize{1234, 5678}, Background: session.PageBackground{Style: "ruled"}}
 
+		fakeCache.GetPageRankReturns([]string{"pid1"}, nil)
+		calls := 0
 		fakeCache.GetPageMetaCalls(func(_ context.Context, _ string, _ string, i interface{}) error {
+			calls++
 			meta := i.(*session.PageMeta)
 			meta.PageSize = session.PageSize{768, 1024}
 			meta.Background.Style = "ruled"
@@ -145,22 +148,30 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 		fakeCache.SetPageMetaCalls(func(_ context.Context, sid string, pid string, meta interface{}) error {
 			assert.Equal(t, sessionId, sid)
 			assert.Equal(t, "pid1", pid)
-			assert.Equal(t, want, meta)
+			assert.Equal(t, *want, meta)
 			return nil
 		})
 
-		err := scb.UpdatePages(ctx, pageRequest, "meta")
+		err = scb.UpdatePages(ctx, pageRequest, "meta")
 
 		assert.NoError(t, err)
+		assert.Equal(t, 2, calls)
 	})
 
 	t.Run("deletes pages", func(t *testing.T) {
+		fakeCache := &redisfakes.FakeHandler{}
+		scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+			session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
+		assert.NoError(t, err)
+
 		pageRequest := session.PageRequest{
 			PageID: []string{"pid1", "pid2"},
 		}
-		fakeCache.GetPageRankReturns([]string{"pid1", "pid2"}, nil)
+		fakeCache.GetPageRankReturnsOnCall(0, []string{"pid1", "pid2"}, nil)
+		fakeCache.GetPageRankReturnsOnCall(1, []string{"pid1", "pid2"}, nil)
+		fakeCache.GetPageRankReturnsOnCall(2, []string{}, nil)
 
-		err := scb.UpdatePages(ctx, pageRequest, "delete")
+		err = scb.UpdatePages(ctx, pageRequest, "delete")
 
 		assert.NoError(t, err)
 
@@ -171,15 +182,22 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 		_, sid, pid = fakeCache.DeletePageArgsForCall(1)
 		assert.Equal(t, sessionId, sid)
 		assert.Equal(t, "pid2", pid)
+
+		assert.Equal(t, 0, fakeCache.GetPageMetaCallCount())
 	})
 
 	t.Run("clears pages", func(t *testing.T) {
+		fakeCache := &redisfakes.FakeHandler{}
+		scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+			session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
+		assert.NoError(t, err)
+
 		pageRequest := session.PageRequest{
 			PageID: []string{"pid1", "pid2"},
 		}
 		fakeCache.GetPageRankReturns([]string{"pid1", "pid2"}, nil)
 
-		err := scb.UpdatePages(ctx, pageRequest, "clear")
+		err = scb.UpdatePages(ctx, pageRequest, "clear")
 
 		assert.NoError(t, err)
 
@@ -190,10 +208,17 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 		_, sid, pid = fakeCache.ClearPageArgsForCall(1)
 		assert.Equal(t, sessionId, sid)
 		assert.Equal(t, "pid2", pid)
+
+		assert.Equal(t, 2, fakeCache.GetPageMetaCallCount())
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
-		err := scb.UpdatePages(ctx, session.PageRequest{}, "test")
+		fakeCache := &redisfakes.FakeHandler{}
+		scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+			session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
+		assert.NoError(t, err)
+
+		err = scb.UpdatePages(ctx, session.PageRequest{}, "test")
 		assert.Error(t, err)
 	})
 }

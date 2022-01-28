@@ -45,9 +45,9 @@ type PageMeta struct {
 }
 
 type Page struct {
-	PageId  string    `json:"pageId"`
-	Meta    *PageMeta `json:"meta"`
-	Strokes []*Stroke `json:"strokes,omitempty"`
+	PageId  string     `json:"pageId"`
+	Meta    *PageMeta  `json:"meta"`
+	Strokes *[]*Stroke `json:"strokes,omitempty"` //nullable
 }
 
 // PageRequest declares the message content for page requests.
@@ -78,10 +78,14 @@ func (scb *controlBlock) GetPage(ctx context.Context, pageId string, withStrokes
 	}
 
 	if withStrokes {
-		page.Strokes, err = scb.getStrokes(ctx, pageId)
+		strokes, err := scb.getStrokes(ctx, pageId)
+		if err != nil {
+			return nil, err
+		}
+		page.Strokes = &strokes
 	}
 
-	return &page, err
+	return &page, nil
 }
 
 // AddPages adds a page with pageID to the session and broadcasts
@@ -162,9 +166,12 @@ func (scb *controlBlock) SyncSession(ctx context.Context, sync PageSync) error {
 			return err
 		}
 
-		strokes := make([]redis.Stroke, 0, len(page.Strokes))
-		for _, s := range page.Strokes {
-			strokes = append(strokes, s)
+		var strokes []redis.Stroke
+		if page.Strokes != nil {
+			strokes = make([]redis.Stroke, 0, len(*page.Strokes))
+			for _, s := range *page.Strokes {
+				strokes = append(strokes, s)
+			}
 		}
 
 		if err := scb.cache.UpdateStrokes(ctx, scb.id, strokes...); err != nil {
@@ -231,9 +238,6 @@ func (scb *controlBlock) getPagesSet(ctx context.Context) map[string]struct{} {
 
 func (scb *controlBlock) updatePagesMeta(ctx context.Context, meta map[string]*PageMeta) error {
 	updates := make([]string, 0, len(meta))
-
-	defer scb.broadcastPageSync(ctx, updates, false)
-
 	for pid, m := range meta {
 		if !scb.IsValidPage(ctx, pid) {
 			continue
@@ -258,6 +262,8 @@ func (scb *controlBlock) updatePagesMeta(ctx context.Context, meta map[string]*P
 
 		updates = append(updates, pid)
 	}
+
+	scb.broadcastPageSync(ctx, updates, false)
 
 	return nil
 }

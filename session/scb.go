@@ -139,8 +139,12 @@ func NewControlBlock(sessionId string, options ...ControlBlockOption) (*controlB
 		o(scb)
 	}
 
-	if scb.cache == nil || scb.dispatcher == nil || scb.attachments == nil {
+	if scb.cache == nil || scb.dispatcher == nil {
 		return nil, errors.New("some of the required handlers are not set")
+	}
+
+	if scb.attachments == nil {
+		scb.attachments = attachment.NewLocalHandler(sessionId)
 	}
 
 	if scb.broadcaster == nil {
