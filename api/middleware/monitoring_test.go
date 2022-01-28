@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/labstack/echo-contrib/prometheus"
+
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -14,6 +16,7 @@ import (
 )
 
 func TestMonitoring(t *testing.T) {
+	prom := prometheus.NewPrometheus("echo", nil)
 	t.Run("contains logger", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
@@ -22,7 +25,7 @@ func TestMonitoring(t *testing.T) {
 		hndl := func(c echo.Context) error {
 			return c.NoContent(http.StatusNoContent)
 		}
-		fn := middleware.Monitoring()(hndl)
+		fn := middleware.Monitoring(prom)(hndl)
 		err := fn(c)
 
 		assert.NoError(t, err)

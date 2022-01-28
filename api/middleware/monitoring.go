@@ -2,12 +2,13 @@ package middleware
 
 import (
 	"github.com/google/uuid"
+	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 
 	"github.com/heat1q/boardsite/api/log"
 )
 
-func Monitoring() func(echo.HandlerFunc) echo.HandlerFunc {
+func Monitoring(prom *prometheus.Prometheus) func(echo.HandlerFunc) echo.HandlerFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			meta := make(map[string]interface{}, 2)
@@ -21,7 +22,8 @@ func Monitoring() func(echo.HandlerFunc) echo.HandlerFunc {
 			ctx := log.WrapCtx(c.Request().Context(), meta)
 			c.SetRequest(c.Request().WithContext(ctx))
 
-			return next(c)
+			// collect prometheus metrics
+			return prom.HandlerFunc(next)(c)
 		}
 	}
 }
