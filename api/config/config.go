@@ -26,7 +26,7 @@ const (
 	defaultMetricsRoute    = "/metrics"
 	metricsUser            = "B_METRICS_USER"
 	defaultMetricsUser     = "admin"
-	metricsPassword        = "B_METRICS_USER"
+	metricsPassword        = "B_METRICS_PASSWORD"
 	defaultMetricsPassword = "admin"
 
 	// max number of users allowed in one session
