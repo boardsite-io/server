@@ -222,3 +222,60 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func Test_controlBlock_SyncSession(t *testing.T) {
+	ctx := context.Background()
+	sessionId := "sid1"
+	fakeDispatcher := &sessionfakes.FakeDispatcher{}
+	fakeBroadcaster := &sessionfakes.FakeBroadcaster{}
+	fakeCache := &redisfakes.FakeHandler{}
+	fakeAttachments := &attachmentfakes.FakeHandler{}
+
+	scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+		session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
+	assert.NoError(t, err)
+
+	broadcast := make(chan types.Message, 10)
+	defer close(broadcast)
+	fakeBroadcaster.BroadcastReturns(broadcast)
+
+	sync := session.PageSync{
+		PageRank: []string{"pid1", "pid2"},
+		Pages: map[string]*session.Page{
+			"pid1": {
+				PageId:  "pid1",
+				Meta:    &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Style: "ruled"}},
+				Strokes: &[]*session.Stroke{{ID: "stroke1"}},
+			},
+			"pid2": {
+				PageId:  "pid2",
+				Meta:    &session.PageMeta{PageSize: session.PageSize{1234, 5678}, Background: session.PageBackground{Style: "checkered"}},
+				Strokes: &[]*session.Stroke{{ID: "stroke2"}},
+			},
+		},
+	}
+
+	err = scb.SyncSession(ctx, sync)
+
+	assert.NoError(t, err)
+
+	_, sid, pid, i, meta := fakeCache.AddPageArgsForCall(0)
+	assert.Equal(t, sessionId, sid)
+	assert.Equal(t, "pid1", pid)
+	assert.Equal(t, -1, i)
+	assert.Equal(t, sync.Pages["pid1"].Meta, meta)
+
+	_, sid, strokes := fakeCache.UpdateStrokesArgsForCall(0)
+	assert.Equal(t, sessionId, sid)
+	assert.Equal(t, (*sync.Pages["pid1"].Strokes)[0], strokes[0].(*session.Stroke))
+
+	_, sid, pid, i, meta = fakeCache.AddPageArgsForCall(1)
+	assert.Equal(t, sessionId, sid)
+	assert.Equal(t, "pid2", pid)
+	assert.Equal(t, -1, i)
+	assert.Equal(t, sync.Pages["pid2"].Meta, meta)
+
+	_, sid, strokes = fakeCache.UpdateStrokesArgsForCall(1)
+	assert.Equal(t, sessionId, sid)
+	assert.Equal(t, (*sync.Pages["pid2"].Strokes)[0], strokes[0].(*session.Stroke))
+}
