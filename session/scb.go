@@ -37,6 +37,8 @@ type Controller interface {
 	GetStrokes(ctx context.Context, pageID string) ([]*Stroke, error)
 	Receive(ctx context.Context, msg *types.Message) error
 	Attachments() attachment.Handler
+	// NumUsers returns the number of active users in the session
+	NumUsers() int
 }
 
 // controlBlock holds the information and channels for sessions
@@ -103,6 +105,10 @@ func (scb *controlBlock) ID() string {
 
 func (scb *controlBlock) Attachments() attachment.Handler {
 	return scb.attachments
+}
+
+func (scb *controlBlock) NumUsers() int {
+	return scb.numUsers
 }
 
 // broadcastLoop Broadcasts board updates to all clients

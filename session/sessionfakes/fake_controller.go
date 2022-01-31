@@ -172,6 +172,16 @@ type FakeController struct {
 		result1 *session.User
 		result2 error
 	}
+	NumUsersStub        func() int
+	numUsersMutex       sync.RWMutex
+	numUsersArgsForCall []struct {
+	}
+	numUsersReturns struct {
+		result1 int
+	}
+	numUsersReturnsOnCall map[int]struct {
+		result1 int
+	}
 	ReceiveStub        func(context.Context, *types.Message) error
 	receiveMutex       sync.RWMutex
 	receiveArgsForCall []struct {
@@ -1060,6 +1070,59 @@ func (fake *FakeController) NewUserReturnsOnCall(i int, result1 *session.User, r
 	}{result1, result2}
 }
 
+func (fake *FakeController) NumUsers() int {
+	fake.numUsersMutex.Lock()
+	ret, specificReturn := fake.numUsersReturnsOnCall[len(fake.numUsersArgsForCall)]
+	fake.numUsersArgsForCall = append(fake.numUsersArgsForCall, struct {
+	}{})
+	stub := fake.NumUsersStub
+	fakeReturns := fake.numUsersReturns
+	fake.recordInvocation("NumUsers", []interface{}{})
+	fake.numUsersMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeController) NumUsersCallCount() int {
+	fake.numUsersMutex.RLock()
+	defer fake.numUsersMutex.RUnlock()
+	return len(fake.numUsersArgsForCall)
+}
+
+func (fake *FakeController) NumUsersCalls(stub func() int) {
+	fake.numUsersMutex.Lock()
+	defer fake.numUsersMutex.Unlock()
+	fake.NumUsersStub = stub
+}
+
+func (fake *FakeController) NumUsersReturns(result1 int) {
+	fake.numUsersMutex.Lock()
+	defer fake.numUsersMutex.Unlock()
+	fake.NumUsersStub = nil
+	fake.numUsersReturns = struct {
+		result1 int
+	}{result1}
+}
+
+func (fake *FakeController) NumUsersReturnsOnCall(i int, result1 int) {
+	fake.numUsersMutex.Lock()
+	defer fake.numUsersMutex.Unlock()
+	fake.NumUsersStub = nil
+	if fake.numUsersReturnsOnCall == nil {
+		fake.numUsersReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.numUsersReturnsOnCall[i] = struct {
+		result1 int
+	}{result1}
+}
+
 func (fake *FakeController) Receive(arg1 context.Context, arg2 *types.Message) error {
 	fake.receiveMutex.Lock()
 	ret, specificReturn := fake.receiveReturnsOnCall[len(fake.receiveArgsForCall)]
@@ -1409,6 +1472,8 @@ func (fake *FakeController) Invocations() map[string][][]interface{} {
 	defer fake.isValidPageMutex.RUnlock()
 	fake.newUserMutex.RLock()
 	defer fake.newUserMutex.RUnlock()
+	fake.numUsersMutex.RLock()
+	defer fake.numUsersMutex.RUnlock()
 	fake.receiveMutex.RLock()
 	defer fake.receiveMutex.RUnlock()
 	fake.syncPagesMutex.RLock()
