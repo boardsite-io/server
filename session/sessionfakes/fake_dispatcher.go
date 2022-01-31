@@ -59,6 +59,26 @@ type FakeDispatcher struct {
 	isValidReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	NumSessionsStub        func() int
+	numSessionsMutex       sync.RWMutex
+	numSessionsArgsForCall []struct {
+	}
+	numSessionsReturns struct {
+		result1 int
+	}
+	numSessionsReturnsOnCall map[int]struct {
+		result1 int
+	}
+	NumUsersStub        func() int
+	numUsersMutex       sync.RWMutex
+	numUsersArgsForCall []struct {
+	}
+	numUsersReturns struct {
+		result1 int
+	}
+	numUsersReturnsOnCall map[int]struct {
+		result1 int
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -315,6 +335,112 @@ func (fake *FakeDispatcher) IsValidReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
+func (fake *FakeDispatcher) NumSessions() int {
+	fake.numSessionsMutex.Lock()
+	ret, specificReturn := fake.numSessionsReturnsOnCall[len(fake.numSessionsArgsForCall)]
+	fake.numSessionsArgsForCall = append(fake.numSessionsArgsForCall, struct {
+	}{})
+	stub := fake.NumSessionsStub
+	fakeReturns := fake.numSessionsReturns
+	fake.recordInvocation("NumSessions", []interface{}{})
+	fake.numSessionsMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeDispatcher) NumSessionsCallCount() int {
+	fake.numSessionsMutex.RLock()
+	defer fake.numSessionsMutex.RUnlock()
+	return len(fake.numSessionsArgsForCall)
+}
+
+func (fake *FakeDispatcher) NumSessionsCalls(stub func() int) {
+	fake.numSessionsMutex.Lock()
+	defer fake.numSessionsMutex.Unlock()
+	fake.NumSessionsStub = stub
+}
+
+func (fake *FakeDispatcher) NumSessionsReturns(result1 int) {
+	fake.numSessionsMutex.Lock()
+	defer fake.numSessionsMutex.Unlock()
+	fake.NumSessionsStub = nil
+	fake.numSessionsReturns = struct {
+		result1 int
+	}{result1}
+}
+
+func (fake *FakeDispatcher) NumSessionsReturnsOnCall(i int, result1 int) {
+	fake.numSessionsMutex.Lock()
+	defer fake.numSessionsMutex.Unlock()
+	fake.NumSessionsStub = nil
+	if fake.numSessionsReturnsOnCall == nil {
+		fake.numSessionsReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.numSessionsReturnsOnCall[i] = struct {
+		result1 int
+	}{result1}
+}
+
+func (fake *FakeDispatcher) NumUsers() int {
+	fake.numUsersMutex.Lock()
+	ret, specificReturn := fake.numUsersReturnsOnCall[len(fake.numUsersArgsForCall)]
+	fake.numUsersArgsForCall = append(fake.numUsersArgsForCall, struct {
+	}{})
+	stub := fake.NumUsersStub
+	fakeReturns := fake.numUsersReturns
+	fake.recordInvocation("NumUsers", []interface{}{})
+	fake.numUsersMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeDispatcher) NumUsersCallCount() int {
+	fake.numUsersMutex.RLock()
+	defer fake.numUsersMutex.RUnlock()
+	return len(fake.numUsersArgsForCall)
+}
+
+func (fake *FakeDispatcher) NumUsersCalls(stub func() int) {
+	fake.numUsersMutex.Lock()
+	defer fake.numUsersMutex.Unlock()
+	fake.NumUsersStub = stub
+}
+
+func (fake *FakeDispatcher) NumUsersReturns(result1 int) {
+	fake.numUsersMutex.Lock()
+	defer fake.numUsersMutex.Unlock()
+	fake.NumUsersStub = nil
+	fake.numUsersReturns = struct {
+		result1 int
+	}{result1}
+}
+
+func (fake *FakeDispatcher) NumUsersReturnsOnCall(i int, result1 int) {
+	fake.numUsersMutex.Lock()
+	defer fake.numUsersMutex.Unlock()
+	fake.NumUsersStub = nil
+	if fake.numUsersReturnsOnCall == nil {
+		fake.numUsersReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.numUsersReturnsOnCall[i] = struct {
+		result1 int
+	}{result1}
+}
+
 func (fake *FakeDispatcher) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -326,6 +452,10 @@ func (fake *FakeDispatcher) Invocations() map[string][][]interface{} {
 	defer fake.getSCBMutex.RUnlock()
 	fake.isValidMutex.RLock()
 	defer fake.isValidMutex.RUnlock()
+	fake.numSessionsMutex.RLock()
+	defer fake.numSessionsMutex.RUnlock()
+	fake.numUsersMutex.RLock()
+	defer fake.numUsersMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

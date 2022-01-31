@@ -5,21 +5,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/labstack/echo-contrib/prometheus"
-	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+
+	"github.com/heat1q/boardsite/api/metrics"
 
 	"github.com/heat1q/boardsite/api/config"
 	"github.com/heat1q/boardsite/api/log"
 	apimw "github.com/heat1q/boardsite/api/middleware"
 	"github.com/heat1q/boardsite/redis"
 	"github.com/heat1q/boardsite/session"
+	"github.com/labstack/echo/v4"
 )
 
 type Server struct {
 	cfg        *config.Configuration
 	echo       *echo.Echo
-	prom       *prometheus.Prometheus
+	metrics    metrics.Handler
 	session    session.Handler
 	dispatcher session.Dispatcher
 }
@@ -41,13 +42,6 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	s.echo.HideBanner = true
 	s.echo.HTTPErrorHandler = apimw.NewErrorHandler()
 
-	s.prom = prometheus.NewPrometheus("echo", nil)
-	s.echo.Use(
-		middleware.Recover(),
-		middleware.Secure(),
-		apimw.CORS(s.cfg.Server.AllowedOrigins),
-		apimw.Monitoring(s.prom))
-
 	// setup redis cache
 	redisHandler, err := redis.New(s.cfg.Cache.Host, s.cfg.Cache.Port)
 	if err != nil {
@@ -59,6 +53,13 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 
 	// set up session dispatcher/handler
 	s.session = session.NewHandler(s.cfg, s.dispatcher)
+
+	s.metrics = metrics.NewHandler(s.dispatcher)
+	s.echo.Use(
+		middleware.Recover(),
+		middleware.Secure(),
+		apimw.CORS(s.cfg.Server.AllowedOrigins),
+		apimw.Monitoring(s.metrics))
 
 	// set routes
 	s.setRoutes()

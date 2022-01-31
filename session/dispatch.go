@@ -26,6 +26,10 @@ type Dispatcher interface {
 	Close(ctx context.Context, sessionID string) error
 	// IsValid checks if session with sessionID exists.
 	IsValid(sessionID string) bool
+	// NumSessions returns the number of active sessions
+	NumSessions() int
+	// NumUsers returns the number of active users in the session
+	NumUsers() int
 }
 
 type sessionsDispatcher struct {
@@ -99,4 +103,20 @@ func (d *sessionsDispatcher) Close(ctx context.Context, sessionID string) error 
 func (d *sessionsDispatcher) IsValid(sessionID string) bool {
 	_, err := d.GetSCB(sessionID)
 	return err == nil
+}
+
+func (d *sessionsDispatcher) NumSessions() int {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return len(d.activeSession)
+}
+
+func (d *sessionsDispatcher) NumUsers() int {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	numUsers := 0
+	for _, scb := range d.activeSession {
+		numUsers += scb.NumUsers()
+	}
+	return numUsers
 }
