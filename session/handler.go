@@ -23,12 +23,12 @@ type Handler interface {
 	GetUsers(c echo.Context) error
 	PostUsers(c echo.Context) error
 	GetSocket(c echo.Context) error
-	GetPages(c echo.Context) error
+	GetPageRank(c echo.Context) error
 	PostPages(c echo.Context) error
 	PutPages(c echo.Context) error
-	DeletePages(c echo.Context) error
-	GetPageUpdate(c echo.Context) error
-	DeletePageUpdate(c echo.Context) error
+	GetPage(c echo.Context) error
+	GetPageSync(c echo.Context) error
+	PostPageSync(c echo.Context) error
 	PostAttachment(c echo.Context) error
 	GetAttachment(c echo.Context) error
 }
@@ -104,23 +104,18 @@ func (h *handler) GetSocket(c echo.Context) error {
 	return upgrade(c, onConnect)
 }
 
-func (h *handler) GetPages(c echo.Context) error {
+func (h *handler) GetPageRank(c echo.Context) error {
 	scb, err := getSCB(c)
 	if err != nil {
 		return err
 	}
 
-	pageRank, meta, err := scb.GetPages(c.Request().Context())
+	pageRank, err := scb.GetPageRank(c.Request().Context())
 	if err != nil {
-		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
+		return err
 	}
 
-	// return pagerank array
-	pages := ContentPageSync{
-		PageRank: pageRank,
-		Meta:     meta,
-	}
-	return c.JSON(http.StatusOK, pages)
+	return c.JSON(http.StatusOK, pageRank)
 }
 
 // PostPages handles requests regarding adding or retrieving pages.
@@ -131,13 +126,13 @@ func (h *handler) PostPages(c echo.Context) error {
 	}
 
 	// add a Page
-	var data ContentPageRequest
+	var data PageRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
 
-	if err := scb.AddPages(c.Request().Context(), data.PageID, data.Index, data.Meta); err != nil {
-		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
+	if err := scb.AddPages(c.Request().Context(), data); err != nil {
+		return err
 	}
 
 	return c.NoContent(http.StatusCreated)
@@ -149,37 +144,21 @@ func (h *handler) PutPages(c echo.Context) error {
 		return err
 	}
 
-	var data ContentPageRequest
+	op := c.QueryParam(queryKeyUpdate)
+
+	var data PageRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
 
-	if err := scb.UpdatePages(c.Request().Context(), data.PageID, data.Meta, data.Clear); err != nil {
-		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
-	}
-
-	return c.NoContent(http.StatusNoContent)
-}
-
-func (h *handler) DeletePages(c echo.Context) error {
-	scb, err := getSCB(c)
-	if err != nil {
+	if err := scb.UpdatePages(c.Request().Context(), data, op); err != nil {
 		return err
 	}
 
-	var data ContentPageRequest
-	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
-		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
-	}
-
-	if err := scb.DeletePages(c.Request().Context(), data.PageID...); err != nil {
-		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
-	}
-
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (h *handler) GetPageUpdate(c echo.Context) error {
+func (h *handler) GetPage(c echo.Context) error {
 	scb, err := getSCB(c)
 	if err != nil {
 		return err
@@ -190,28 +169,46 @@ func (h *handler) GetPageUpdate(c echo.Context) error {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
 
-	strokes, errFetch := scb.GetStrokes(c.Request().Context(), pageID)
-	if errFetch != nil {
-		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
+	page, err := scb.GetPage(c.Request().Context(), pageID, true)
+	if err != nil {
+		return err
 	}
 
-	// TODO return page struct
-	return c.JSON(http.StatusOK, strokes)
+	return c.JSON(http.StatusOK, page)
 }
 
-func (h *handler) DeletePageUpdate(c echo.Context) error {
+func (h *handler) GetPageSync(c echo.Context) error {
 	scb, err := getSCB(c)
 	if err != nil {
 		return err
 	}
 
-	pageID := c.Param("pageId")
-	if !scb.IsValidPage(c.Request().Context(), pageID) {
-		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
+	pageRank, err := scb.GetPageRank(c.Request().Context())
+	if err != nil {
+		return err
 	}
 
-	if err := scb.DeletePages(c.Request().Context(), pageID); err != nil {
-		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
+	sync, err := scb.GetPageSync(c.Request().Context(), pageRank, true)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, sync)
+}
+
+func (h *handler) PostPageSync(c echo.Context) error {
+	scb, err := getSCB(c)
+	if err != nil {
+		return err
+	}
+
+	var sync PageSync
+	if err := json.NewDecoder(c.Request().Body).Decode(&sync); err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
+	}
+
+	if err := scb.SyncSession(c.Request().Context(), sync); err != nil {
+		return err
 	}
 
 	return c.NoContent(http.StatusNoContent)
@@ -239,7 +236,7 @@ func (h *handler) PostAttachment(c echo.Context) error {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
 
-	attachID, err := scb.attachments.Upload(data)
+	attachID, err := scb.Attachments().Upload(data)
 	if err != nil {
 		return apiErrors.ErrInternalServerError.Wrap(apiErrors.WithError(err))
 	}
@@ -253,7 +250,7 @@ func (h *handler) GetAttachment(c echo.Context) error {
 		return err
 	}
 	attachID := c.Param("attachId")
-	data, MIMEType, err := scb.attachments.Get(attachID)
+	data, MIMEType, err := scb.Attachments().Get(attachID)
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
@@ -261,8 +258,8 @@ func (h *handler) GetAttachment(c echo.Context) error {
 	return c.Stream(http.StatusOK, MIMEType, data)
 }
 
-func getSCB(c echo.Context) (*controlBlock, error) {
-	scb, ok := c.Get(SessionCtxKey).(*controlBlock)
+func getSCB(c echo.Context) (Controller, error) {
+	scb, ok := c.Get(SessionCtxKey).(Controller)
 	if !ok {
 		return nil, echo.ErrForbidden
 	}

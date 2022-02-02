@@ -45,12 +45,12 @@ func (scb *controlBlock) NewUser(alias, color string) (*User, error) {
 		Color: color,
 	}
 	// set user waiting
-	err = scb.UserReady(user)
+	err = scb.userReady(user)
 	return user, err
 }
 
 // UserReady adds an user to the usersReady map.
-func (scb *controlBlock) UserReady(u *User) error {
+func (scb *controlBlock) userReady(u *User) error {
 	scb.muUsr.RLock()
 	defer scb.muUsr.RUnlock()
 	if scb.numUsers >= scb.maxUsers {
@@ -75,12 +75,6 @@ func (scb *controlBlock) GetUserReady(userID string) (*User, error) {
 	return u, nil
 }
 
-// IsUserReady checks if the user with userID is ready to join a session.
-func (scb *controlBlock) IsUserReady(userID string) bool {
-	_, err := scb.GetUserReady(userID)
-	return err == nil
-}
-
 // UserConnect adds user from the userReady state to clients.
 //
 // Broadcast that user has connected to session.
@@ -88,11 +82,18 @@ func (scb *controlBlock) UserConnect(u *User) {
 	scb.muUsr.Lock()
 	scb.users[u.ID] = u
 	scb.numUsers++
+	numCl := scb.numUsers
+
+	// the first user to connect needs to start the session
+	if numCl == 1 {
+		scb.Start()
+	}
+
 	scb.muUsr.Unlock()
 
 	// broadcast that user has joined
-	scb.broadcast <- &types.Message{
-		Type:    types.MessageTypeUserConnected,
+	scb.broadcaster.Broadcast() <- types.Message{
+		Type:    MessageTypeUserConnected,
 		Content: u,
 	}
 }
@@ -116,14 +117,14 @@ func (scb *controlBlock) UserDisconnect(ctx context.Context, userID string) {
 	}
 
 	// broadcast that user has left
-	scb.broadcast <- &types.Message{
-		Type:    types.MessageTypeUserDisconnected,
+	scb.broadcaster.Broadcast() <- types.Message{
+		Type:    MessageTypeUserDisconnected,
 		Content: u,
 	}
 }
 
 // IsUserConnected checks if the user with userID is an active client in the session.
-func (scb *controlBlock) IsUserConnected(userID string) bool {
+func (scb *controlBlock) isUserConnected(userID string) bool {
 	scb.muUsr.RLock()
 	defer scb.muUsr.RUnlock()
 	_, ok := scb.users[userID]

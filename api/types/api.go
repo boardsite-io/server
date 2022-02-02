@@ -7,16 +7,6 @@ import (
 	"io/ioutil"
 )
 
-// Message type definitions.
-const (
-	MessageTypeStroke           = "stroke"
-	MessageTypeUserConnected    = "userconn"
-	MessageTypeUserDisconnected = "userdisc"
-	MessageTypePageSync         = "pagesync"
-	MessageTypePageUpdate       = "pageupdate"
-	MessageTypeMouseMove        = "mmove"
-)
-
 // Message declares the generic message envelope
 // of any API JSON encoded message.
 type Message struct {

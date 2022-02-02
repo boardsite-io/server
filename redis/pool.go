@@ -13,6 +13,8 @@ const (
 	maxIdleTimeoutSec     = 5
 )
 
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+//counterfeiter:generate . Handler
 type Handler interface {
 	// ClearSession wipes the session from Redis.
 	//
@@ -24,11 +26,11 @@ type Handler interface {
 	// is stored to the database.
 	// Delete the stroke with given id if stroke type is set to delete.
 	UpdateStrokes(ctx context.Context, sessionId string, strokes ...Stroke) error
-	// GetStrokesRaw Fetches all strokes of the specified page.
+	// GetPageStrokes Fetches all strokes of the specified page.
 	//
 	// Preserves the JSON encoding of Redis and returns an array of
 	// a stringified stroke objects.
-	GetStrokesRaw(ctx context.Context, sessionID, pageID string) ([][]byte, error)
+	GetPageStrokes(ctx context.Context, sessionID, pageID string) ([][]byte, error)
 	// GetPageRank returns a list of all pageIDs for the current session.
 	//
 	// The PageIDs are maintained in a list in redis since the ordering is important

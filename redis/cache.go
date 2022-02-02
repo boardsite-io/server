@@ -56,7 +56,7 @@ func (h *handler) UpdateStrokes(ctx context.Context, sessionId string, strokes .
 	return conn.Flush()
 }
 
-func (h *handler) GetStrokesRaw(ctx context.Context, sessionId, pageId string) ([][]byte, error) {
+func (h *handler) GetPageStrokes(ctx context.Context, sessionId, pageId string) ([][]byte, error) {
 	pid := getStrokesKey(sessionId, pageId)
 	keys, err := redis.Strings(h.Do(ctx, "HKEYS", pid))
 	if err != nil {
