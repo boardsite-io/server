@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	gws "github.com/gorilla/websocket"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 
 	apiErrors "github.com/heat1q/boardsite/api/errors"
 	"github.com/heat1q/boardsite/api/types"
@@ -35,12 +35,12 @@ func (scb *controlBlock) NewUser(alias, color string) (*User, error) {
 		return nil, fmt.Errorf("incorrect html color")
 	}
 
-	id, err := gonanoid.New(16)
+	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
 	}
 	user := &User{
-		ID:    id,
+		ID:    id.String(),
 		Alias: alias,
 		Color: color,
 	}
