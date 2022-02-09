@@ -25,15 +25,8 @@ type Server struct {
 	dispatcher session.Dispatcher
 }
 
-func NewServer() (*Server, error) {
-	cfg, err := config.New()
-	if err != nil {
-		return nil, err
-	}
-
-	return &Server{
-		cfg: cfg,
-	}, nil
+func NewServer(cfg *config.Configuration) *Server {
+	return &Server{cfg: cfg}
 }
 
 // Serve wraps the main application
