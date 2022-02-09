@@ -6,18 +6,10 @@ import (
 	"github.com/heat1q/boardsite/api/middleware"
 )
 
-const (
-	rpmSession = 100
-)
-
 // setRoutes sets the api routes
 func (s *Server) setRoutes() {
-	metricsGroup := s.echo.Group(s.cfg.Server.Metrics.Route,
-		middleware.BasicAuth(s.cfg.Server.Metrics.User, s.cfg.Server.Metrics.Password))
-	metricsGroup.GET("", s.metrics.GetMetrics)
-
 	boardGroup := s.echo.Group("/b", echomw.Gzip(), middleware.RequestLogger())
-	boardGroup.POST( /*  */ "/create", s.session.PostCreateSession, middleware.RateLimiting(1, middleware.WithIP()))
+	boardGroup.POST( /*  */ "/create", s.session.PostCreateSession, middleware.RateLimiting(s.cfg.Session.RPM, middleware.WithIP()))
 
 	usersGroup := boardGroup.Group("/:id/users")
 	usersGroup.POST( /*  */ "", s.session.PostUsers)
@@ -33,6 +25,16 @@ func (s *Server) setRoutes() {
 	pagesGroup.POST( /*  */ "/sync", s.session.PostPageSync)
 
 	attachGroup := boardGroup.Group("/:id/attachments", middleware.Session(s.dispatcher))
-	attachGroup.POST( /**/ "", s.session.PostAttachment, middleware.RateLimiting(1, middleware.WithUserIP()))
+	attachGroup.POST( /**/ "", s.session.PostAttachment, middleware.RateLimiting(s.cfg.Session.RPM, middleware.WithUserIP()))
 	attachGroup.GET( /* */ "/:attachId", s.session.GetAttachment)
+
+	if s.cfg.Server.Metrics.Enabled {
+		s.setMetricsRoutes()
+	}
+}
+
+func (s *Server) setMetricsRoutes() {
+	metricsGroup := s.echo.Group(s.cfg.Server.Metrics.Route,
+		middleware.BasicAuth(s.cfg.Server.Metrics.User, s.cfg.Server.Metrics.Password))
+	metricsGroup.GET("", s.metrics.GetMetrics)
 }

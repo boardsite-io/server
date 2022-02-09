@@ -1,94 +1,48 @@
 package config
 
 import (
-	"github.com/spf13/viper"
-)
+	"os"
 
-const (
-	name    = "boardsite-server"
-	version = "0.1.0"
-
-	serverHost        = "B_HOST"
-	defaultServerHost = "localhost"
-	serverPort        = "B_PORT"
-	defaultServerPort = "8000"
-
-	allowedOrigins = "B_CORS_ORIGINS"
-	// comma separated list of allowed origins
-	defaultOrigins = "*"
-
-	cacheHost        = "B_REDIS_HOST"
-	defaultCacheHost = "localhost"
-	cachePort        = "B_REDIS_PORT"
-	defaultCachePort = "6379"
-
-	metricsRoute           = "B_METRICS_ROUTE"
-	defaultMetricsRoute    = "/metrics"
-	metricsUser            = "B_METRICS_USER"
-	defaultMetricsUser     = "admin"
-	metricsPassword        = "B_METRICS_PASSWORD"
-	defaultMetricsPassword = "admin"
-
-	// max number of users allowed in one session
-	sessionMaxUsers = 10
+	"gopkg.in/yaml.v2"
 )
 
 type Configuration struct {
 	App struct {
-		Name    string
-		Version string
-	}
+		Name    string `yaml:"name"`
+		Version string `yaml:"version"`
+	} `yaml:"app"`
 
 	Server struct {
-		Host           string
-		Port           uint16
-		AllowedOrigins string
+		Host           string `yaml:"host"`
+		Port           uint16 `yaml:"port"`
+		AllowedOrigins string `yaml:"origins"`
 		Metrics        struct {
-			Route    string
-			User     string
-			Password string
-		}
-	}
+			Enabled  bool   `yaml:"enabled"`
+			Route    string `yaml:"route"`
+			User     string `yaml:"user"`
+			Password string `yaml:"password"`
+		} `yaml:"metrics"`
+	} `yaml:"server"`
 
 	Cache struct {
-		Host string
-		Port uint16
-	}
+		Host string `yaml:"host"`
+		Port uint16 `yaml:"port"`
+	} `yaml:"cache"`
 
 	Session struct {
-		MaxUsers int
-	}
+		MaxUsers int    `yaml:"users"`
+		RPM      uint16 `yaml:"rpm"`
+	} `yaml:"session"`
 }
 
-func New() (*Configuration, error) {
-	cfg := &Configuration{}
-
-	viper.AutomaticEnv()
-	set("app.name", "", name)
-	set("app.version", "", version)
-
-	set("server.host", serverHost, defaultServerHost)
-	set("server.port", serverPort, defaultServerPort)
-	set("server.allowedOrigins", allowedOrigins, defaultOrigins)
-	set("server.metrics.route", metricsRoute, defaultMetricsRoute)
-	set("server.metrics.user", metricsUser, defaultMetricsUser)
-	set("server.metrics.password", metricsPassword, defaultMetricsPassword)
-
-	set("cache.host", cacheHost, defaultCacheHost)
-	set("cache.port", cachePort, defaultCachePort)
-
-	viper.Set("session.maxUsers", sessionMaxUsers)
-
-	if err := viper.Unmarshal(cfg); err != nil {
+func New(path string) (*Configuration, error) {
+	file, err := os.Open(path)
+	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
-	return cfg, nil
-}
-
-func set(key string, envKey string, defaultVal interface{}) {
-	viper.Set(key, defaultVal)
-	if envKey != "" && viper.IsSet(envKey) {
-		viper.Set(key, viper.GetString(envKey))
-	}
+	cfg := &Configuration{}
+	err = yaml.NewDecoder(file).Decode(cfg)
+	return cfg, err
 }

@@ -3,25 +3,31 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/heat1q/boardsite/api"
+	"github.com/heat1q/boardsite/api/config"
+	"github.com/heat1q/boardsite/api/log"
 )
 
 func main() {
 	ctx := context.Background()
-	runServer(ctx)
+	cfgPath := flag.String("config", "./config.yaml", "path to the config file")
+	flag.Parse()
+	runServer(ctx, *cfgPath)
 }
 
-func runServer(ctx context.Context) {
-	s, err := api.NewServer()
+func runServer(ctx context.Context, cfgPath string) {
+	cfg, err := config.New(cfgPath)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Global().Fatalf("parse config file: %v", err)
 	}
+
+	s := api.NewServer(cfg)
 	run, shutdown := s.Serve(ctx)
 	defer shutdown()
 
@@ -30,15 +36,15 @@ func runServer(ctx context.Context) {
 	go func() {
 		select {
 		case <-stop:
-			log.Println("Shutting down...")
+			log.Global().Warn("Shutting down...")
 			if err := shutdown(); err != nil {
-				log.Fatal(err)
+				log.Global().Fatal(err)
 			}
 			os.Exit(0)
 		}
 	}()
 
 	if err := run(); !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
+		log.Global().Fatal(err)
 	}
 }
