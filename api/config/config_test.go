@@ -21,6 +21,14 @@ func TestNew(t *testing.T) {
 	want.Cache.Port = 6379
 	want.Session.MaxUsers = 10
 	want.Session.RPM = 10
+	want.Github.ClientId = "client-Id"
+	want.Github.ClientSecret = "client-Secret"
+	want.Github.RedirectURI = "http://localhost:3000"
+	want.Github.Scope = []string{"user:email"}
+	want.Github.Emails = []string{"potato@boardsite.io"}
+	want.Github.WhitelistedEmails = map[string]struct{}{
+		"potato@boardsite.io": {},
+	}
 
 	got, err := New("./../../config.yaml")
 

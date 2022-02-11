@@ -31,6 +31,10 @@ func (s *Server) setRoutes() {
 	if s.cfg.Server.Metrics.Enabled {
 		s.setMetricsRoutes()
 	}
+
+	if s.cfg.Github.Enabled {
+		s.setGithubRoutes()
+	}
 }
 
 func (s *Server) setMetricsRoutes() {
@@ -38,3 +42,11 @@ func (s *Server) setMetricsRoutes() {
 		middleware.BasicAuth(s.cfg.Server.Metrics.User, s.cfg.Server.Metrics.Password))
 	metricsGroup.GET("", s.metrics.GetMetrics)
 }
+
+func (s *Server) setGithubRoutes() {
+	githubGroup := s.echo.Group("/github/oauth", middleware.RequestLogger())
+	githubGroup.GET("/authorize", s.github.GetAuthorize)
+	githubGroup.GET("/callback", s.github.GetCallback)
+}
+
+// http://localhost:8000/github/oauth/authorize

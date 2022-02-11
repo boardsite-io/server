@@ -2,214 +2,128 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 )
 
-type Stroke interface {
-	Id() string
-	PageId() string
-	IsDeleted() bool
+const (
+	maxNumIdleConnections = 3
+	maxIdleTimeoutSec     = 5
+)
+
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+//counterfeiter:generate . Handler
+type Handler interface {
+	// Put adds a value with key to the cache which will expire after a specified ttl.
+	Put(ctx context.Context, key string, v interface{}, ttl time.Duration) error
+	// Get fetches a value from the cache with given key.
+	Get(ctx context.Context, key string) (interface{}, error)
+	// Delete deletes a value with given key from the cache.
+	Delete(ctx context.Context, key string) error
+	// ClearSession wipes the session from Redis. Removes all pages and the respective strokes on the pages
+	ClearSession(ctx context.Context, sessionID string) error
+	// UpdateStrokes adds board strokes in Redis.
+	//
+	// Creates a JSON encoding for each slice entry which
+	// is stored to the database.
+	// Delete the stroke with given id if stroke type is set to delete.
+	UpdateStrokes(ctx context.Context, sessionId string, strokes ...Stroke) error
+	// GetPageStrokes Fetches all strokes of the specified page.
+	//
+	// Preserves the JSON encoding of Redis and returns an array of
+	// a stringified stroke objects.
+	GetPageStrokes(ctx context.Context, sessionID, pageID string) ([][]byte, error)
+	// GetPageRank returns a list of all pageIDs for the current session.
+	//
+	// The PageIDs are maintained in a list in redis since the ordering is important
+	GetPageRank(ctx context.Context, sessionID string) ([]string, error)
+	// GetPageMeta returns a slice of all page meta data.
+	GetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error
+	// SetPageMeta sets the page meta data
+	SetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error
+	// AddPage adds a page with pageID at position index.
+	//
+	// Other pages are moved and their score is reassigned
+	// when pages are added in between
+	AddPage(ctx context.Context, sessionID, newPageID string, index int, meta interface{}) error
+	// DeletePage deletes a page and the respective strokes on the page and remove the PageID from the list.
+	DeletePage(ctx context.Context, sessionID, pageID string) error
+	// ClearPage removes all strokes with given pageID.
+	ClearPage(ctx context.Context, sessionID, pageID string) error
+	ClosePool() error
 }
 
-// getPageRankKey returns the Redis key for the pageRank of a session.
-func getPageRankKey(sessionId string) string {
-	return sessionId + ".rank"
+type handler struct {
+	pool *redis.Pool
 }
 
-// getStrokesKey returns the Redis key for the given pageId.
-func getStrokesKey(sessionId, pageId string) string {
-	return fmt.Sprintf("%s.%s.strokes", sessionId, pageId)
-}
-
-// getPageMetaKey returns the redis key for page meta data.
-func getPageMetaKey(sessionId, pageId string) string {
-	return fmt.Sprintf("%s.%s.meta", sessionId, pageId)
-}
-
-func (h *handler) UpdateStrokes(ctx context.Context, sessionId string, strokes ...Stroke) error {
-	conn, err := h.pool.GetContext(ctx)
-	if err != nil {
-		return err
+// New creates a new redis intance and initializes the Redis thread pool.
+func New(host string, port uint16) (Handler, error) {
+	redisHost := fmt.Sprintf("%s:%d", host, port)
+	h := &handler{
+		pool: newPool(redisHost),
 	}
+	if err := h.Ping(); err != nil {
+		return nil, err
+	}
+	return h, nil
+}
+
+func newPool(redisHost string) *redis.Pool {
+	return &redis.Pool{
+		MaxIdle:     maxNumIdleConnections,
+		IdleTimeout: maxIdleTimeoutSec * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", redisHost)
+		},
+	}
+}
+
+// ClosePool closes the Redis thread pool.
+func (h *handler) ClosePool() error {
+	return h.pool.Close()
+}
+
+// Ping pings the connection to Redis and returns an error
+// if the connection cannot be established.
+func (h *handler) Ping() error {
+	conn := h.pool.Get()
 	defer conn.Close()
 
-	for _, s := range strokes {
-		pid := getStrokesKey(sessionId, s.PageId())
-		if s.IsDeleted() {
-			if err := conn.Send("HDEL", pid, s.Id()); err != nil {
-				return err
-			}
-		} else {
-			bytes, err := json.Marshal(s)
-			if err != nil {
-				return err
-			}
-			if err := conn.Send("HMSET", pid, s.Id(), bytes); err != nil {
-				return err
-			}
-		}
-
-	}
-	return conn.Flush()
-}
-
-func (h *handler) GetPageStrokes(ctx context.Context, sessionId, pageId string) ([][]byte, error) {
-	pid := getStrokesKey(sessionId, pageId)
-	keys, err := redis.Strings(h.Do(ctx, "HKEYS", pid))
-	if err != nil {
-		return nil, err
-	}
-	if len(keys) == 0 { // page is empty
-		return [][]byte{}, nil
-	}
-
-	query := make([]interface{}, 1, len(keys)+1)
-	query[0] = pid
-	for _, key := range keys {
-		query = append(query, key)
-	}
-
-	return redis.ByteSlices(h.Do(ctx, "HMGET", query...))
-}
-
-func (h *handler) GetPageRank(ctx context.Context, sessionId string) ([]string, error) {
-	pages, err := redis.Strings(h.Do(ctx, "ZRANGE", getPageRankKey(sessionId), 0, -1))
-	if err != nil {
-		return nil, err
-	}
-	return pages, nil
-}
-
-func (h *handler) GetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error {
-	resp, err := redis.Bytes(h.Do(ctx, "GET", getPageMetaKey(sessionId, pageId)))
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(resp, meta); err != nil {
-		return err
+	if _, err := conn.Do("PING"); err != nil {
+		return fmt.Errorf("PING redis failed: %v", err)
 	}
 	return nil
 }
 
-func (h *handler) SetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error {
-	pMeta, err := json.Marshal(meta)
-	if err != nil {
-		return err
-	}
-	_, err = h.Do(ctx, "SET", getPageMetaKey(sessionId, pageId), pMeta)
-	return err
-}
-
-func (h *handler) AddPage(ctx context.Context, sessionId, newpageId string, index int, meta interface{}) error {
+func (h *handler) Do(ctx context.Context, cmd string, args ...interface{}) (interface{}, error) {
 	conn, err := h.pool.GetContext(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer conn.Close()
 
-	if meta != nil {
-		pMeta, err := json.Marshal(meta)
-		if err != nil {
-			return err
-		}
-		if _, err := conn.Do(
-			"SET", getPageMetaKey(sessionId, newpageId), pMeta); err != nil {
-			return err
-		}
-	}
-
-	// get all pageIds
-	pageRankKey := getPageRankKey(sessionId)
-	pageRank, err := h.GetPageRank(ctx, sessionId)
-	if err != nil {
-		return err
-	}
-	if len(pageRank) > 0 {
-		var score, diff, prevIndex int
-
-		if index >= 0 && index < len(pageRank) { // add page in between
-			// increment scores of proceeding pages
-			for _, pid := range pageRank[index:] {
-				if err := conn.Send(
-					"ZINCRBY", pageRankKey, 1, pid); err != nil {
-					return err
-				}
-			}
-			if err := conn.Flush(); err != nil {
-				return err
-			}
-			prevIndex = index
-			diff = -1
-		} else { // append page at the end
-			prevIndex = len(pageRank) - 1
-			diff = 1
-		}
-
-		// get score of preceding page
-		score, err = redis.Int(conn.Do("ZSCORE", pageRankKey, pageRank[prevIndex]))
-		if err != nil {
-			return err
-		}
-		if _, err := conn.Do(
-			"ZADD", pageRankKey, "NX", score+diff, newpageId); err != nil {
-			return err
-		}
-	} else { // no pages exist yet
-		if _, err := conn.Do("ZADD", pageRankKey, "NX", 0, newpageId); err != nil {
-			return err
-		}
-	}
-	return nil
+	return conn.Do(cmd, args...)
 }
 
-func (h *handler) DeletePage(ctx context.Context, sessionId, pageId string) error {
-	conn, err := h.pool.GetContext(ctx)
-	if err != nil {
-		return err
+func (h *handler) Put(ctx context.Context, key string, v interface{}, ttl time.Duration) error {
+	args := []interface{}{key, v}
+	ex := int(ttl / time.Second)
+	if ex > 0 {
+		args = append(args, "EX", strconv.Itoa(ex))
 	}
-	defer conn.Close()
-
-	if err := conn.Send(
-		"DEL",
-		getStrokesKey(sessionId, pageId),
-		getPageMetaKey(sessionId, pageId),
-	); err != nil {
-		return err
-	}
-	if err := conn.Send(
-		"ZREM",
-		getPageRankKey(sessionId),
-		pageId,
-	); err != nil {
-		return err
-	}
-	return conn.Flush()
-}
-
-func (h *handler) ClearSession(ctx context.Context, sessionId string) error {
-	pageRank, err := h.GetPageRank(ctx, sessionId)
-	if err != nil {
-		return err
-	}
-
-	if len(pageRank) == 0 { // nothing to do
-		return nil
-	}
-
-	query := make([]interface{}, 1, len(pageRank)*2+1)
-	query[0] = getPageRankKey(sessionId)
-	for _, pid := range pageRank {
-		query = append(query, getStrokesKey(sessionId, pid), getPageMetaKey(sessionId, pid))
-	}
-
-	_, err = h.Do(ctx, "DEL", query...)
+	_, err := h.Do(ctx, "SET", args...)
 	return err
 }
 
-func (h *handler) ClearPage(ctx context.Context, sessionId, pageId string) error {
-	_, err := h.Do(ctx, "DEL", getStrokesKey(sessionId, pageId))
+func (h *handler) Get(ctx context.Context, key string) (interface{}, error) {
+	return h.Do(ctx, "GET", key)
+}
+
+func (h *handler) Delete(ctx context.Context, key string) error {
+	_, err := h.Do(ctx, "DEL", key)
 	return err
 }

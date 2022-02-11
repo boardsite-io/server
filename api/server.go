@@ -5,22 +5,23 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/heat1q/boardsite/api/metrics"
-
 	"github.com/heat1q/boardsite/api/config"
+	"github.com/heat1q/boardsite/api/github"
 	"github.com/heat1q/boardsite/api/log"
+	"github.com/heat1q/boardsite/api/metrics"
 	apimw "github.com/heat1q/boardsite/api/middleware"
 	"github.com/heat1q/boardsite/redis"
 	"github.com/heat1q/boardsite/session"
-	"github.com/labstack/echo/v4"
 )
 
 type Server struct {
 	cfg        *config.Configuration
 	echo       *echo.Echo
 	metrics    metrics.Handler
+	github     github.Handler
 	session    session.Handler
 	dispatcher session.Dispatcher
 }
@@ -38,7 +39,7 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	// setup redis cache
 	redisHandler, err := redis.New(s.cfg.Cache.Host, s.cfg.Cache.Port)
 	if err != nil {
-		s.echo.Logger.Fatalf("redis pool: %v", err)
+		log.Global().Fatalf("redis pool: %v", err)
 	}
 	log.Global().Info("Redis connection pool initialized.")
 
@@ -47,6 +48,7 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	// set up session dispatcher/handler
 	s.session = session.NewHandler(s.cfg, s.dispatcher)
 
+	s.github = github.NewHandler(s.cfg, redisHandler)
 	s.metrics = metrics.NewHandler(s.dispatcher)
 	s.echo.Use(
 		middleware.Recover(),
