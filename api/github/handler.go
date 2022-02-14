@@ -17,13 +17,12 @@ import (
 )
 
 const (
-	authURL      = "https://github.com/login/oauth/authorize"
+	AuthURL      = "https://github.com/login/oauth/authorize"
 	tokenURL     = "https://github.com/login/oauth/access_token"
 	apiURL       = "https://api.github.com/graphql"
 	userEmailURL = "https://api.github.com/user/emails"
 )
 
-//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
 //counterfeiter:generate . Handler
 type Handler interface {
 	GetAuthorize(c echo.Context) error
@@ -36,11 +35,11 @@ type handler struct {
 	client Client
 }
 
-func NewHandler(cfg *config.Configuration, cache redis.Handler) Handler {
+func NewHandler(cfg *config.Configuration, cache redis.Handler, client Client) Handler {
 	return &handler{
 		cfg:    cfg,
 		cache:  cache,
-		client: NewClient(&cfg.Github, cache),
+		client: client,
 	}
 }
 
@@ -63,7 +62,7 @@ func (h *handler) GetAuthorize(c echo.Context) error {
 	query.Add("redirect_uri", fmt.Sprintf("%s:%d/github/oauth/callback", h.cfg.Server.BaseURL, h.cfg.Server.Port))
 	query.Add("scope", strings.Join(h.cfg.Scope, " "))
 	query.Add("state", state)
-	return c.Redirect(http.StatusTemporaryRedirect, authURL+"?"+query.Encode())
+	return c.Redirect(http.StatusTemporaryRedirect, AuthURL+"?"+query.Encode())
 }
 
 func (h *handler) GetCallback(c echo.Context) error {
@@ -74,7 +73,6 @@ func (h *handler) GetCallback(c echo.Context) error {
 	)
 
 	if s, err := h.cache.Get(ctx, state); err != nil || s == nil || string(s.([]byte)) != state {
-		//return c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s:%d/github/oauth/authorize", h.cfg.Server.BaseURL, h.cfg.Server.Port))
 		return apiErrors.ErrForbidden.Wrap(apiErrors.WithErrorf("compare states: %w", err))
 	}
 	_ = h.cache.Delete(ctx, state)

@@ -10,7 +10,7 @@ func TestNew(t *testing.T) {
 	want := &Configuration{}
 	want.App.Name = "boardsite-server"
 	want.App.Version = "1.0.0"
-	want.Server.Host = "localhost"
+	want.Server.BaseURL = "http://localhost"
 	want.Server.Port = 8000
 	want.Server.AllowedOrigins = "*"
 	want.Server.Metrics.Enabled = true

@@ -16,7 +16,7 @@ import (
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
 //counterfeiter:generate . Client
 type Client interface {
-	PostToken(ctx context.Context, code string) (*tokenResponse, error)
+	PostToken(ctx context.Context, code string) (*TokenResponse, error)
 	GetUserEmails(ctx context.Context, token string) ([]UserEmail, error)
 }
 
@@ -32,13 +32,13 @@ func NewClient(cfg *config.Github, cache redis.Handler) Client {
 	}
 }
 
-type tokenResponse struct {
+type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 	Scope       string `json:"scope"`
 	TokenType   string `json:"token_type"`
 }
 
-func (gh *client) PostToken(ctx context.Context, code string) (*tokenResponse, error) {
+func (gh *client) PostToken(ctx context.Context, code string) (*TokenResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, nil)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (gh *client) PostToken(ctx context.Context, code string) (*tokenResponse, e
 	}
 	defer resp.Body.Close()
 
-	var tokenResp tokenResponse
+	var tokenResp TokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return nil, err
 	}

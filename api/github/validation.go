@@ -10,8 +10,11 @@ import (
 	"github.com/heat1q/boardsite/redis"
 )
 
+var ErrNotValidated = errors.New("validator: not validated")
+
+//counterfeiter:generate . Validator
 type Validator interface {
-	UserEmail(ctx context.Context, token string) error
+	Validate(ctx context.Context, token string) error
 }
 
 type validator struct {
@@ -20,26 +23,34 @@ type validator struct {
 	client Client
 }
 
-func NewValidator(cfg *config.Github, cache redis.Handler) Validator {
+func NewValidator(cfg *config.Github, cache redis.Handler, client Client) Validator {
 	return &validator{
 		cfg:    cfg,
 		cache:  cache,
-		client: NewClient(cfg, cache),
+		client: client,
 	}
 }
 
-func (v *validator) UserEmail(ctx context.Context, token string) error {
-	if _, err := v.cache.Get(ctx, token); err == nil {
+func (v *validator) Validate(ctx context.Context, token string) error {
+	if t, err := v.cache.Get(ctx, token); err == nil && t != nil && string(t.([]byte)) == token {
 		return nil
 	}
 
+	if err := v.userEmail(ctx, token); err == nil {
+		return v.cache.Put(ctx, token, token, 24*time.Hour)
+	}
+
+	if err := v.userSponsor(ctx, token); err == nil {
+		return v.cache.Put(ctx, token, token, time.Hour)
+	}
+
+	return ErrNotValidated
+}
+
+func (v *validator) userEmail(ctx context.Context, token string) error {
 	emails, err := v.client.GetUserEmails(ctx, token)
 	if err != nil {
 		return fmt.Errorf("validator: getuseremails: %w", err)
-	}
-
-	if err := v.cache.Put(ctx, token, token, 24*time.Hour); err != nil {
-		return fmt.Errorf("validator: put token cache: %w", err)
 	}
 
 	for _, e := range emails {
@@ -51,5 +62,9 @@ func (v *validator) UserEmail(ctx context.Context, token string) error {
 		}
 	}
 
-	return errors.New("validator: email not validated")
+	return ErrNotValidated
+}
+
+func (v *validator) userSponsor(ctx context.Context, token string) error {
+	return ErrNotValidated
 }
