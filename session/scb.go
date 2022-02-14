@@ -16,7 +16,6 @@ type CreateSessionResponse struct {
 	SessionId string `json:"sessionId"`
 }
 
-//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
 //counterfeiter:generate . Controller
 type Controller interface {
 	// ID returns the session id

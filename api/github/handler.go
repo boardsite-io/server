@@ -55,8 +55,6 @@ func (h *handler) GetAuthorize(c echo.Context) error {
 		return fmt.Errorf("cache: put state: %w", err)
 	}
 
-	c.Response().Header().Set("Cache-Control", "no-store")
-
 	query := url.Values{}
 	query.Add("client_id", h.cfg.ClientId)
 	query.Add("redirect_uri", fmt.Sprintf("%s:%d/github/oauth/callback", h.cfg.Server.BaseURL, h.cfg.Server.Port))

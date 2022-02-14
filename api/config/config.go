@@ -29,12 +29,14 @@ type Configuration struct {
 		Port uint16 `yaml:"port"`
 	} `yaml:"cache"`
 
-	Session struct {
-		MaxUsers int    `yaml:"users"`
-		RPM      uint16 `yaml:"rpm"`
-	} `yaml:"session"`
+	Session `yaml:"session"`
+	Github  `yaml:"github"`
+}
 
-	Github `yaml:"github"`
+type Session struct {
+	DefaultUsers int    `yaml:"users"`
+	MaxUsers     int    `yaml:"max_users"`
+	RPM          uint16 `yaml:"rpm"`
 }
 
 type Github struct {

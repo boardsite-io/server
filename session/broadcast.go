@@ -8,7 +8,6 @@ import (
 	"github.com/heat1q/boardsite/redis"
 )
 
-//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
 //counterfeiter:generate . Broadcaster
 type Broadcaster interface {
 	// Bind binds the broadcaster to a session

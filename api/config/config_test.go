@@ -19,7 +19,8 @@ func TestNew(t *testing.T) {
 	want.Server.Metrics.Password = "admin"
 	want.Cache.Host = "localhost"
 	want.Cache.Port = 6379
-	want.Session.MaxUsers = 10
+	want.Session.DefaultUsers = 4
+	want.Session.MaxUsers = 50
 	want.Session.RPM = 10
 	want.Github.ClientId = "client-Id"
 	want.Github.ClientSecret = "client-Secret"
