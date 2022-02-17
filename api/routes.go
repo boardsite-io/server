@@ -1,6 +1,9 @@
 package api
 
 import (
+	"net/http"
+
+	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 
 	"github.com/heat1q/boardsite/api/middleware"
@@ -52,6 +55,5 @@ func (s *Server) setGithubRoutes() {
 	githubGroup := s.echo.Group("/github/oauth", middleware.RequestLogger())
 	githubGroup.GET("/authorize", s.github.GetAuthorize)
 	githubGroup.GET("/callback", s.github.GetCallback)
+	githubGroup.GET("/validate", func(c echo.Context) error { return c.NoContent(http.StatusNoContent) }, middleware.GithubAuth(&s.cfg.Github, s.validator))
 }
-
-// http://localhost:8000/github/oauth/authorize
