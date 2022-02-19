@@ -20,8 +20,7 @@ func Test_handler_GetAuthorize(t *testing.T) {
 	client := &githubfakes.FakeClient{}
 	cache := &redisfakes.FakeHandler{}
 	cfg := &config.Configuration{}
-	cfg.Server.BaseURL = "http://localhost"
-	cfg.Server.Port = 8000
+	cfg.Server.BaseURL = "http://localhost:8000"
 	cfg.Github.ClientId = "client-Id"
 	cfg.Github.Scope = []string{"user:email"}
 	handler := github.NewHandler(cfg, cache, client)
