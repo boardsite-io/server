@@ -4,6 +4,7 @@ package redisfakes
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/heat1q/boardsite/redis"
 )
@@ -59,6 +60,18 @@ type FakeHandler struct {
 	closePoolReturnsOnCall map[int]struct {
 		result1 error
 	}
+	DeleteStub        func(context.Context, string) error
+	deleteMutex       sync.RWMutex
+	deleteArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	deleteReturns struct {
+		result1 error
+	}
+	deleteReturnsOnCall map[int]struct {
+		result1 error
+	}
 	DeletePageStub        func(context.Context, string, string) error
 	deletePageMutex       sync.RWMutex
 	deletePageArgsForCall []struct {
@@ -71,6 +84,20 @@ type FakeHandler struct {
 	}
 	deletePageReturnsOnCall map[int]struct {
 		result1 error
+	}
+	GetStub        func(context.Context, string) (interface{}, error)
+	getMutex       sync.RWMutex
+	getArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	getReturns struct {
+		result1 interface{}
+		result2 error
+	}
+	getReturnsOnCall map[int]struct {
+		result1 interface{}
+		result2 error
 	}
 	GetPageMetaStub        func(context.Context, string, string, interface{}) error
 	getPageMetaMutex       sync.RWMutex
@@ -114,6 +141,20 @@ type FakeHandler struct {
 	getPageStrokesReturnsOnCall map[int]struct {
 		result1 [][]byte
 		result2 error
+	}
+	PutStub        func(context.Context, string, interface{}, time.Duration) error
+	putMutex       sync.RWMutex
+	putArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 interface{}
+		arg4 time.Duration
+	}
+	putReturns struct {
+		result1 error
+	}
+	putReturnsOnCall map[int]struct {
+		result1 error
 	}
 	SetPageMetaStub        func(context.Context, string, string, interface{}) error
 	setPageMetaMutex       sync.RWMutex
@@ -389,6 +430,68 @@ func (fake *FakeHandler) ClosePoolReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeHandler) Delete(arg1 context.Context, arg2 string) error {
+	fake.deleteMutex.Lock()
+	ret, specificReturn := fake.deleteReturnsOnCall[len(fake.deleteArgsForCall)]
+	fake.deleteArgsForCall = append(fake.deleteArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.DeleteStub
+	fakeReturns := fake.deleteReturns
+	fake.recordInvocation("Delete", []interface{}{arg1, arg2})
+	fake.deleteMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeHandler) DeleteCallCount() int {
+	fake.deleteMutex.RLock()
+	defer fake.deleteMutex.RUnlock()
+	return len(fake.deleteArgsForCall)
+}
+
+func (fake *FakeHandler) DeleteCalls(stub func(context.Context, string) error) {
+	fake.deleteMutex.Lock()
+	defer fake.deleteMutex.Unlock()
+	fake.DeleteStub = stub
+}
+
+func (fake *FakeHandler) DeleteArgsForCall(i int) (context.Context, string) {
+	fake.deleteMutex.RLock()
+	defer fake.deleteMutex.RUnlock()
+	argsForCall := fake.deleteArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeHandler) DeleteReturns(result1 error) {
+	fake.deleteMutex.Lock()
+	defer fake.deleteMutex.Unlock()
+	fake.DeleteStub = nil
+	fake.deleteReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeHandler) DeleteReturnsOnCall(i int, result1 error) {
+	fake.deleteMutex.Lock()
+	defer fake.deleteMutex.Unlock()
+	fake.DeleteStub = nil
+	if fake.deleteReturnsOnCall == nil {
+		fake.deleteReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deleteReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeHandler) DeletePage(arg1 context.Context, arg2 string, arg3 string) error {
 	fake.deletePageMutex.Lock()
 	ret, specificReturn := fake.deletePageReturnsOnCall[len(fake.deletePageArgsForCall)]
@@ -450,6 +553,71 @@ func (fake *FakeHandler) DeletePageReturnsOnCall(i int, result1 error) {
 	fake.deletePageReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *FakeHandler) Get(arg1 context.Context, arg2 string) (interface{}, error) {
+	fake.getMutex.Lock()
+	ret, specificReturn := fake.getReturnsOnCall[len(fake.getArgsForCall)]
+	fake.getArgsForCall = append(fake.getArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.GetStub
+	fakeReturns := fake.getReturns
+	fake.recordInvocation("Get", []interface{}{arg1, arg2})
+	fake.getMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeHandler) GetCallCount() int {
+	fake.getMutex.RLock()
+	defer fake.getMutex.RUnlock()
+	return len(fake.getArgsForCall)
+}
+
+func (fake *FakeHandler) GetCalls(stub func(context.Context, string) (interface{}, error)) {
+	fake.getMutex.Lock()
+	defer fake.getMutex.Unlock()
+	fake.GetStub = stub
+}
+
+func (fake *FakeHandler) GetArgsForCall(i int) (context.Context, string) {
+	fake.getMutex.RLock()
+	defer fake.getMutex.RUnlock()
+	argsForCall := fake.getArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeHandler) GetReturns(result1 interface{}, result2 error) {
+	fake.getMutex.Lock()
+	defer fake.getMutex.Unlock()
+	fake.GetStub = nil
+	fake.getReturns = struct {
+		result1 interface{}
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeHandler) GetReturnsOnCall(i int, result1 interface{}, result2 error) {
+	fake.getMutex.Lock()
+	defer fake.getMutex.Unlock()
+	fake.GetStub = nil
+	if fake.getReturnsOnCall == nil {
+		fake.getReturnsOnCall = make(map[int]struct {
+			result1 interface{}
+			result2 error
+		})
+	}
+	fake.getReturnsOnCall[i] = struct {
+		result1 interface{}
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeHandler) GetPageMeta(arg1 context.Context, arg2 string, arg3 string, arg4 interface{}) error {
@@ -647,6 +815,70 @@ func (fake *FakeHandler) GetPageStrokesReturnsOnCall(i int, result1 [][]byte, re
 	}{result1, result2}
 }
 
+func (fake *FakeHandler) Put(arg1 context.Context, arg2 string, arg3 interface{}, arg4 time.Duration) error {
+	fake.putMutex.Lock()
+	ret, specificReturn := fake.putReturnsOnCall[len(fake.putArgsForCall)]
+	fake.putArgsForCall = append(fake.putArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 interface{}
+		arg4 time.Duration
+	}{arg1, arg2, arg3, arg4})
+	stub := fake.PutStub
+	fakeReturns := fake.putReturns
+	fake.recordInvocation("Put", []interface{}{arg1, arg2, arg3, arg4})
+	fake.putMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeHandler) PutCallCount() int {
+	fake.putMutex.RLock()
+	defer fake.putMutex.RUnlock()
+	return len(fake.putArgsForCall)
+}
+
+func (fake *FakeHandler) PutCalls(stub func(context.Context, string, interface{}, time.Duration) error) {
+	fake.putMutex.Lock()
+	defer fake.putMutex.Unlock()
+	fake.PutStub = stub
+}
+
+func (fake *FakeHandler) PutArgsForCall(i int) (context.Context, string, interface{}, time.Duration) {
+	fake.putMutex.RLock()
+	defer fake.putMutex.RUnlock()
+	argsForCall := fake.putArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+}
+
+func (fake *FakeHandler) PutReturns(result1 error) {
+	fake.putMutex.Lock()
+	defer fake.putMutex.Unlock()
+	fake.PutStub = nil
+	fake.putReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeHandler) PutReturnsOnCall(i int, result1 error) {
+	fake.putMutex.Lock()
+	defer fake.putMutex.Unlock()
+	fake.PutStub = nil
+	if fake.putReturnsOnCall == nil {
+		fake.putReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.putReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeHandler) SetPageMeta(arg1 context.Context, arg2 string, arg3 string, arg4 interface{}) error {
 	fake.setPageMetaMutex.Lock()
 	ret, specificReturn := fake.setPageMetaReturnsOnCall[len(fake.setPageMetaArgsForCall)]
@@ -785,14 +1017,20 @@ func (fake *FakeHandler) Invocations() map[string][][]interface{} {
 	defer fake.clearSessionMutex.RUnlock()
 	fake.closePoolMutex.RLock()
 	defer fake.closePoolMutex.RUnlock()
+	fake.deleteMutex.RLock()
+	defer fake.deleteMutex.RUnlock()
 	fake.deletePageMutex.RLock()
 	defer fake.deletePageMutex.RUnlock()
+	fake.getMutex.RLock()
+	defer fake.getMutex.RUnlock()
 	fake.getPageMetaMutex.RLock()
 	defer fake.getPageMetaMutex.RUnlock()
 	fake.getPageRankMutex.RLock()
 	defer fake.getPageRankMutex.RUnlock()
 	fake.getPageStrokesMutex.RLock()
 	defer fake.getPageStrokesMutex.RUnlock()
+	fake.putMutex.RLock()
+	defer fake.putMutex.RUnlock()
 	fake.setPageMetaMutex.RLock()
 	defer fake.setPageMetaMutex.RUnlock()
 	fake.updateStrokesMutex.RLock()

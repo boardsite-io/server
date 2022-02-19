@@ -20,6 +20,7 @@ const (
 
 type Handler interface {
 	PostCreateSession(c echo.Context) error
+	PostCreateWithConfig(c echo.Context) error
 	GetUsers(c echo.Context) error
 	PostUsers(c echo.Context) error
 	GetSocket(c echo.Context) error
@@ -34,11 +35,11 @@ type Handler interface {
 }
 
 type handler struct {
-	cfg        *config.Configuration
+	cfg        *config.Session
 	dispatcher Dispatcher
 }
 
-func NewHandler(cfg *config.Configuration, dispatcher Dispatcher) Handler {
+func NewHandler(cfg *config.Session, dispatcher Dispatcher) Handler {
 	return &handler{
 		cfg:        cfg,
 		dispatcher: dispatcher,
@@ -48,11 +49,32 @@ func NewHandler(cfg *config.Configuration, dispatcher Dispatcher) Handler {
 // PostCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
 func (h *handler) PostCreateSession(c echo.Context) error {
-	idstr, err := h.dispatcher.Create(c.Request().Context(), h.cfg.Session.MaxUsers)
+	cfg := CreateConfig{
+		MaxUsers: h.cfg.DefaultUsers,
+	}
+	sid, err := h.dispatcher.Create(c.Request().Context(), cfg)
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusCreated, CreateSessionResponse{SessionId: idstr})
+	return c.JSON(http.StatusCreated, CreateSessionResponse{SessionId: sid})
+}
+
+func (h *handler) PostCreateWithConfig(c echo.Context) error {
+	var cfg CreateConfig
+	if err := c.Bind(&cfg); err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
+	}
+
+	if err := cfg.validate(h.cfg); err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("createConfig: %w", err))
+	}
+
+	sid, err := h.dispatcher.Create(c.Request().Context(), cfg)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, CreateSessionResponse{SessionId: sid})
 }
 
 func (h *handler) PostUsers(c echo.Context) error {

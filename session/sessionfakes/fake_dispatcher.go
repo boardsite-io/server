@@ -21,11 +21,11 @@ type FakeDispatcher struct {
 	closeReturnsOnCall map[int]struct {
 		result1 error
 	}
-	CreateStub        func(context.Context, int) (string, error)
+	CreateStub        func(context.Context, session.CreateConfig) (string, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
 		arg1 context.Context
-		arg2 int
+		arg2 session.CreateConfig
 	}
 	createReturns struct {
 		result1 string
@@ -145,12 +145,12 @@ func (fake *FakeDispatcher) CloseReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeDispatcher) Create(arg1 context.Context, arg2 int) (string, error) {
+func (fake *FakeDispatcher) Create(arg1 context.Context, arg2 session.CreateConfig) (string, error) {
 	fake.createMutex.Lock()
 	ret, specificReturn := fake.createReturnsOnCall[len(fake.createArgsForCall)]
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		arg1 context.Context
-		arg2 int
+		arg2 session.CreateConfig
 	}{arg1, arg2})
 	stub := fake.CreateStub
 	fakeReturns := fake.createReturns
@@ -171,13 +171,13 @@ func (fake *FakeDispatcher) CreateCallCount() int {
 	return len(fake.createArgsForCall)
 }
 
-func (fake *FakeDispatcher) CreateCalls(stub func(context.Context, int) (string, error)) {
+func (fake *FakeDispatcher) CreateCalls(stub func(context.Context, session.CreateConfig) (string, error)) {
 	fake.createMutex.Lock()
 	defer fake.createMutex.Unlock()
 	fake.CreateStub = stub
 }
 
-func (fake *FakeDispatcher) CreateArgsForCall(i int) (context.Context, int) {
+func (fake *FakeDispatcher) CreateArgsForCall(i int) (context.Context, session.CreateConfig) {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
 	argsForCall := fake.createArgsForCall[i]

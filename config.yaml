@@ -2,7 +2,7 @@ app:
   name: boardsite-server
   version: 1.0.0
 server:
-  host: localhost
+  base_url: http://localhost
   port: 8000
   origins: "*"
   metrics:
@@ -14,5 +14,15 @@ cache:
   host: localhost
   port: 6379
 session:
-  users: 10
+  users: 4
+  max_users: 50
   rpm: 10
+github:
+  enabled: false
+  client_id: client-Id
+  client_secret: client-Secret
+  redirect_uri: http://localhost:3000
+  scope:
+    - user:email
+  whitelisted_emails:
+    - potato@boardsite.io

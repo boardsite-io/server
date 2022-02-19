@@ -10,7 +10,7 @@ func TestNew(t *testing.T) {
 	want := &Configuration{}
 	want.App.Name = "boardsite-server"
 	want.App.Version = "1.0.0"
-	want.Server.Host = "localhost"
+	want.Server.BaseURL = "http://localhost"
 	want.Server.Port = 8000
 	want.Server.AllowedOrigins = "*"
 	want.Server.Metrics.Enabled = true
@@ -19,8 +19,17 @@ func TestNew(t *testing.T) {
 	want.Server.Metrics.Password = "admin"
 	want.Cache.Host = "localhost"
 	want.Cache.Port = 6379
-	want.Session.MaxUsers = 10
+	want.Session.DefaultUsers = 4
+	want.Session.MaxUsers = 50
 	want.Session.RPM = 10
+	want.Github.ClientId = "client-Id"
+	want.Github.ClientSecret = "client-Secret"
+	want.Github.RedirectURI = "http://localhost:3000"
+	want.Github.Scope = []string{"user:email"}
+	want.Github.Emails = []string{"potato@boardsite.io"}
+	want.Github.WhitelistedEmails = map[string]struct{}{
+		"potato@boardsite.io": {},
+	}
 
 	got, err := New("./../../config.yaml")
 

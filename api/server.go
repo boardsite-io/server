@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/heat1q/boardsite/api/metrics"
-
 	"github.com/heat1q/boardsite/api/config"
+	"github.com/heat1q/boardsite/api/github"
 	"github.com/heat1q/boardsite/api/log"
+	"github.com/heat1q/boardsite/api/metrics"
 	apimw "github.com/heat1q/boardsite/api/middleware"
 	"github.com/heat1q/boardsite/redis"
 	"github.com/heat1q/boardsite/session"
-	"github.com/labstack/echo/v4"
 )
 
 type Server struct {
@@ -23,6 +23,8 @@ type Server struct {
 	metrics    metrics.Handler
 	session    session.Handler
 	dispatcher session.Dispatcher
+	github     github.Handler
+	validator  github.Validator
 }
 
 func NewServer(cfg *config.Configuration) *Server {
@@ -36,18 +38,25 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	s.echo.HTTPErrorHandler = apimw.NewErrorHandler()
 
 	// setup redis cache
-	redisHandler, err := redis.New(s.cfg.Cache.Host, s.cfg.Cache.Port)
+	cache, err := redis.New(s.cfg.Cache.Host, s.cfg.Cache.Port)
 	if err != nil {
-		s.echo.Logger.Fatalf("redis pool: %v", err)
+		log.Global().Fatalf("redis pool: %v", err)
 	}
 	log.Global().Info("Redis connection pool initialized.")
 
-	s.dispatcher = session.NewDispatcher(redisHandler)
+	s.dispatcher = session.NewDispatcher(cache)
 
 	// set up session dispatcher/handler
-	s.session = session.NewHandler(s.cfg, s.dispatcher)
+	s.session = session.NewHandler(&s.cfg.Session, s.dispatcher)
 
 	s.metrics = metrics.NewHandler(s.dispatcher)
+
+	if s.cfg.Github.Enabled {
+		githubClient := github.NewClient(&s.cfg.Github, cache)
+		s.github = github.NewHandler(s.cfg, cache, githubClient)
+		s.validator = github.NewValidator(&s.cfg.Github, cache, githubClient)
+	}
+
 	s.echo.Use(
 		middleware.Recover(),
 		middleware.Secure(),
@@ -65,7 +74,7 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 			log.Global().Infof("Starting %s@%s listening on :%d\n", s.cfg.App.Name, s.cfg.App.Version, s.cfg.Server.Port)
 			return s.echo.Start(fmt.Sprintf(":%d", s.cfg.Server.Port))
 		}, func() error {
-			_ = redisHandler.ClosePool()
+			_ = cache.ClosePool()
 			return s.echo.Shutdown(ctx)
 		}
 }

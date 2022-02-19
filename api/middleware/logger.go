@@ -61,6 +61,9 @@ func setRequestMeta(c echo.Context, reqBody []byte, meta map[string]interface{})
 	meta["Req.Path"] = c.Request().RequestURI
 
 	for k, v := range c.Request().Header {
+		if k == echo.HeaderAuthorization {
+			continue
+		}
 		meta[fmt.Sprintf("Req.Header.%s", k)] = strings.Join(v, ";")
 	}
 
@@ -76,6 +79,9 @@ func setRequestMeta(c echo.Context, reqBody []byte, meta map[string]interface{})
 
 func setResponseMeta(c echo.Context, respBody []byte, meta map[string]interface{}) {
 	for k, v := range c.Response().Header() {
+		if k == echo.HeaderAuthorization || k == echo.HeaderLocation {
+			continue
+		}
 		meta[fmt.Sprintf("Resp.Header.%s", k)] = strings.Join(v, ";")
 	}
 
