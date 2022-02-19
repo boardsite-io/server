@@ -57,7 +57,7 @@ func (h *handler) GetAuthorize(c echo.Context) error {
 
 	query := url.Values{}
 	query.Add("client_id", h.cfg.ClientId)
-	query.Add("redirect_uri", fmt.Sprintf("%s:%d/github/oauth/callback", h.cfg.Server.BaseURL, h.cfg.Server.Port))
+	query.Add("redirect_uri", fmt.Sprintf("%s/github/oauth/callback", h.cfg.Server.BaseURL))
 	query.Add("scope", strings.Join(h.cfg.Scope, " "))
 	query.Add("state", state)
 	return c.Redirect(http.StatusTemporaryRedirect, AuthURL+"?"+query.Encode())
@@ -69,6 +69,10 @@ func (h *handler) GetCallback(c echo.Context) error {
 		state = c.QueryParam("state")
 		code  = c.QueryParam("code")
 	)
+
+	if c.QueryParam("error") != "" {
+		return apiErrors.ErrBadGateway.Wrap(apiErrors.WithMessage(c.QueryParam("error_description")))
+	}
 
 	if s, err := h.cache.Get(ctx, state); err != nil || s == nil || string(s.([]byte)) != state {
 		return apiErrors.ErrForbidden.Wrap(apiErrors.WithErrorf("compare states: %w", err))
