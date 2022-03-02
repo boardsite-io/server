@@ -21,18 +21,18 @@ type FakeDispatcher struct {
 	closeReturnsOnCall map[int]struct {
 		result1 error
 	}
-	CreateStub        func(context.Context, session.CreateConfig) (string, error)
+	CreateStub        func(context.Context, session.Config) (session.Controller, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
 		arg1 context.Context
-		arg2 session.CreateConfig
+		arg2 session.Config
 	}
 	createReturns struct {
-		result1 string
+		result1 session.Controller
 		result2 error
 	}
 	createReturnsOnCall map[int]struct {
-		result1 string
+		result1 session.Controller
 		result2 error
 	}
 	GetSCBStub        func(string) (session.Controller, error)
@@ -145,12 +145,12 @@ func (fake *FakeDispatcher) CloseReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeDispatcher) Create(arg1 context.Context, arg2 session.CreateConfig) (string, error) {
+func (fake *FakeDispatcher) Create(arg1 context.Context, arg2 session.Config) (session.Controller, error) {
 	fake.createMutex.Lock()
 	ret, specificReturn := fake.createReturnsOnCall[len(fake.createArgsForCall)]
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		arg1 context.Context
-		arg2 session.CreateConfig
+		arg2 session.Config
 	}{arg1, arg2})
 	stub := fake.CreateStub
 	fakeReturns := fake.createReturns
@@ -171,41 +171,41 @@ func (fake *FakeDispatcher) CreateCallCount() int {
 	return len(fake.createArgsForCall)
 }
 
-func (fake *FakeDispatcher) CreateCalls(stub func(context.Context, session.CreateConfig) (string, error)) {
+func (fake *FakeDispatcher) CreateCalls(stub func(context.Context, session.Config) (session.Controller, error)) {
 	fake.createMutex.Lock()
 	defer fake.createMutex.Unlock()
 	fake.CreateStub = stub
 }
 
-func (fake *FakeDispatcher) CreateArgsForCall(i int) (context.Context, session.CreateConfig) {
+func (fake *FakeDispatcher) CreateArgsForCall(i int) (context.Context, session.Config) {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
 	argsForCall := fake.createArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeDispatcher) CreateReturns(result1 string, result2 error) {
+func (fake *FakeDispatcher) CreateReturns(result1 session.Controller, result2 error) {
 	fake.createMutex.Lock()
 	defer fake.createMutex.Unlock()
 	fake.CreateStub = nil
 	fake.createReturns = struct {
-		result1 string
+		result1 session.Controller
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeDispatcher) CreateReturnsOnCall(i int, result1 string, result2 error) {
+func (fake *FakeDispatcher) CreateReturnsOnCall(i int, result1 session.Controller, result2 error) {
 	fake.createMutex.Lock()
 	defer fake.createMutex.Unlock()
 	fake.CreateStub = nil
 	if fake.createReturnsOnCall == nil {
 		fake.createReturnsOnCall = make(map[int]struct {
-			result1 string
+			result1 session.Controller
 			result2 error
 		})
 	}
 	fake.createReturnsOnCall[i] = struct {
-		result1 string
+		result1 session.Controller
 		result2 error
 	}{result1, result2}
 }

@@ -24,7 +24,7 @@ func Test_controlBlock_AddPages(t *testing.T) {
 	fakeCache := &redisfakes.FakeHandler{}
 	fakeAttachments := &attachmentfakes.FakeHandler{}
 
-	scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+	scb, err := session.NewControlBlock(session.Config{ID: sessionId}, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
 		session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 	assert.NoError(t, err)
 
@@ -61,7 +61,7 @@ func Test_controlBlock_GetPageSync(t *testing.T) {
 	fakeCache := &redisfakes.FakeHandler{}
 	fakeAttachments := &attachmentfakes.FakeHandler{}
 
-	scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+	scb, err := session.NewControlBlock(session.Config{ID: sessionId}, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
 		session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 	assert.NoError(t, err)
 
@@ -124,7 +124,7 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 
 	t.Run("update pages meta", func(t *testing.T) {
 		fakeCache := &redisfakes.FakeHandler{}
-		scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+		scb, err := session.NewControlBlock(session.Config{ID: sessionId}, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
 			session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 		assert.NoError(t, err)
 
@@ -160,7 +160,7 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 
 	t.Run("deletes pages", func(t *testing.T) {
 		fakeCache := &redisfakes.FakeHandler{}
-		scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+		scb, err := session.NewControlBlock(session.Config{ID: sessionId}, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
 			session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 		assert.NoError(t, err)
 
@@ -188,7 +188,7 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 
 	t.Run("clears pages", func(t *testing.T) {
 		fakeCache := &redisfakes.FakeHandler{}
-		scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+		scb, err := session.NewControlBlock(session.Config{ID: sessionId}, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
 			session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 		assert.NoError(t, err)
 
@@ -214,7 +214,7 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 
 	t.Run("unknown operation", func(t *testing.T) {
 		fakeCache := &redisfakes.FakeHandler{}
-		scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+		scb, err := session.NewControlBlock(session.Config{ID: sessionId}, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
 			session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 		assert.NoError(t, err)
 
@@ -231,7 +231,7 @@ func Test_controlBlock_SyncSession(t *testing.T) {
 	fakeCache := &redisfakes.FakeHandler{}
 	fakeAttachments := &attachmentfakes.FakeHandler{}
 
-	scb, err := session.NewControlBlock(sessionId, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
+	scb, err := session.NewControlBlock(session.Config{ID: sessionId}, session.WithCache(fakeCache), session.WithAttachments(fakeAttachments),
 		session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 	assert.NoError(t, err)
 

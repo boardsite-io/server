@@ -51,14 +51,14 @@ type FakeBroadcaster struct {
 	closeReturnsOnCall map[int]struct {
 		result1 chan<- struct{}
 	}
-	EchoStub        func() chan<- types.Message
-	echoMutex       sync.RWMutex
-	echoArgsForCall []struct {
+	SendStub        func() chan<- types.Message
+	sendMutex       sync.RWMutex
+	sendArgsForCall []struct {
 	}
-	echoReturns struct {
+	sendReturns struct {
 		result1 chan<- types.Message
 	}
-	echoReturnsOnCall map[int]struct {
+	sendReturnsOnCall map[int]struct {
 		result1 chan<- types.Message
 	}
 	invocations      map[string][][]interface{}
@@ -285,15 +285,15 @@ func (fake *FakeBroadcaster) CloseReturnsOnCall(i int, result1 chan<- struct{}) 
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) Echo() chan<- types.Message {
-	fake.echoMutex.Lock()
-	ret, specificReturn := fake.echoReturnsOnCall[len(fake.echoArgsForCall)]
-	fake.echoArgsForCall = append(fake.echoArgsForCall, struct {
+func (fake *FakeBroadcaster) Send() chan<- types.Message {
+	fake.sendMutex.Lock()
+	ret, specificReturn := fake.sendReturnsOnCall[len(fake.sendArgsForCall)]
+	fake.sendArgsForCall = append(fake.sendArgsForCall, struct {
 	}{})
-	stub := fake.EchoStub
-	fakeReturns := fake.echoReturns
-	fake.recordInvocation("Echo", []interface{}{})
-	fake.echoMutex.Unlock()
+	stub := fake.SendStub
+	fakeReturns := fake.sendReturns
+	fake.recordInvocation("Send", []interface{}{})
+	fake.sendMutex.Unlock()
 	if stub != nil {
 		return stub()
 	}
@@ -303,37 +303,37 @@ func (fake *FakeBroadcaster) Echo() chan<- types.Message {
 	return fakeReturns.result1
 }
 
-func (fake *FakeBroadcaster) EchoCallCount() int {
-	fake.echoMutex.RLock()
-	defer fake.echoMutex.RUnlock()
-	return len(fake.echoArgsForCall)
+func (fake *FakeBroadcaster) SendCallCount() int {
+	fake.sendMutex.RLock()
+	defer fake.sendMutex.RUnlock()
+	return len(fake.sendArgsForCall)
 }
 
-func (fake *FakeBroadcaster) EchoCalls(stub func() chan<- types.Message) {
-	fake.echoMutex.Lock()
-	defer fake.echoMutex.Unlock()
-	fake.EchoStub = stub
+func (fake *FakeBroadcaster) SendCalls(stub func() chan<- types.Message) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
+	fake.SendStub = stub
 }
 
-func (fake *FakeBroadcaster) EchoReturns(result1 chan<- types.Message) {
-	fake.echoMutex.Lock()
-	defer fake.echoMutex.Unlock()
-	fake.EchoStub = nil
-	fake.echoReturns = struct {
+func (fake *FakeBroadcaster) SendReturns(result1 chan<- types.Message) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
+	fake.SendStub = nil
+	fake.sendReturns = struct {
 		result1 chan<- types.Message
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) EchoReturnsOnCall(i int, result1 chan<- types.Message) {
-	fake.echoMutex.Lock()
-	defer fake.echoMutex.Unlock()
-	fake.EchoStub = nil
-	if fake.echoReturnsOnCall == nil {
-		fake.echoReturnsOnCall = make(map[int]struct {
+func (fake *FakeBroadcaster) SendReturnsOnCall(i int, result1 chan<- types.Message) {
+	fake.sendMutex.Lock()
+	defer fake.sendMutex.Unlock()
+	fake.SendStub = nil
+	if fake.sendReturnsOnCall == nil {
+		fake.sendReturnsOnCall = make(map[int]struct {
 			result1 chan<- types.Message
 		})
 	}
-	fake.echoReturnsOnCall[i] = struct {
+	fake.sendReturnsOnCall[i] = struct {
 		result1 chan<- types.Message
 	}{result1}
 }
@@ -349,8 +349,8 @@ func (fake *FakeBroadcaster) Invocations() map[string][][]interface{} {
 	defer fake.cacheMutex.RUnlock()
 	fake.closeMutex.RLock()
 	defer fake.closeMutex.RUnlock()
-	fake.echoMutex.RLock()
-	defer fake.echoMutex.RUnlock()
+	fake.sendMutex.RLock()
+	defer fake.sendMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

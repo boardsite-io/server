@@ -63,7 +63,7 @@ type PageSync struct {
 }
 
 func (scb *controlBlock) GetPageRank(ctx context.Context) ([]string, error) {
-	return scb.cache.GetPageRank(ctx, scb.id)
+	return scb.cache.GetPageRank(ctx, scb.cfg.ID)
 }
 
 func (scb *controlBlock) GetPage(ctx context.Context, pageId string, withStrokes bool) (*Page, error) {
@@ -72,7 +72,7 @@ func (scb *controlBlock) GetPage(ctx context.Context, pageId string, withStrokes
 		Meta:   &PageMeta{},
 	}
 
-	err := scb.cache.GetPageMeta(ctx, scb.id, pageId, page.Meta)
+	err := scb.cache.GetPageMeta(ctx, scb.cfg.ID, pageId, page.Meta)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (scb *controlBlock) AddPages(ctx context.Context, pageRequest PageRequest) 
 		if !ok {
 			return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("no meta given for page %s", pid))
 		}
-		if err := scb.cache.AddPage(ctx, scb.id, pid, pageRequest.Index[i], pMeta); err != nil {
+		if err := scb.cache.AddPage(ctx, scb.cfg.ID, pid, pageRequest.Index[i], pMeta); err != nil {
 			return errors.New("cannot add page")
 		}
 	}
@@ -136,7 +136,7 @@ func (scb *controlBlock) GetPageSync(ctx context.Context, pageIds []string, with
 		err  error
 	)
 
-	sync.PageRank, err = scb.cache.GetPageRank(ctx, scb.id)
+	sync.PageRank, err = scb.cache.GetPageRank(ctx, scb.cfg.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (scb *controlBlock) GetPageSync(ctx context.Context, pageIds []string, with
 }
 
 func (scb *controlBlock) SyncSession(ctx context.Context, sync PageSync) error {
-	if err := scb.cache.ClearSession(ctx, scb.id); err != nil {
+	if err := scb.cache.ClearSession(ctx, scb.cfg.ID); err != nil {
 		return err
 	}
 
@@ -162,7 +162,7 @@ func (scb *controlBlock) SyncSession(ctx context.Context, sync PageSync) error {
 			return fmt.Errorf("page %s not found", pid)
 		}
 
-		if err := scb.cache.AddPage(ctx, scb.id, pid, -1, page.Meta); err != nil {
+		if err := scb.cache.AddPage(ctx, scb.cfg.ID, pid, -1, page.Meta); err != nil {
 			return err
 		}
 
@@ -174,7 +174,7 @@ func (scb *controlBlock) SyncSession(ctx context.Context, sync PageSync) error {
 			}
 		}
 
-		if err := scb.cache.UpdateStrokes(ctx, scb.id, strokes...); err != nil {
+		if err := scb.cache.UpdateStrokes(ctx, scb.cfg.ID, strokes...); err != nil {
 			return err
 		}
 	}
@@ -196,7 +196,7 @@ func (scb *controlBlock) getPages(ctx context.Context, pageIds []string, withStr
 }
 
 func (scb *controlBlock) getStrokes(ctx context.Context, pageId string) ([]*Stroke, error) {
-	strokeBytes, err := scb.cache.GetPageStrokes(ctx, scb.id, pageId)
+	strokeBytes, err := scb.cache.GetPageStrokes(ctx, scb.cfg.ID, pageId)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +226,7 @@ func (scb *controlBlock) IsValidPage(ctx context.Context, pageID ...string) bool
 
 // GetPagesSet returns all pageIDs in a map for fast verification.
 func (scb *controlBlock) getPagesSet(ctx context.Context) map[string]struct{} {
-	pageIDs, _ := scb.cache.GetPageRank(ctx, scb.id)
+	pageIDs, _ := scb.cache.GetPageRank(ctx, scb.cfg.ID)
 	pageIDSet := make(map[string]struct{})
 
 	for _, pid := range pageIDs {
@@ -245,7 +245,7 @@ func (scb *controlBlock) updatePagesMeta(ctx context.Context, meta map[string]*P
 
 		// update db
 		var newMeta PageMeta
-		if err := scb.cache.GetPageMeta(ctx, scb.id, pid, &newMeta); err != nil {
+		if err := scb.cache.GetPageMeta(ctx, scb.cfg.ID, pid, &newMeta); err != nil {
 			return err
 		}
 		tmp, err := json.Marshal(m)
@@ -256,7 +256,7 @@ func (scb *controlBlock) updatePagesMeta(ctx context.Context, meta map[string]*P
 		if err := json.Unmarshal(tmp, &newMeta); err != nil {
 			return err
 		}
-		if err := scb.cache.SetPageMeta(ctx, scb.id, pid, newMeta); err != nil {
+		if err := scb.cache.SetPageMeta(ctx, scb.cfg.ID, pid, newMeta); err != nil {
 			return err
 		}
 
@@ -280,7 +280,7 @@ func (scb *controlBlock) deletePages(ctx context.Context, pageID ...string) erro
 			sb.WriteString(fmt.Sprintf(": page %s does not exist", pid))
 			continue
 		}
-		if err := scb.cache.DeletePage(ctx, scb.id, pid); err != nil {
+		if err := scb.cache.DeletePage(ctx, scb.cfg.ID, pid); err != nil {
 			sb.WriteString(fmt.Sprintf(": cannot delete page %s", pageID))
 		}
 	}
@@ -295,7 +295,7 @@ func (scb *controlBlock) deletePages(ctx context.Context, pageID ...string) erro
 func (scb *controlBlock) clearPages(ctx context.Context, pageIds ...string) error {
 	defer scb.broadcastPageSync(ctx, pageIds, true)
 	for _, pid := range pageIds {
-		if err := scb.cache.ClearPage(ctx, scb.id, pid); err != nil {
+		if err := scb.cache.ClearPage(ctx, scb.cfg.ID, pid); err != nil {
 			return fmt.Errorf("clear page %s: %w", pid, err)
 		}
 	}

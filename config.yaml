@@ -5,6 +5,7 @@ server:
   base_url: http://localhost
   port: 8000
   origins: "*"
+  rpm: 10
   metrics:
     enabled: true
     route: /metrics
@@ -13,10 +14,9 @@ server:
 cache:
   host: localhost
   port: 6379
-session:
-  users: 4
-  max_users: 50
-  rpm: 10
+session: # default session settings
+  max_users: 4
+  read_only: false
 github:
   enabled: false
   client_id: client-Id

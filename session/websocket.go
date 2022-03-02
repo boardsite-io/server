@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	gws "github.com/gorilla/websocket"
@@ -20,7 +21,7 @@ var upgrader = gws.Upgrader{
 	},
 }
 
-// upgrade upgrade a connection to a websocker connection
+// upgrade upgrade a connection to a websocket connection
 func upgrade(c echo.Context, onConnectFn func(conn *gws.Conn) error) error {
 	conn, err := upgrader.Upgrade(c.Response().Writer, c.Request(), nil)
 	if err != nil {
@@ -30,12 +31,9 @@ func upgrade(c echo.Context, onConnectFn func(conn *gws.Conn) error) error {
 }
 
 func onClientConnect(ctx context.Context, scb Controller, userID string, conn *gws.Conn) error {
-	u, err := scb.GetUserReady(userID)
-	if err != nil {
+	if err := scb.UserConnect(userID, conn); err != nil {
 		return err
 	}
-	u.Conn = conn      // set the current ws connection
-	scb.UserConnect(u) // already checked if user is ready at this point
 	log.Ctx(ctx).Infof("session %s :: %s (%s) connected", scb.ID(), userID, conn.RemoteAddr().String())
 	return nil
 }
@@ -43,35 +41,46 @@ func onClientConnect(ctx context.Context, scb Controller, userID string, conn *g
 func onClientDisconnect(ctx context.Context, scb Controller, userID string, conn *gws.Conn) {
 	scb.UserDisconnect(ctx, userID)
 	log.Ctx(ctx).Infof("session %s :: %s (%s) disconnected", scb.ID(), userID, conn.RemoteAddr().String())
-	_ = conn.WriteMessage(gws.TextMessage, []byte("connection closed by host"))
+	// _ = conn.WriteMessage(gws.TextMessage, []byte("connection closed by host"))
 	_ = conn.Close()
 }
 
 // Subscribe subscribes to the websocket connection
 func Subscribe(ctx context.Context, conn *gws.Conn, scb Controller, userID string) error {
 	if err := onClientConnect(ctx, scb, userID, conn); err != nil {
+		writeError(scb, userID, err)
+		_ = conn.Close()
 		return err
 	}
 	defer onClientDisconnect(ctx, scb, userID, conn)
 
 	for {
-		if _, data, err := conn.ReadMessage(); err == nil {
-			msg, errMsg := types.UnmarshalMessage(data)
-			if errMsg != nil {
-				continue
-			}
-
-			// sanitize received data
-			if errSanitize := scb.Receive(
-				ctx,
-				msg,
-			); errSanitize != nil {
-				log.Ctx(ctx).Warnf("session %s :: error receive message from %s: %v", scb.ID(), msg.Sender, err)
-				continue // skip if data is corrupted
-			}
-		} else {
+		_, data, err := conn.ReadMessage()
+		if err != nil {
 			break // socket closed
+		}
+
+		msg, err := types.UnmarshalMessage(data)
+		if err != nil {
+			continue
+		}
+
+		// sanitize received data
+		if err := scb.Receive(ctx, msg); err != nil {
+			log.Ctx(ctx).Warnf("session %s :: error receive message from %s: %v", scb.ID(), msg.Sender, err)
+			writeError(scb, userID, err)
 		}
 	}
 	return nil
+}
+
+func writeError(scb Controller, userID string, content interface{}) {
+	payload, _ := json.Marshal(types.Message{
+		Type:    "error",
+		Content: content,
+	})
+	scb.Broadcaster().Send() <- types.Message{
+		Receiver: userID,
+		Content:  payload,
+	}
 }

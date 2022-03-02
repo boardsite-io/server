@@ -2,23 +2,27 @@ package errors
 
 import "net/http"
 
+type Code uint32
+
 // Client error codes
 const (
-	CodeBadRequest uint32 = iota + 4000
-	CodeRateLimitExceeded
-	CodeMissingIdentifier
-	CodeAttachmentSizeExceeded
-	CodeMaxNumberOfUsersReached
+	BadRequest Code = iota + 4000
+	RateLimitExceeded
+	MissingIdentifier
+	AttachmentSizeExceeded
+	MaxNumberOfUsersReached
+	BadUsername
 )
 
 // Server error codes
 const (
-	CodeInternalError uint32 = iota + 5000
+	CodeInternalError Code = iota + 5000
 )
 
-var codeStatusMap = map[uint32]int{
-	CodeRateLimitExceeded:       http.StatusTooManyRequests,
-	CodeMissingIdentifier:       http.StatusForbidden,
-	CodeAttachmentSizeExceeded:  http.StatusBadRequest,
-	CodeMaxNumberOfUsersReached: http.StatusBadRequest,
+var codeStatusMap = map[Code]int{
+	RateLimitExceeded:       http.StatusTooManyRequests,
+	MissingIdentifier:       http.StatusForbidden,
+	AttachmentSizeExceeded:  http.StatusBadRequest,
+	MaxNumberOfUsersReached: http.StatusBadRequest,
+	BadUsername:             http.StatusBadRequest,
 }

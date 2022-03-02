@@ -3,23 +3,40 @@ package session
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
+	gws "github.com/gorilla/websocket"
+
+	"github.com/google/uuid"
+
+	"github.com/heat1q/boardsite/api/config"
+	apiErrors "github.com/heat1q/boardsite/api/errors"
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/attachment"
 	"github.com/heat1q/boardsite/redis"
 )
 
-const defaultMaxUsers = 10
+// TODO move to config
+const maxUsers = 50
 
 type CreateSessionResponse struct {
-	SessionId string `json:"sessionId"`
+	Config `json:"config"`
+}
+
+type GetConfigResponse struct {
+	Users  map[string]*User `json:"users"`
+	Config `json:"config"`
 }
 
 //counterfeiter:generate . Controller
 type Controller interface {
 	// ID returns the session id
 	ID() string
+	// Config returns the session config
+	Config() Config
+	// SetConfig sets the session config
+	SetConfig(cfg Config) error
 
 	// GetPageRank returns the current page rank of a session
 	GetPageRank(ctx context.Context) ([]string, error)
@@ -39,10 +56,8 @@ type Controller interface {
 
 	// NewUser creates a new ready user for the session
 	NewUser(alias string, color string) (*User, error)
-	// GetUserReady returns the current ready user for the given user id
-	GetUserReady(userID string) (*User, error)
 	// UserConnect connects a ready user to the session
-	UserConnect(u *User)
+	UserConnect(userID string, conn *gws.Conn) error
 	// UserDisconnect disconnects a user from the session
 	UserDisconnect(ctx context.Context, userID string)
 	// GetUsers returns all active users in the session
@@ -54,13 +69,38 @@ type Controller interface {
 	Receive(ctx context.Context, msg *types.Message) error
 	// Attachments returns the session's attachment handler
 	Attachments() attachment.Handler
+	// Broadcaster returns the session's broadcaster
+	Broadcaster() Broadcaster
 	// NumUsers returns the number of active users in the session
 	NumUsers() int
 }
 
+type Config struct {
+	ID     string `json:"id"`
+	Host   string `json:"host"`
+	Secret string `json:"-"`
+
+	config.Session
+	Password *string `json:"password,omitempty"`
+}
+
+func NewConfig(sessionCfg config.Session) Config {
+	return Config{
+		Session: sessionCfg,
+		Secret:  uuid.NewString(),
+	}
+}
+
+func (c *Config) validate() error {
+	if c.MaxUsers < 2 || c.MaxUsers > maxUsers {
+		return fmt.Errorf("invalid MaxUsers")
+	}
+	return nil
+}
+
 // controlBlock holds the information and channels for sessions
 type controlBlock struct {
-	id string
+	cfg Config
 
 	attachments attachment.Handler
 	dispatcher  Dispatcher
@@ -77,21 +117,12 @@ type controlBlock struct {
 	// Active Client users that are in the session
 	// and have an intact WS connection
 	users    map[string]*User
-	maxUsers int
 	numUsers int
 }
 
 var _ Controller = (*controlBlock)(nil)
 
 type ControlBlockOption = func(scb *controlBlock)
-
-// WithMaxUsers sets the maximum numbers of users allowed in a session
-// This functional argument is passed to NewControlBlock.
-func WithMaxUsers(maxUsers int) ControlBlockOption {
-	return func(scb *controlBlock) {
-		scb.maxUsers = maxUsers
-	}
-}
 
 // WithCache sets the redis.Handler
 // This functional argument is passed to NewControlBlock.
@@ -126,12 +157,11 @@ func WithBroadcaster(broadcaster Broadcaster) ControlBlockOption {
 }
 
 // NewControlBlock creates a new Session controlBlock with unique ID.
-func NewControlBlock(sessionId string, options ...ControlBlockOption) (*controlBlock, error) {
+func NewControlBlock(cfg Config, options ...ControlBlockOption) (*controlBlock, error) {
 	scb := &controlBlock{
-		id:         sessionId,
+		cfg:        cfg,
 		usersReady: make(map[string]*User),
 		users:      make(map[string]*User),
-		maxUsers:   defaultMaxUsers,
 	}
 
 	for _, o := range options {
@@ -143,7 +173,7 @@ func NewControlBlock(sessionId string, options ...ControlBlockOption) (*controlB
 	}
 
 	if scb.attachments == nil {
-		scb.attachments = attachment.NewLocalHandler(sessionId)
+		scb.attachments = attachment.NewLocalHandler(cfg.ID)
 	}
 
 	if scb.broadcaster == nil {
@@ -165,13 +195,47 @@ func (scb *controlBlock) Close() {
 }
 
 func (scb *controlBlock) ID() string {
-	return scb.id
+	return scb.cfg.ID
 }
 
 func (scb *controlBlock) Attachments() attachment.Handler {
 	return scb.attachments
 }
 
+func (scb *controlBlock) Broadcaster() Broadcaster {
+	return scb.broadcaster
+}
+
 func (scb *controlBlock) NumUsers() int {
 	return scb.numUsers
+}
+
+func (scb *controlBlock) Config() Config {
+	return scb.cfg
+}
+
+func (scb *controlBlock) SetConfig(incoming Config) error {
+	if err := incoming.validate(); err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("validate config: %w", err))
+	}
+	// TODO replace only non-nil
+	//if incoming.Host != "" {
+	//	scb.cfg.Host = incoming.Host
+	//}
+	if incoming.MaxUsers > 0 {
+		scb.cfg.MaxUsers = incoming.MaxUsers
+	}
+	if incoming.ReadOnly != nil {
+		scb.cfg.ReadOnly = incoming.ReadOnly
+	}
+	if incoming.Password != nil {
+		scb.cfg.Password = incoming.Password
+	}
+
+	scb.broadcaster.Broadcast() <- types.Message{
+		Type:    MessageTypeSessionConfig,
+		Content: CreateSessionResponse{Config: scb.cfg},
+	}
+
+	return nil
 }

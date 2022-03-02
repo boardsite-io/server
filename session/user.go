@@ -3,16 +3,20 @@ package session
 import (
 	"context"
 	"errors"
-	"fmt"
+	"regexp"
 
-	"github.com/google/uuid"
+	gonanoid "github.com/matoous/go-nanoid/v2"
+
 	gws "github.com/gorilla/websocket"
 
 	apiErrors "github.com/heat1q/boardsite/api/errors"
 	"github.com/heat1q/boardsite/api/types"
 )
 
-const maxNameLen = 32
+var (
+	htmlColor = regexp.MustCompile("^#[a-f0-9]{6}$")
+	aliasExp  = regexp.MustCompile("^[a-zA-Z0-9-_]{4,32}$")
+)
 
 // User declares some information about connected users.
 type User struct {
@@ -22,40 +26,46 @@ type User struct {
 	Conn  *gws.Conn `json:"-"`
 }
 
+type userHostContent struct {
+	Secret string `json:"secret"`
+}
+
 // NewUser generate a new user struct based on
 // the alias and color attribute
 //
 // Does some sanitize checks.
 func (scb *controlBlock) NewUser(alias, color string) (*User, error) {
-	if len(alias) > maxNameLen {
-		alias = alias[:maxNameLen]
+	if !aliasExp.MatchString(alias) {
+		return nil, apiErrors.From(apiErrors.BadUsername)
 	}
-	//TODO check if html color ?
-	if len(color) != 7 {
-		return nil, fmt.Errorf("incorrect html color")
+	if !htmlColor.MatchString(color) {
+		return nil, apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("incorrect html color"))
 	}
 
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return nil, err
-	}
 	user := &User{
-		ID:    id.String(),
+		ID:    gonanoid.Must(24),
 		Alias: alias,
 		Color: color,
 	}
 	// set user waiting
-	err = scb.userReady(user)
-	return user, err
+	err := scb.userReady(user)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 // UserReady adds an user to the usersReady map.
 func (scb *controlBlock) userReady(u *User) error {
 	scb.muUsr.RLock()
 	defer scb.muUsr.RUnlock()
-	if scb.numUsers >= scb.maxUsers {
-		return apiErrors.From(apiErrors.CodeMaxNumberOfUsersReached).Wrap(
+	if scb.numUsers >= scb.cfg.MaxUsers {
+		return apiErrors.From(apiErrors.MaxNumberOfUsersReached).Wrap(
 			apiErrors.WithErrorf("maximum number of connected users reached"))
+	}
+
+	if scb.numUsers == 0 {
+		scb.cfg.Host = u.ID
 	}
 
 	scb.muRdyUsr.Lock()
@@ -65,7 +75,7 @@ func (scb *controlBlock) userReady(u *User) error {
 }
 
 // GetUserReady returns the user with userID ready to join a session.
-func (scb *controlBlock) GetUserReady(userID string) (*User, error) {
+func (scb *controlBlock) getUserReady(userID string) (*User, error) {
 	scb.muRdyUsr.RLock()
 	defer scb.muRdyUsr.RUnlock()
 	u, ok := scb.usersReady[userID]
@@ -78,24 +88,43 @@ func (scb *controlBlock) GetUserReady(userID string) (*User, error) {
 // UserConnect adds user from the userReady state to clients.
 //
 // Broadcast that user has connected to session.
-func (scb *controlBlock) UserConnect(u *User) {
+func (scb *controlBlock) UserConnect(userID string, conn *gws.Conn) error {
+	u, err := scb.getUserReady(userID)
+	if err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
+	}
+	u.Conn = conn
+
 	scb.muUsr.Lock()
+	if _, ok := scb.users[u.ID]; ok {
+		scb.muUsr.Unlock()
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("user already connected"))
+	}
 	scb.users[u.ID] = u
 	scb.numUsers++
 	numCl := scb.numUsers
+	scb.muUsr.Unlock()
 
 	// the first user to connect needs to start the session
 	if numCl == 1 {
 		scb.Start()
 	}
 
-	scb.muUsr.Unlock()
-
 	// broadcast that user has joined
 	scb.broadcaster.Broadcast() <- types.Message{
 		Type:    MessageTypeUserConnected,
 		Content: u,
 	}
+
+	if scb.isHost(u) {
+		scb.broadcaster.Send() <- types.Message{
+			Type:     MessageTypeUserHost,
+			Receiver: u.ID,
+			Content:  userHostContent{Secret: scb.cfg.Secret},
+		}
+	}
+
+	return nil
 }
 
 // UserDisconnect removes user from clients.
@@ -112,7 +141,7 @@ func (scb *controlBlock) UserDisconnect(ctx context.Context, userID string) {
 	// if session is empty after client disconnect
 	// the session needs to be set to inactive
 	if numCl == 0 {
-		_ = scb.dispatcher.Close(ctx, scb.id)
+		_ = scb.dispatcher.Close(ctx, scb.cfg.ID)
 		return
 	}
 
@@ -140,4 +169,8 @@ func (scb *controlBlock) GetUsers() map[string]*User {
 	}
 	scb.muUsr.RUnlock()
 	return users
+}
+
+func (scb *controlBlock) isHost(u *User) bool {
+	return u.ID == scb.cfg.Host
 }

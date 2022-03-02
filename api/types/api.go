@@ -7,12 +7,18 @@ import (
 	"io/ioutil"
 )
 
+const (
+	HeaderUserID        = "Boardsite-User-Id"
+	HeaderSessionSecret = "Boardsite-Session-Secret"
+)
+
 // Message declares the generic message envelope
 // of any API JSON encoded message.
 type Message struct {
-	Type    string      `json:"type"`
-	Sender  string      `json:"sender,omitempty"`
-	Content interface{} `json:"content,omitempty"`
+	Type     string      `json:"type"`
+	Sender   string      `json:"sender,omitempty"`
+	Receiver string      `json:"-"`
+	Content  interface{} `json:"content,omitempty"`
 }
 
 // NewMessage creates a new Message with any JSON encodable content,

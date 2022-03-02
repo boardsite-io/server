@@ -15,13 +15,14 @@ import (
 
 const (
 	SessionCtxKey = "boardsite-session"
+	SecretCtxKey  = "boardsite-session-secret"
 	UserCtxKey    = "boardsite-user"
 )
 
 type Handler interface {
 	PostCreateSession(c echo.Context) error
-	PostCreateWithConfig(c echo.Context) error
-	GetUsers(c echo.Context) error
+	PutSessionConfig(c echo.Context) error
+	GetSessionConfig(c echo.Context) error
 	PostUsers(c echo.Context) error
 	GetSocket(c echo.Context) error
 	GetPageRank(c echo.Context) error
@@ -35,11 +36,11 @@ type Handler interface {
 }
 
 type handler struct {
-	cfg        *config.Session
+	cfg        config.Session
 	dispatcher Dispatcher
 }
 
-func NewHandler(cfg *config.Session, dispatcher Dispatcher) Handler {
+func NewHandler(cfg config.Session, dispatcher Dispatcher) Handler {
 	return &handler{
 		cfg:        cfg,
 		dispatcher: dispatcher,
@@ -49,32 +50,48 @@ func NewHandler(cfg *config.Session, dispatcher Dispatcher) Handler {
 // PostCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
 func (h *handler) PostCreateSession(c echo.Context) error {
-	cfg := CreateConfig{
-		MaxUsers: h.cfg.DefaultUsers,
+	var userReq User
+	if err := json.NewDecoder(c.Request().Body).Decode(&userReq); err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
-	sid, err := h.dispatcher.Create(c.Request().Context(), cfg)
+
+	scb, err := h.dispatcher.Create(c.Request().Context(), NewConfig(h.cfg))
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusCreated, CreateSessionResponse{SessionId: sid})
+
+	return c.JSON(http.StatusCreated, CreateSessionResponse{
+		Config: scb.Config(),
+	})
 }
 
-func (h *handler) PostCreateWithConfig(c echo.Context) error {
-	var cfg CreateConfig
+func (h *handler) PutSessionConfig(c echo.Context) error {
+	scb, err := getSCB(c)
+	if err != nil {
+		return err
+	}
+	if u, secret, err := getHost(c); err != nil || u.ID != scb.Config().Host || secret != scb.Config().Secret {
+		return apiErrors.ErrForbidden.Wrap(apiErrors.WithError(err))
+	}
+
+	var cfg Config
 	if err := c.Bind(&cfg); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
 
-	if err := cfg.validate(h.cfg); err != nil {
-		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("createConfig: %w", err))
+	if err := scb.SetConfig(cfg); err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("setConfig: %w", err))
 	}
 
-	sid, err := h.dispatcher.Create(c.Request().Context(), cfg)
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *handler) GetSessionConfig(c echo.Context) error {
+	scb, err := getSCB(c)
 	if err != nil {
 		return err
 	}
-
-	return c.JSON(http.StatusCreated, CreateSessionResponse{SessionId: sid})
+	return c.JSON(http.StatusOK, GetConfigResponse{Users: scb.GetUsers(), Config: scb.Config()})
 }
 
 func (h *handler) PostUsers(c echo.Context) error {
@@ -98,29 +115,16 @@ func (h *handler) PostUsers(c echo.Context) error {
 	return c.JSON(http.StatusCreated, user)
 }
 
-func (h *handler) GetUsers(c echo.Context) error {
-	scb, err := getSCB(c)
-	if err != nil {
-		return err
-	}
-	return c.JSON(http.StatusOK, scb.GetUsers())
-}
-
 // GetSocket handles request for a websocket upgrade
 // based on the sessionID and the userID.
 func (h *handler) GetSocket(c echo.Context) error {
-	scb, err := getSCB(c)
+	scb, err := h.dispatcher.GetSCB(c.Param("id"))
 	if err != nil {
-		return err
-	}
-
-	user, err := getUser(c)
-	if err != nil {
-		return err
+		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
 
 	onConnect := func(conn *gws.Conn) error {
-		return Subscribe(c.Request().Context(), conn, scb, user.ID)
+		return Subscribe(c.Request().Context(), conn, scb, c.Param("userId"))
 	}
 
 	return upgrade(c, onConnect)
@@ -243,7 +247,7 @@ func (h *handler) PostAttachment(c echo.Context) error {
 	}
 
 	if err := c.Request().ParseMultipartForm(2 << 20); err != nil {
-		return apiErrors.From(apiErrors.CodeAttachmentSizeExceeded).Wrap(
+		return apiErrors.From(apiErrors.AttachmentSizeExceeded).Wrap(
 			apiErrors.WithMessage("file size exceeded limit of 2MB"),
 			apiErrors.WithError(err))
 	}
@@ -294,4 +298,12 @@ func getUser(c echo.Context) (*User, error) {
 		return nil, echo.ErrForbidden
 	}
 	return scb, nil
+}
+
+func getHost(c echo.Context) (*User, string, error) {
+	scb, ok := c.Get(UserCtxKey).(*User)
+	if !ok {
+		return nil, "", echo.ErrForbidden
+	}
+	return scb, c.Get(SecretCtxKey).(string), nil
 }
