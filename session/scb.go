@@ -92,7 +92,7 @@ func NewConfig(sessionCfg config.Session) Config {
 }
 
 func (c *Config) validate() error {
-	if c.MaxUsers < 2 || c.MaxUsers > maxUsers {
+	if c.MaxUsers > maxUsers {
 		return fmt.Errorf("invalid MaxUsers")
 	}
 	return nil

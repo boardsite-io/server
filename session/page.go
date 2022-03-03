@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	queryKeyUpdate = "update"
+	QueryKeyUpdate = "update"
 )
 
 const (

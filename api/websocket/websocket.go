@@ -1,8 +1,8 @@
-package session
+package websocket
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"net/http"
 
 	gws "github.com/gorilla/websocket"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/heat1q/boardsite/api/log"
 	"github.com/heat1q/boardsite/api/types"
+	"github.com/heat1q/boardsite/session"
 )
 
 var upgrader = gws.Upgrader{
@@ -22,15 +23,11 @@ var upgrader = gws.Upgrader{
 }
 
 // upgrade upgrade a connection to a websocket connection
-func upgrade(c echo.Context, onConnectFn func(conn *gws.Conn) error) error {
-	conn, err := upgrader.Upgrade(c.Response().Writer, c.Request(), nil)
-	if err != nil {
-		return err
-	}
-	return onConnectFn(conn)
+func upgrade(c echo.Context) (*gws.Conn, error) {
+	return upgrader.Upgrade(c.Response().Writer, c.Request(), nil)
 }
 
-func onClientConnect(ctx context.Context, scb Controller, userID string, conn *gws.Conn) error {
+func onClientConnect(ctx context.Context, scb session.Controller, userID string, conn *gws.Conn) error {
 	if err := scb.UserConnect(userID, conn); err != nil {
 		return err
 	}
@@ -38,18 +35,22 @@ func onClientConnect(ctx context.Context, scb Controller, userID string, conn *g
 	return nil
 }
 
-func onClientDisconnect(ctx context.Context, scb Controller, userID string, conn *gws.Conn) {
+func onClientDisconnect(ctx context.Context, scb session.Controller, userID string, conn *gws.Conn) {
 	scb.UserDisconnect(ctx, userID)
 	log.Ctx(ctx).Infof("session %s :: %s (%s) disconnected", scb.ID(), userID, conn.RemoteAddr().String())
-	// _ = conn.WriteMessage(gws.TextMessage, []byte("connection closed by host"))
-	_ = conn.Close()
+	closeWS(conn, nil)
 }
 
 // Subscribe subscribes to the websocket connection
-func Subscribe(ctx context.Context, conn *gws.Conn, scb Controller, userID string) error {
+func Subscribe(c echo.Context, scb session.Controller, userID string) error {
+	ctx := c.Request().Context()
+	conn, err := upgrade(c)
+	if err != nil {
+		return err
+	}
+
 	if err := onClientConnect(ctx, scb, userID, conn); err != nil {
-		writeError(scb, userID, err)
-		_ = conn.Close()
+		closeWS(conn, gws.FormatCloseMessage(gws.CloseNormalClosure, fmt.Sprintf("%v", err)))
 		return err
 	}
 	defer onClientDisconnect(ctx, scb, userID, conn)
@@ -68,19 +69,17 @@ func Subscribe(ctx context.Context, conn *gws.Conn, scb Controller, userID strin
 		// sanitize received data
 		if err := scb.Receive(ctx, msg); err != nil {
 			log.Ctx(ctx).Warnf("session %s :: error receive message from %s: %v", scb.ID(), msg.Sender, err)
-			writeError(scb, userID, err)
+			scb.Broadcaster().Send() <- types.Message{
+				Type:     "error",
+				Receiver: userID,
+				Content:  err,
+			}
 		}
 	}
 	return nil
 }
 
-func writeError(scb Controller, userID string, content interface{}) {
-	payload, _ := json.Marshal(types.Message{
-		Type:    "error",
-		Content: content,
-	})
-	scb.Broadcaster().Send() <- types.Message{
-		Receiver: userID,
-		Content:  payload,
-	}
+func closeWS(conn *gws.Conn, message []byte) {
+	_ = conn.WriteMessage(gws.CloseMessage, message)
+	_ = conn.Close()
 }

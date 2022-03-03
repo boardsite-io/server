@@ -17,6 +17,7 @@ import (
 
 func TestGithubAuth(t *testing.T) {
 	e := echo.New()
+	e.HTTPErrorHandler = middleware.NewErrorHandler()
 	validator := &githubfakes.FakeValidator{}
 	tests := []struct {
 		name        string
@@ -70,7 +71,6 @@ func TestGithubAuth(t *testing.T) {
 			err := fn(c)
 
 			if tt.wantErr {
-				assert.Error(t, err)
 				assert.False(t, hndlCalled)
 			} else {
 				assert.NoError(t, err)

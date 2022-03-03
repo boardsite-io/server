@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	htmlColor = regexp.MustCompile("^#[a-f0-9]{6}$")
+	htmlColor = regexp.MustCompile("^#[a-fA-F0-9]{6}$")
 	aliasExp  = regexp.MustCompile("^[a-zA-Z0-9-_]{4,32}$")
 )
 

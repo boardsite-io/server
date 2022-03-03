@@ -1,15 +1,19 @@
-package session
+package http
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/heat1q/boardsite/attachment"
+	"github.com/heat1q/boardsite/api/log"
 
-	gws "github.com/gorilla/websocket"
+	"github.com/heat1q/boardsite/session"
+
 	"github.com/heat1q/boardsite/api/config"
 	apiErrors "github.com/heat1q/boardsite/api/errors"
+	"github.com/heat1q/boardsite/api/websocket"
+	"github.com/heat1q/boardsite/attachment"
 	"github.com/labstack/echo/v4"
 )
 
@@ -37,10 +41,10 @@ type Handler interface {
 
 type handler struct {
 	cfg        config.Session
-	dispatcher Dispatcher
+	dispatcher session.Dispatcher
 }
 
-func NewHandler(cfg config.Session, dispatcher Dispatcher) Handler {
+func NewHandler(cfg config.Session, dispatcher session.Dispatcher) Handler {
 	return &handler{
 		cfg:        cfg,
 		dispatcher: dispatcher,
@@ -50,17 +54,12 @@ func NewHandler(cfg config.Session, dispatcher Dispatcher) Handler {
 // PostCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
 func (h *handler) PostCreateSession(c echo.Context) error {
-	var userReq User
-	if err := json.NewDecoder(c.Request().Body).Decode(&userReq); err != nil {
-		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
-	}
-
-	scb, err := h.dispatcher.Create(c.Request().Context(), NewConfig(h.cfg))
+	scb, err := h.dispatcher.Create(c.Request().Context(), session.NewConfig(h.cfg))
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, CreateSessionResponse{
+	return c.JSON(http.StatusCreated, session.CreateSessionResponse{
 		Config: scb.Config(),
 	})
 }
@@ -71,10 +70,10 @@ func (h *handler) PutSessionConfig(c echo.Context) error {
 		return err
 	}
 	if u, secret, err := getHost(c); err != nil || u.ID != scb.Config().Host || secret != scb.Config().Secret {
-		return apiErrors.ErrForbidden.Wrap(apiErrors.WithError(err))
+		return fmt.Errorf("put session cfg: get host: %w", err)
 	}
 
-	var cfg Config
+	var cfg session.Config
 	if err := c.Bind(&cfg); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
@@ -91,7 +90,7 @@ func (h *handler) GetSessionConfig(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, GetConfigResponse{Users: scb.GetUsers(), Config: scb.Config()})
+	return c.JSON(http.StatusOK, session.GetConfigResponse{Users: scb.GetUsers(), Config: scb.Config()})
 }
 
 func (h *handler) PostUsers(c echo.Context) error {
@@ -100,7 +99,7 @@ func (h *handler) PostUsers(c echo.Context) error {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
 
-	var userReq User
+	var userReq session.User
 
 	if err := json.NewDecoder(c.Request().Body).Decode(&userReq); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
@@ -122,12 +121,11 @@ func (h *handler) GetSocket(c echo.Context) error {
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
-
-	onConnect := func(conn *gws.Conn) error {
-		return Subscribe(c.Request().Context(), conn, scb, c.Param("userId"))
+	err = websocket.Subscribe(c, scb, c.Param("userId"))
+	if err != nil {
+		log.Ctx(c.Request().Context()).Errorf("websocket subscribe: %v", err)
 	}
-
-	return upgrade(c, onConnect)
+	return nil
 }
 
 func (h *handler) GetPageRank(c echo.Context) error {
@@ -152,7 +150,7 @@ func (h *handler) PostPages(c echo.Context) error {
 	}
 
 	// add a Page
-	var data PageRequest
+	var data session.PageRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
@@ -170,9 +168,9 @@ func (h *handler) PutPages(c echo.Context) error {
 		return err
 	}
 
-	op := c.QueryParam(queryKeyUpdate)
+	op := c.QueryParam(session.QueryKeyUpdate)
 
-	var data PageRequest
+	var data session.PageRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&data); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
@@ -228,7 +226,7 @@ func (h *handler) PostPageSync(c echo.Context) error {
 		return err
 	}
 
-	var sync PageSync
+	var sync session.PageSync
 	if err := json.NewDecoder(c.Request().Body).Decode(&sync); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
@@ -284,26 +282,18 @@ func (h *handler) GetAttachment(c echo.Context) error {
 	return c.Stream(http.StatusOK, MIMEType, data)
 }
 
-func getSCB(c echo.Context) (Controller, error) {
-	scb, ok := c.Get(SessionCtxKey).(Controller)
+func getSCB(c echo.Context) (session.Controller, error) {
+	scb, ok := c.Get(SessionCtxKey).(session.Controller)
 	if !ok {
-		return nil, echo.ErrForbidden
+		return nil, apiErrors.ErrForbidden
 	}
 	return scb, nil
 }
 
-func getUser(c echo.Context) (*User, error) {
-	scb, ok := c.Get(UserCtxKey).(*User)
+func getHost(c echo.Context) (*session.User, string, error) {
+	scb, ok := c.Get(UserCtxKey).(*session.User)
 	if !ok {
-		return nil, echo.ErrForbidden
-	}
-	return scb, nil
-}
-
-func getHost(c echo.Context) (*User, string, error) {
-	scb, ok := c.Get(UserCtxKey).(*User)
-	if !ok {
-		return nil, "", echo.ErrForbidden
+		return nil, "", apiErrors.ErrForbidden
 	}
 	return scb, c.Get(SecretCtxKey).(string), nil
 }

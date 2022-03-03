@@ -15,13 +15,14 @@ import (
 	apimw "github.com/heat1q/boardsite/api/middleware"
 	"github.com/heat1q/boardsite/redis"
 	"github.com/heat1q/boardsite/session"
+	sessionHttp "github.com/heat1q/boardsite/session/http"
 )
 
 type Server struct {
 	cfg        *config.Configuration
 	echo       *echo.Echo
 	metrics    metrics.Handler
-	session    session.Handler
+	session    sessionHttp.Handler
 	dispatcher session.Dispatcher
 	github     github.Handler
 	validator  github.Validator
@@ -47,7 +48,7 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	s.dispatcher = session.NewDispatcher(cache)
 
 	// set up session dispatcher/handler
-	s.session = session.NewHandler(s.cfg.Session, s.dispatcher)
+	s.session = sessionHttp.NewHandler(s.cfg.Session, s.dispatcher)
 
 	s.metrics = metrics.NewHandler(s.dispatcher)
 
