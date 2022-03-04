@@ -16,6 +16,7 @@ const (
 	MessageTypeUserHost         = "userhost"
 	MessageTypeUserConnected    = "userconn"
 	MessageTypeUserDisconnected = "userdisc"
+	MessageTypeUserKick         = "userkick"
 	MessageTypePageSync         = "pagesync"
 	MessageTypeMouseMove        = "mmove"
 )

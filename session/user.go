@@ -152,6 +152,21 @@ func (scb *controlBlock) UserDisconnect(ctx context.Context, userID string) {
 	}
 }
 
+func (scb *controlBlock) KickUser(userID string) error {
+	if _, ok := scb.GetUsers()[userID]; !ok {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("user not found"))
+	}
+	scb.broadcaster.Send() <- types.Message{
+		Type:     MessageTypeUserKick,
+		Receiver: userID,
+	}
+	scb.broadcaster.Control() <- types.Message{
+		Receiver: userID,
+		Content:  "Kicked by host",
+	}
+	return nil
+}
+
 // IsUserConnected checks if the user with userID is an active client in the session.
 func (scb *controlBlock) isUserConnected(userID string) bool {
 	scb.muUsr.RLock()

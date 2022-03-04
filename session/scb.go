@@ -60,6 +60,8 @@ type Controller interface {
 	UserConnect(userID string, conn *gws.Conn) error
 	// UserDisconnect disconnects a user from the session
 	UserDisconnect(ctx context.Context, userID string)
+	// KickUser removes a user from the session
+	KickUser(userID string) error
 	// GetUsers returns all active users in the session
 	GetUsers() map[string]*User
 

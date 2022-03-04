@@ -133,6 +133,17 @@ type FakeController struct {
 	isValidPageReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	KickUserStub        func(string) error
+	kickUserMutex       sync.RWMutex
+	kickUserArgsForCall []struct {
+		arg1 string
+	}
+	kickUserReturns struct {
+		result1 error
+	}
+	kickUserReturnsOnCall map[int]struct {
+		result1 error
+	}
 	NewUserStub        func(string, string) (*session.User, error)
 	newUserMutex       sync.RWMutex
 	newUserArgsForCall []struct {
@@ -841,6 +852,67 @@ func (fake *FakeController) IsValidPageReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
+func (fake *FakeController) KickUser(arg1 string) error {
+	fake.kickUserMutex.Lock()
+	ret, specificReturn := fake.kickUserReturnsOnCall[len(fake.kickUserArgsForCall)]
+	fake.kickUserArgsForCall = append(fake.kickUserArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.KickUserStub
+	fakeReturns := fake.kickUserReturns
+	fake.recordInvocation("KickUser", []interface{}{arg1})
+	fake.kickUserMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeController) KickUserCallCount() int {
+	fake.kickUserMutex.RLock()
+	defer fake.kickUserMutex.RUnlock()
+	return len(fake.kickUserArgsForCall)
+}
+
+func (fake *FakeController) KickUserCalls(stub func(string) error) {
+	fake.kickUserMutex.Lock()
+	defer fake.kickUserMutex.Unlock()
+	fake.KickUserStub = stub
+}
+
+func (fake *FakeController) KickUserArgsForCall(i int) string {
+	fake.kickUserMutex.RLock()
+	defer fake.kickUserMutex.RUnlock()
+	argsForCall := fake.kickUserArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeController) KickUserReturns(result1 error) {
+	fake.kickUserMutex.Lock()
+	defer fake.kickUserMutex.Unlock()
+	fake.KickUserStub = nil
+	fake.kickUserReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeController) KickUserReturnsOnCall(i int, result1 error) {
+	fake.kickUserMutex.Lock()
+	defer fake.kickUserMutex.Unlock()
+	fake.KickUserStub = nil
+	if fake.kickUserReturnsOnCall == nil {
+		fake.kickUserReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.kickUserReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeController) NewUser(arg1 string, arg2 string) (*session.User, error) {
 	fake.newUserMutex.Lock()
 	ret, specificReturn := fake.newUserReturnsOnCall[len(fake.newUserArgsForCall)]
@@ -1327,6 +1399,8 @@ func (fake *FakeController) Invocations() map[string][][]interface{} {
 	defer fake.iDMutex.RUnlock()
 	fake.isValidPageMutex.RLock()
 	defer fake.isValidPageMutex.RUnlock()
+	fake.kickUserMutex.RLock()
+	defer fake.kickUserMutex.RUnlock()
 	fake.newUserMutex.RLock()
 	defer fake.newUserMutex.RUnlock()
 	fake.numUsersMutex.RLock()

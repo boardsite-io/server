@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -28,6 +27,7 @@ type Handler interface {
 	PutSessionConfig(c echo.Context) error
 	GetSessionConfig(c echo.Context) error
 	PostUsers(c echo.Context) error
+	PutUser(c echo.Context) error
 	GetSocket(c echo.Context) error
 	GetPageRank(c echo.Context) error
 	PostPages(c echo.Context) error
@@ -69,9 +69,6 @@ func (h *handler) PutSessionConfig(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	if u, secret, err := getHost(c); err != nil || u.ID != scb.Config().Host || secret != scb.Config().Secret {
-		return fmt.Errorf("put session cfg: get host: %w", err)
-	}
 
 	var cfg session.Config
 	if err := c.Bind(&cfg); err != nil {
@@ -112,6 +109,17 @@ func (h *handler) PostUsers(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, user)
+}
+
+func (h *handler) PutUser(c echo.Context) error {
+	scb, err := getSCB(c)
+	if err != nil {
+		return err
+	}
+	if err := scb.KickUser(c.Param("userId")); err != nil {
+		return err
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 // GetSocket handles request for a websocket upgrade
@@ -288,12 +296,4 @@ func getSCB(c echo.Context) (session.Controller, error) {
 		return nil, apiErrors.ErrForbidden
 	}
 	return scb, nil
-}
-
-func getHost(c echo.Context) (*session.User, string, error) {
-	scb, ok := c.Get(UserCtxKey).(*session.User)
-	if !ok {
-		return nil, "", apiErrors.ErrForbidden
-	}
-	return scb, c.Get(SecretCtxKey).(string), nil
 }

@@ -17,8 +17,14 @@ func (s *Server) setRoutes() {
 	createGroup.POST( /**/ "", s.session.PostCreateSession)
 
 	configGroup := boardGroup.Group("/:id/config", middleware.Session(s.dispatcher))
-	configGroup.PUT( /*  */ "", s.session.PutSessionConfig, middleware.GithubAuth(&s.cfg.Github, s.validator))
 	configGroup.GET( /*  */ "", s.session.GetSessionConfig)
+
+	hostGroup := boardGroup.Group("",
+		middleware.Session(s.dispatcher),
+		middleware.Host(),
+		middleware.GithubAuth(&s.cfg.Github, s.validator))
+	hostGroup.PUT("/:id/config", s.session.PutSessionConfig)
+	hostGroup.PUT("/:id/users/:userId", s.session.PutUser)
 
 	usersGroup := boardGroup.Group("/:id/users")
 	usersGroup.POST( /* */ "", s.session.PostUsers)

@@ -48,61 +48,18 @@ func Test_handler_PutSessionConfig(t *testing.T) {
 		Host:   "userId",
 		Secret: "secret",
 	}
-	user := session.User{
-		ID:    "userId",
-		Alias: "test",
-		Color: "#00ff00",
-	}
 	scb := &sessionfakes.FakeController{}
 	scb.ConfigReturns(cfg)
 	dispatcher := &sessionfakes.FakeDispatcher{}
 	dispatcher.CreateReturns(scb, nil)
 	handler := sessionHttp.NewHandler(cfg.Session, dispatcher)
+	r := httptest.NewRequest(http.MethodPut, "/", strings.NewReader(`{"maxUsers": 20}`))
+	r.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
+	rr := httptest.NewRecorder()
+	c := e.NewContext(r, rr)
+	c.Set(sessionHttp.SessionCtxKey, scb)
 
-	t.Run("successful", func(t *testing.T) {
-		r := httptest.NewRequest(http.MethodPut, "/", strings.NewReader(`{"maxUsers": 20}`))
-		r.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
-		rr := httptest.NewRecorder()
-		c := e.NewContext(r, rr)
-		c.Set(sessionHttp.SessionCtxKey, scb)
-		c.Set(sessionHttp.UserCtxKey, &user)
-		c.Set(sessionHttp.SecretCtxKey, "secret")
+	err := handler.PutSessionConfig(c)
 
-		err := handler.PutSessionConfig(c)
-
-		assert.NoError(t, err)
-	})
-
-	t.Run("missing/wrong secret", func(t *testing.T) {
-		r := httptest.NewRequest(http.MethodPut, "/", strings.NewReader(`{"maxUsers": 20}`))
-		r.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
-		rr := httptest.NewRecorder()
-		c := e.NewContext(r, rr)
-		c.Set(sessionHttp.SessionCtxKey, scb)
-		c.Set(sessionHttp.UserCtxKey, &user)
-		c.Set(sessionHttp.SecretCtxKey, "1234")
-
-		err := handler.PutSessionConfig(c)
-
-		assert.Error(t, err)
-	})
-
-	t.Run("user not host", func(t *testing.T) {
-		user := session.User{
-			ID:    "userId2",
-			Alias: "test",
-			Color: "#00ff00",
-		}
-		r := httptest.NewRequest(http.MethodPut, "/", strings.NewReader(`{"maxUsers": 20}`))
-		r.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
-		rr := httptest.NewRecorder()
-		c := e.NewContext(r, rr)
-		c.Set(sessionHttp.SessionCtxKey, scb)
-		c.Set(sessionHttp.UserCtxKey, &user)
-		c.Set(sessionHttp.SecretCtxKey, "secret")
-
-		err := handler.PutSessionConfig(c)
-
-		assert.Error(t, err)
-	})
+	assert.NoError(t, err)
 }
