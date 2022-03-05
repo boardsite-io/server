@@ -4,15 +4,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/heat1q/boardsite/api/types"
+
 	apiErrors "github.com/heat1q/boardsite/api/errors"
 
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
-)
-
-const (
-	HeaderUserID = "Boardsite-User-Id"
 )
 
 type RateLimitingOption func(cfg *echomw.RateLimiterConfig)
@@ -28,10 +26,10 @@ func RateLimiting(rpm uint16, options ...RateLimitingOption) echo.MiddlewareFunc
 		Skipper:             echomw.DefaultSkipper,
 		IdentifierExtractor: ipExtractor,
 		ErrorHandler: func(_ echo.Context, err error) error {
-			return apiErrors.From(apiErrors.CodeMissingIdentifier).Wrap(apiErrors.WithError(err))
+			return apiErrors.From(apiErrors.MissingIdentifier).Wrap(apiErrors.WithError(err))
 		},
 		DenyHandler: func(_ echo.Context, identifier string, err error) error {
-			return apiErrors.From(apiErrors.CodeRateLimitExceeded).Wrap(
+			return apiErrors.From(apiErrors.RateLimitExceeded).Wrap(
 				apiErrors.WithErrorf("rate limiter: denied %s: %w", identifier, err))
 		},
 	}
@@ -80,7 +78,7 @@ func ipExtractor(c echo.Context) (string, error) {
 }
 
 func userIDExtractor(c echo.Context) (string, error) {
-	userId := c.Request().Header.Get(HeaderUserID)
+	userId := c.Request().Header.Get(types.HeaderUserID)
 	if userId == "" {
 		// userid could also be in params
 		userId = c.Param("userId")

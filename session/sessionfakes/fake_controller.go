@@ -5,6 +5,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/gorilla/websocket"
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/attachment"
 	"github.com/heat1q/boardsite/session"
@@ -33,9 +34,29 @@ type FakeController struct {
 	attachmentsReturnsOnCall map[int]struct {
 		result1 attachment.Handler
 	}
+	BroadcasterStub        func() session.Broadcaster
+	broadcasterMutex       sync.RWMutex
+	broadcasterArgsForCall []struct {
+	}
+	broadcasterReturns struct {
+		result1 session.Broadcaster
+	}
+	broadcasterReturnsOnCall map[int]struct {
+		result1 session.Broadcaster
+	}
 	CloseStub        func()
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
+	}
+	ConfigStub        func() session.Config
+	configMutex       sync.RWMutex
+	configArgsForCall []struct {
+	}
+	configReturns struct {
+		result1 session.Config
+	}
+	configReturnsOnCall map[int]struct {
+		result1 session.Config
 	}
 	GetPageStub        func(context.Context, string, bool) (*session.Page, error)
 	getPageMutex       sync.RWMutex
@@ -80,19 +101,6 @@ type FakeController struct {
 		result1 *session.PageSync
 		result2 error
 	}
-	GetUserReadyStub        func(string) (*session.User, error)
-	getUserReadyMutex       sync.RWMutex
-	getUserReadyArgsForCall []struct {
-		arg1 string
-	}
-	getUserReadyReturns struct {
-		result1 *session.User
-		result2 error
-	}
-	getUserReadyReturnsOnCall map[int]struct {
-		result1 *session.User
-		result2 error
-	}
 	GetUsersStub        func() map[string]*session.User
 	getUsersMutex       sync.RWMutex
 	getUsersArgsForCall []struct {
@@ -124,6 +132,17 @@ type FakeController struct {
 	}
 	isValidPageReturnsOnCall map[int]struct {
 		result1 bool
+	}
+	KickUserStub        func(string) error
+	kickUserMutex       sync.RWMutex
+	kickUserArgsForCall []struct {
+		arg1 string
+	}
+	kickUserReturns struct {
+		result1 error
+	}
+	kickUserReturnsOnCall map[int]struct {
+		result1 error
 	}
 	NewUserStub        func(string, string) (*session.User, error)
 	newUserMutex       sync.RWMutex
@@ -161,6 +180,17 @@ type FakeController struct {
 	receiveReturnsOnCall map[int]struct {
 		result1 error
 	}
+	SetConfigStub        func(session.Config) error
+	setConfigMutex       sync.RWMutex
+	setConfigArgsForCall []struct {
+		arg1 session.Config
+	}
+	setConfigReturns struct {
+		result1 error
+	}
+	setConfigReturnsOnCall map[int]struct {
+		result1 error
+	}
 	SyncSessionStub        func(context.Context, session.PageSync) error
 	syncSessionMutex       sync.RWMutex
 	syncSessionArgsForCall []struct {
@@ -186,10 +216,17 @@ type FakeController struct {
 	updatePagesReturnsOnCall map[int]struct {
 		result1 error
 	}
-	UserConnectStub        func(*session.User)
+	UserConnectStub        func(string, *websocket.Conn) error
 	userConnectMutex       sync.RWMutex
 	userConnectArgsForCall []struct {
-		arg1 *session.User
+		arg1 string
+		arg2 *websocket.Conn
+	}
+	userConnectReturns struct {
+		result1 error
+	}
+	userConnectReturnsOnCall map[int]struct {
+		result1 error
 	}
 	UserDisconnectStub        func(context.Context, string)
 	userDisconnectMutex       sync.RWMutex
@@ -316,6 +353,59 @@ func (fake *FakeController) AttachmentsReturnsOnCall(i int, result1 attachment.H
 	}{result1}
 }
 
+func (fake *FakeController) Broadcaster() session.Broadcaster {
+	fake.broadcasterMutex.Lock()
+	ret, specificReturn := fake.broadcasterReturnsOnCall[len(fake.broadcasterArgsForCall)]
+	fake.broadcasterArgsForCall = append(fake.broadcasterArgsForCall, struct {
+	}{})
+	stub := fake.BroadcasterStub
+	fakeReturns := fake.broadcasterReturns
+	fake.recordInvocation("Broadcaster", []interface{}{})
+	fake.broadcasterMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeController) BroadcasterCallCount() int {
+	fake.broadcasterMutex.RLock()
+	defer fake.broadcasterMutex.RUnlock()
+	return len(fake.broadcasterArgsForCall)
+}
+
+func (fake *FakeController) BroadcasterCalls(stub func() session.Broadcaster) {
+	fake.broadcasterMutex.Lock()
+	defer fake.broadcasterMutex.Unlock()
+	fake.BroadcasterStub = stub
+}
+
+func (fake *FakeController) BroadcasterReturns(result1 session.Broadcaster) {
+	fake.broadcasterMutex.Lock()
+	defer fake.broadcasterMutex.Unlock()
+	fake.BroadcasterStub = nil
+	fake.broadcasterReturns = struct {
+		result1 session.Broadcaster
+	}{result1}
+}
+
+func (fake *FakeController) BroadcasterReturnsOnCall(i int, result1 session.Broadcaster) {
+	fake.broadcasterMutex.Lock()
+	defer fake.broadcasterMutex.Unlock()
+	fake.BroadcasterStub = nil
+	if fake.broadcasterReturnsOnCall == nil {
+		fake.broadcasterReturnsOnCall = make(map[int]struct {
+			result1 session.Broadcaster
+		})
+	}
+	fake.broadcasterReturnsOnCall[i] = struct {
+		result1 session.Broadcaster
+	}{result1}
+}
+
 func (fake *FakeController) Close() {
 	fake.closeMutex.Lock()
 	fake.closeArgsForCall = append(fake.closeArgsForCall, struct {
@@ -338,6 +428,59 @@ func (fake *FakeController) CloseCalls(stub func()) {
 	fake.closeMutex.Lock()
 	defer fake.closeMutex.Unlock()
 	fake.CloseStub = stub
+}
+
+func (fake *FakeController) Config() session.Config {
+	fake.configMutex.Lock()
+	ret, specificReturn := fake.configReturnsOnCall[len(fake.configArgsForCall)]
+	fake.configArgsForCall = append(fake.configArgsForCall, struct {
+	}{})
+	stub := fake.ConfigStub
+	fakeReturns := fake.configReturns
+	fake.recordInvocation("Config", []interface{}{})
+	fake.configMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeController) ConfigCallCount() int {
+	fake.configMutex.RLock()
+	defer fake.configMutex.RUnlock()
+	return len(fake.configArgsForCall)
+}
+
+func (fake *FakeController) ConfigCalls(stub func() session.Config) {
+	fake.configMutex.Lock()
+	defer fake.configMutex.Unlock()
+	fake.ConfigStub = stub
+}
+
+func (fake *FakeController) ConfigReturns(result1 session.Config) {
+	fake.configMutex.Lock()
+	defer fake.configMutex.Unlock()
+	fake.ConfigStub = nil
+	fake.configReturns = struct {
+		result1 session.Config
+	}{result1}
+}
+
+func (fake *FakeController) ConfigReturnsOnCall(i int, result1 session.Config) {
+	fake.configMutex.Lock()
+	defer fake.configMutex.Unlock()
+	fake.ConfigStub = nil
+	if fake.configReturnsOnCall == nil {
+		fake.configReturnsOnCall = make(map[int]struct {
+			result1 session.Config
+		})
+	}
+	fake.configReturnsOnCall[i] = struct {
+		result1 session.Config
+	}{result1}
 }
 
 func (fake *FakeController) GetPage(arg1 context.Context, arg2 string, arg3 bool) (*session.Page, error) {
@@ -541,70 +684,6 @@ func (fake *FakeController) GetPageSyncReturnsOnCall(i int, result1 *session.Pag
 	}{result1, result2}
 }
 
-func (fake *FakeController) GetUserReady(arg1 string) (*session.User, error) {
-	fake.getUserReadyMutex.Lock()
-	ret, specificReturn := fake.getUserReadyReturnsOnCall[len(fake.getUserReadyArgsForCall)]
-	fake.getUserReadyArgsForCall = append(fake.getUserReadyArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	stub := fake.GetUserReadyStub
-	fakeReturns := fake.getUserReadyReturns
-	fake.recordInvocation("GetUserReady", []interface{}{arg1})
-	fake.getUserReadyMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeController) GetUserReadyCallCount() int {
-	fake.getUserReadyMutex.RLock()
-	defer fake.getUserReadyMutex.RUnlock()
-	return len(fake.getUserReadyArgsForCall)
-}
-
-func (fake *FakeController) GetUserReadyCalls(stub func(string) (*session.User, error)) {
-	fake.getUserReadyMutex.Lock()
-	defer fake.getUserReadyMutex.Unlock()
-	fake.GetUserReadyStub = stub
-}
-
-func (fake *FakeController) GetUserReadyArgsForCall(i int) string {
-	fake.getUserReadyMutex.RLock()
-	defer fake.getUserReadyMutex.RUnlock()
-	argsForCall := fake.getUserReadyArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *FakeController) GetUserReadyReturns(result1 *session.User, result2 error) {
-	fake.getUserReadyMutex.Lock()
-	defer fake.getUserReadyMutex.Unlock()
-	fake.GetUserReadyStub = nil
-	fake.getUserReadyReturns = struct {
-		result1 *session.User
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeController) GetUserReadyReturnsOnCall(i int, result1 *session.User, result2 error) {
-	fake.getUserReadyMutex.Lock()
-	defer fake.getUserReadyMutex.Unlock()
-	fake.GetUserReadyStub = nil
-	if fake.getUserReadyReturnsOnCall == nil {
-		fake.getUserReadyReturnsOnCall = make(map[int]struct {
-			result1 *session.User
-			result2 error
-		})
-	}
-	fake.getUserReadyReturnsOnCall[i] = struct {
-		result1 *session.User
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *FakeController) GetUsers() map[string]*session.User {
 	fake.getUsersMutex.Lock()
 	ret, specificReturn := fake.getUsersReturnsOnCall[len(fake.getUsersArgsForCall)]
@@ -770,6 +849,67 @@ func (fake *FakeController) IsValidPageReturnsOnCall(i int, result1 bool) {
 	}
 	fake.isValidPageReturnsOnCall[i] = struct {
 		result1 bool
+	}{result1}
+}
+
+func (fake *FakeController) KickUser(arg1 string) error {
+	fake.kickUserMutex.Lock()
+	ret, specificReturn := fake.kickUserReturnsOnCall[len(fake.kickUserArgsForCall)]
+	fake.kickUserArgsForCall = append(fake.kickUserArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.KickUserStub
+	fakeReturns := fake.kickUserReturns
+	fake.recordInvocation("KickUser", []interface{}{arg1})
+	fake.kickUserMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeController) KickUserCallCount() int {
+	fake.kickUserMutex.RLock()
+	defer fake.kickUserMutex.RUnlock()
+	return len(fake.kickUserArgsForCall)
+}
+
+func (fake *FakeController) KickUserCalls(stub func(string) error) {
+	fake.kickUserMutex.Lock()
+	defer fake.kickUserMutex.Unlock()
+	fake.KickUserStub = stub
+}
+
+func (fake *FakeController) KickUserArgsForCall(i int) string {
+	fake.kickUserMutex.RLock()
+	defer fake.kickUserMutex.RUnlock()
+	argsForCall := fake.kickUserArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeController) KickUserReturns(result1 error) {
+	fake.kickUserMutex.Lock()
+	defer fake.kickUserMutex.Unlock()
+	fake.KickUserStub = nil
+	fake.kickUserReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeController) KickUserReturnsOnCall(i int, result1 error) {
+	fake.kickUserMutex.Lock()
+	defer fake.kickUserMutex.Unlock()
+	fake.KickUserStub = nil
+	if fake.kickUserReturnsOnCall == nil {
+		fake.kickUserReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.kickUserReturnsOnCall[i] = struct {
+		result1 error
 	}{result1}
 }
 
@@ -953,6 +1093,67 @@ func (fake *FakeController) ReceiveReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeController) SetConfig(arg1 session.Config) error {
+	fake.setConfigMutex.Lock()
+	ret, specificReturn := fake.setConfigReturnsOnCall[len(fake.setConfigArgsForCall)]
+	fake.setConfigArgsForCall = append(fake.setConfigArgsForCall, struct {
+		arg1 session.Config
+	}{arg1})
+	stub := fake.SetConfigStub
+	fakeReturns := fake.setConfigReturns
+	fake.recordInvocation("SetConfig", []interface{}{arg1})
+	fake.setConfigMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeController) SetConfigCallCount() int {
+	fake.setConfigMutex.RLock()
+	defer fake.setConfigMutex.RUnlock()
+	return len(fake.setConfigArgsForCall)
+}
+
+func (fake *FakeController) SetConfigCalls(stub func(session.Config) error) {
+	fake.setConfigMutex.Lock()
+	defer fake.setConfigMutex.Unlock()
+	fake.SetConfigStub = stub
+}
+
+func (fake *FakeController) SetConfigArgsForCall(i int) session.Config {
+	fake.setConfigMutex.RLock()
+	defer fake.setConfigMutex.RUnlock()
+	argsForCall := fake.setConfigArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeController) SetConfigReturns(result1 error) {
+	fake.setConfigMutex.Lock()
+	defer fake.setConfigMutex.Unlock()
+	fake.SetConfigStub = nil
+	fake.setConfigReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeController) SetConfigReturnsOnCall(i int, result1 error) {
+	fake.setConfigMutex.Lock()
+	defer fake.setConfigMutex.Unlock()
+	fake.SetConfigStub = nil
+	if fake.setConfigReturnsOnCall == nil {
+		fake.setConfigReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.setConfigReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeController) SyncSession(arg1 context.Context, arg2 session.PageSync) error {
 	fake.syncSessionMutex.Lock()
 	ret, specificReturn := fake.syncSessionReturnsOnCall[len(fake.syncSessionArgsForCall)]
@@ -1078,17 +1279,24 @@ func (fake *FakeController) UpdatePagesReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeController) UserConnect(arg1 *session.User) {
+func (fake *FakeController) UserConnect(arg1 string, arg2 *websocket.Conn) error {
 	fake.userConnectMutex.Lock()
+	ret, specificReturn := fake.userConnectReturnsOnCall[len(fake.userConnectArgsForCall)]
 	fake.userConnectArgsForCall = append(fake.userConnectArgsForCall, struct {
-		arg1 *session.User
-	}{arg1})
+		arg1 string
+		arg2 *websocket.Conn
+	}{arg1, arg2})
 	stub := fake.UserConnectStub
-	fake.recordInvocation("UserConnect", []interface{}{arg1})
+	fakeReturns := fake.userConnectReturns
+	fake.recordInvocation("UserConnect", []interface{}{arg1, arg2})
 	fake.userConnectMutex.Unlock()
 	if stub != nil {
-		fake.UserConnectStub(arg1)
+		return stub(arg1, arg2)
 	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
 }
 
 func (fake *FakeController) UserConnectCallCount() int {
@@ -1097,17 +1305,40 @@ func (fake *FakeController) UserConnectCallCount() int {
 	return len(fake.userConnectArgsForCall)
 }
 
-func (fake *FakeController) UserConnectCalls(stub func(*session.User)) {
+func (fake *FakeController) UserConnectCalls(stub func(string, *websocket.Conn) error) {
 	fake.userConnectMutex.Lock()
 	defer fake.userConnectMutex.Unlock()
 	fake.UserConnectStub = stub
 }
 
-func (fake *FakeController) UserConnectArgsForCall(i int) *session.User {
+func (fake *FakeController) UserConnectArgsForCall(i int) (string, *websocket.Conn) {
 	fake.userConnectMutex.RLock()
 	defer fake.userConnectMutex.RUnlock()
 	argsForCall := fake.userConnectArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeController) UserConnectReturns(result1 error) {
+	fake.userConnectMutex.Lock()
+	defer fake.userConnectMutex.Unlock()
+	fake.UserConnectStub = nil
+	fake.userConnectReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeController) UserConnectReturnsOnCall(i int, result1 error) {
+	fake.userConnectMutex.Lock()
+	defer fake.userConnectMutex.Unlock()
+	fake.UserConnectStub = nil
+	if fake.userConnectReturnsOnCall == nil {
+		fake.userConnectReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.userConnectReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *FakeController) UserDisconnect(arg1 context.Context, arg2 string) {
@@ -1150,28 +1381,34 @@ func (fake *FakeController) Invocations() map[string][][]interface{} {
 	defer fake.addPagesMutex.RUnlock()
 	fake.attachmentsMutex.RLock()
 	defer fake.attachmentsMutex.RUnlock()
+	fake.broadcasterMutex.RLock()
+	defer fake.broadcasterMutex.RUnlock()
 	fake.closeMutex.RLock()
 	defer fake.closeMutex.RUnlock()
+	fake.configMutex.RLock()
+	defer fake.configMutex.RUnlock()
 	fake.getPageMutex.RLock()
 	defer fake.getPageMutex.RUnlock()
 	fake.getPageRankMutex.RLock()
 	defer fake.getPageRankMutex.RUnlock()
 	fake.getPageSyncMutex.RLock()
 	defer fake.getPageSyncMutex.RUnlock()
-	fake.getUserReadyMutex.RLock()
-	defer fake.getUserReadyMutex.RUnlock()
 	fake.getUsersMutex.RLock()
 	defer fake.getUsersMutex.RUnlock()
 	fake.iDMutex.RLock()
 	defer fake.iDMutex.RUnlock()
 	fake.isValidPageMutex.RLock()
 	defer fake.isValidPageMutex.RUnlock()
+	fake.kickUserMutex.RLock()
+	defer fake.kickUserMutex.RUnlock()
 	fake.newUserMutex.RLock()
 	defer fake.newUserMutex.RUnlock()
 	fake.numUsersMutex.RLock()
 	defer fake.numUsersMutex.RUnlock()
 	fake.receiveMutex.RLock()
 	defer fake.receiveMutex.RUnlock()
+	fake.setConfigMutex.RLock()
+	defer fake.setConfigMutex.RUnlock()
 	fake.syncSessionMutex.RLock()
 	defer fake.syncSessionMutex.RUnlock()
 	fake.updatePagesMutex.RLock()

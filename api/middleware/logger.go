@@ -26,6 +26,9 @@ func RequestLogger() func(echo.HandlerFunc) echo.HandlerFunc {
 					reqBody = req
 					respBody = resp
 				},
+				Skipper: func(c echo.Context) bool {
+					return strings.Contains(c.Request().RequestURI, "socket")
+				},
 			}
 			bodyDump := middleware.BodyDumpWithConfig(cfg)
 

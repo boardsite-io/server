@@ -25,7 +25,8 @@ func GithubAuth(cfg *config.Github, validator github.Validator) echo.MiddlewareF
 			token := auth[1]
 
 			if err := validator.Validate(c.Request().Context(), token); err != nil {
-				return apiErrors.ErrUnauthorized.Wrap(apiErrors.WithError(err))
+				c.Error(apiErrors.ErrUnauthorized.Wrap(apiErrors.WithError(err)))
+				return nil
 			}
 
 			return next(c)

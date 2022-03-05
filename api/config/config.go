@@ -12,31 +12,32 @@ type Configuration struct {
 		Version string `yaml:"version"`
 	} `yaml:"app"`
 
-	Server struct {
-		BaseURL        string `yaml:"base_url"`
-		Port           uint16 `yaml:"port"`
-		AllowedOrigins string `yaml:"origins"`
-		Metrics        struct {
-			Enabled  bool   `yaml:"enabled"`
-			Route    string `yaml:"route"`
-			User     string `yaml:"user"`
-			Password string `yaml:"password"`
-		} `yaml:"metrics"`
-	} `yaml:"server"`
-
 	Cache struct {
 		Host string `yaml:"host"`
 		Port uint16 `yaml:"port"`
 	} `yaml:"cache"`
 
+	Server  `yaml:"server"`
 	Session `yaml:"session"`
 	Github  `yaml:"github"`
 }
 
+type Server struct {
+	BaseURL        string `yaml:"base_url"`
+	Port           uint16 `yaml:"port"`
+	AllowedOrigins string `yaml:"origins"`
+	RPM            uint16 `yaml:"rpm"`
+	Metrics        struct {
+		Enabled  bool   `yaml:"enabled"`
+		Route    string `yaml:"route"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+	} `yaml:"metrics"`
+}
+
 type Session struct {
-	DefaultUsers int    `yaml:"users"`
-	MaxUsers     int    `yaml:"max_users"`
-	RPM          uint16 `yaml:"rpm"`
+	MaxUsers int   `yaml:"max_users" json:"maxUsers"`
+	ReadOnly *bool `yaml:"read_only" json:"readOnly,omitempty"`
 }
 
 type Github struct {

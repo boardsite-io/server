@@ -7,6 +7,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	readOnly := false
 	want := &Configuration{}
 	want.App.Name = "boardsite-server"
 	want.App.Version = "1.0.0"
@@ -17,11 +18,11 @@ func TestNew(t *testing.T) {
 	want.Server.Metrics.Route = "/metrics"
 	want.Server.Metrics.User = "admin"
 	want.Server.Metrics.Password = "admin"
+	want.Server.RPM = 10
 	want.Cache.Host = "localhost"
 	want.Cache.Port = 6379
-	want.Session.DefaultUsers = 4
-	want.Session.MaxUsers = 50
-	want.Session.RPM = 10
+	want.Session.MaxUsers = 4
+	want.Session.ReadOnly = &readOnly
 	want.Github.ClientId = "client-Id"
 	want.Github.ClientSecret = "client-Secret"
 	want.Github.RedirectURI = "http://localhost:3000"

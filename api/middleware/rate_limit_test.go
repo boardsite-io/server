@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/heat1q/boardsite/api/types"
+
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
@@ -14,7 +16,7 @@ import (
 func getContext(e *echo.Echo) (*httptest.ResponseRecorder, echo.Context) {
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Header.Set(echo.HeaderXForwardedFor, "127.0.0.1")
-	r.Header.Set(middleware.HeaderUserID, "1234")
+	r.Header.Set(types.HeaderUserID, "1234")
 	rr := httptest.NewRecorder()
 	return rr, e.NewContext(r, rr)
 }

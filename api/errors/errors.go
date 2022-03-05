@@ -21,7 +21,7 @@ type HTTPError struct {
 	Status   int    `json:"-"`
 	Message  string `json:"message"`
 	internal error
-	Code     uint32 `json:"code,omitempty"`
+	Code     Code `json:"code,omitempty"`
 }
 
 var _ error = (*HTTPError)(nil)
@@ -40,7 +40,7 @@ func New(status int, message ...string) *HTTPError {
 }
 
 // From creates a new HTTPError from a specific error code.
-func From(code uint32) *HTTPError {
+func From(code Code) *HTTPError {
 	status, ok := codeStatusMap[code]
 	if !ok {
 		status = http.StatusInternalServerError
@@ -76,7 +76,7 @@ func WithError(err error) ErrorOption {
 
 // WithCode sets the error code.
 // This functional argument is passed to the HTTPError.Wrap method.
-func WithCode(code uint32) ErrorOption {
+func WithCode(code Code) ErrorOption {
 	return func(e *HTTPError) {
 		e.Code = code
 	}

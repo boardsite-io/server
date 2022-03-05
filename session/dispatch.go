@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/heat1q/boardsite/api/config"
-
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
 	"github.com/heat1q/boardsite/api/log"
@@ -24,7 +22,7 @@ type Dispatcher interface {
 	// GetSCB returns the session control block for given sessionID.
 	GetSCB(sessionID string) (Controller, error)
 	// Create creates and initializes a new SessionControl struct
-	Create(ctx context.Context, cfg CreateConfig) (string, error)
+	Create(ctx context.Context, cfg Config) (Controller, error)
 	// Close removes the SCB from the activesession map and closes the session.
 	Close(ctx context.Context, sessionID string) error
 	// IsValid checks if session with sessionID exists.
@@ -60,31 +58,30 @@ func (d *sessionsDispatcher) GetSCB(sessionID string) (Controller, error) {
 	return scb, nil
 }
 
-func (d *sessionsDispatcher) Create(ctx context.Context, cfg CreateConfig) (string, error) {
-	var sid string
+func (d *sessionsDispatcher) Create(ctx context.Context, cfg Config) (Controller, error) {
 	for {
 		id, err := gonanoid.Generate(alphabet, 8)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		// ensure uniqueness of id
 		if _, err := d.GetSCB(id); err != nil {
-			sid = id
+			cfg.ID = id
 			break
 		}
 	}
 
-	scb, err := NewControlBlock(sid, WithCache(d.cache), WithDispatcher(d), WithMaxUsers(cfg.MaxUsers))
+	scb, err := NewControlBlock(cfg, WithCache(d.cache), WithDispatcher(d))
 	if err != nil {
-		return "", fmt.Errorf("new session control: %w", err)
+		return nil, fmt.Errorf("new session control: %w", err)
 	}
 	// assign to SessionControl struct
 	d.mu.Lock()
-	d.activeSession[scb.id] = scb
+	d.activeSession[scb.cfg.ID] = scb
 	d.mu.Unlock()
-	log.Ctx(ctx).Infof("Create Session with ID: %s", scb.id)
+	log.Ctx(ctx).Infof("Create Session with ID: %s", scb.cfg.ID)
 
-	return sid, nil
+	return scb, nil
 }
 
 func (d *sessionsDispatcher) Close(ctx context.Context, sessionID string) error {
@@ -125,16 +122,4 @@ func (d *sessionsDispatcher) NumUsers() int {
 		numUsers += scb.NumUsers()
 	}
 	return numUsers
-}
-
-type CreateConfig struct {
-	MaxUsers int `json:"maxUsers"`
-}
-
-func (c *CreateConfig) validate(cfg *config.Session) error {
-	if c.MaxUsers < 2 || c.MaxUsers > cfg.MaxUsers {
-		return fmt.Errorf("invalid MaxUsers")
-	}
-
-	return nil
 }

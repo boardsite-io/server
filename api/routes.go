@@ -13,14 +13,22 @@ import (
 func (s *Server) setRoutes() {
 	boardGroup := s.echo.Group("/b", echomw.Gzip(), middleware.RequestLogger())
 
-	createGroup := boardGroup.Group("/create", middleware.RateLimiting(s.cfg.Session.RPM, middleware.WithIP()))
+	createGroup := boardGroup.Group("/create", middleware.RateLimiting(s.cfg.Server.RPM, middleware.WithIP()))
 	createGroup.POST( /**/ "", s.session.PostCreateSession)
-	createGroup.POST( /**/ "/config", s.session.PostCreateWithConfig, middleware.GithubAuth(&s.cfg.Github, s.validator))
+
+	configGroup := boardGroup.Group("/:id/config", middleware.Session(s.dispatcher))
+	configGroup.GET( /*  */ "", s.session.GetSessionConfig)
+
+	hostGroup := boardGroup.Group("",
+		middleware.Session(s.dispatcher),
+		middleware.Host(),
+		middleware.GithubAuth(&s.cfg.Github, s.validator))
+	hostGroup.PUT("/:id/config", s.session.PutSessionConfig)
+	hostGroup.PUT("/:id/users/:userId", s.session.PutUser)
 
 	usersGroup := boardGroup.Group("/:id/users")
 	usersGroup.POST( /* */ "", s.session.PostUsers)
-	usersGroup.GET( /*  */ "", s.session.GetUsers, middleware.Session(s.dispatcher))
-	usersGroup.GET( /*  */ "/:userId/socket", s.session.GetSocket, middleware.Session(s.dispatcher))
+	usersGroup.GET( /*  */ "/:userId/socket", s.session.GetSocket)
 
 	pagesGroup := boardGroup.Group("/:id/pages", middleware.Session(s.dispatcher))
 	pagesGroup.GET( /*  */ "", s.session.GetPageRank)
@@ -33,7 +41,7 @@ func (s *Server) setRoutes() {
 	attachGroup := boardGroup.Group("/:id/attachments", middleware.Session(s.dispatcher))
 	attachGroup.POST( /**/ "", s.session.PostAttachment,
 		middleware.GithubAuth(&s.cfg.Github, s.validator),
-		middleware.RateLimiting(s.cfg.Session.RPM, middleware.WithUserIP()))
+		middleware.RateLimiting(s.cfg.Server.RPM, middleware.WithUserIP()))
 	attachGroup.GET( /* */ "/:attachId", s.session.GetAttachment)
 
 	if s.cfg.Server.Metrics.Enabled {

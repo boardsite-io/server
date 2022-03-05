@@ -11,9 +11,12 @@ import (
 
 // Message type definitions.
 const (
+	MessageTypeSessionConfig    = "config"
 	MessageTypeStroke           = "stroke"
+	MessageTypeUserHost         = "userhost"
 	MessageTypeUserConnected    = "userconn"
 	MessageTypeUserDisconnected = "userdisc"
+	MessageTypeUserKick         = "userkick"
 	MessageTypePageSync         = "pagesync"
 	MessageTypeMouseMove        = "mmove"
 )

@@ -2,6 +2,9 @@ package session
 
 import (
 	"context"
+	"fmt"
+
+	gws "github.com/gorilla/websocket"
 
 	"github.com/heat1q/boardsite/api/log"
 	"github.com/heat1q/boardsite/api/types"
@@ -14,8 +17,10 @@ type Broadcaster interface {
 	Bind(scb Controller) Broadcaster
 	// Broadcast returns a channel for messages to be broadcasted
 	Broadcast() chan<- types.Message
-	// Echo returns a channel for messages to be echoed
-	Echo() chan<- types.Message
+	// Send returns a channel for messages to sent to a specific client
+	Send() chan<- types.Message
+	// Control returns a channel for close messages to sent to a specific client
+	Control() chan<- types.Message
 	// Cache returns a channel for strokes to be stored in the cache
 	Cache() chan<- []redis.Stroke
 	// Close returns a channel for closing the broadcaster and clean up all goroutines
@@ -27,7 +32,8 @@ type broadcaster struct {
 	cache redis.Handler
 
 	broadcast   chan types.Message
-	echo        chan types.Message
+	send        chan types.Message
+	control     chan types.Message
 	cacheUpdate chan []redis.Stroke
 	close       chan struct{}
 }
@@ -37,13 +43,17 @@ func NewBroadcaster(cache redis.Handler) Broadcaster {
 	return &broadcaster{
 		cache:       cache,
 		broadcast:   make(chan types.Message),
-		echo:        make(chan types.Message),
+		send:        make(chan types.Message),
+		control:     make(chan types.Message),
 		cacheUpdate: make(chan []redis.Stroke),
 		close:       make(chan struct{}),
 	}
 }
 
 func (b *broadcaster) Bind(scb Controller) Broadcaster {
+	if b.scb != nil {
+		return nil
+	}
 	b.scb = scb
 	// start goroutines for broadcasting and saving changes to board
 	go b.broadcastLoop()
@@ -56,8 +66,12 @@ func (b *broadcaster) Broadcast() chan<- types.Message {
 	return b.broadcast
 }
 
-func (b *broadcaster) Echo() chan<- types.Message {
-	return b.echo
+func (b *broadcaster) Send() chan<- types.Message {
+	return b.send
+}
+
+func (b *broadcaster) Control() chan<- types.Message {
+	return b.control
 }
 
 func (b *broadcaster) Cache() chan<- []redis.Stroke {
@@ -79,9 +93,9 @@ func (b *broadcaster) getUsers() map[string]*User {
 // broadcastLoop Broadcasts board updates to all clients
 func (b *broadcaster) broadcastLoop() {
 	for {
+		users := b.getUsers()
 		select {
 		case data := <-b.broadcast:
-			users := b.getUsers()
 			for userID, user := range users { // Send to all connected clients
 				// except the origin, i.e. the initiator of message
 				if userID != data.Sender {
@@ -91,12 +105,23 @@ func (b *broadcaster) broadcastLoop() {
 					}
 				}
 			}
-		case data := <-b.echo:
-			users := b.getUsers()
-			// echo message back to origin
-			if err := users[data.Sender].Conn.WriteJSON(data); err != nil {
-				log.Global().Warnf("error in broadcastLoop: %v", err)
+		case data := <-b.send:
+			u, ok := users[data.Receiver]
+			if !ok {
+				log.Global().Warnf("broadcastLoop: unknown receiver %v", data.Receiver)
+				continue
 			}
+			if err := u.Conn.WriteJSON(data); err != nil {
+				log.Global().Warnf("broadcastLoop: %v", err)
+			}
+		case data := <-b.control:
+			u, ok := users[data.Receiver]
+			if !ok {
+				log.Global().Warnf("broadcastLoop: unknown receiver %v", data.Receiver)
+				continue
+			}
+			msg := gws.FormatCloseMessage(gws.CloseNormalClosure, fmt.Sprintf("%v", data.Content))
+			_ = u.Conn.WriteMessage(gws.CloseMessage, msg)
 		case <-b.close:
 			return
 		}
