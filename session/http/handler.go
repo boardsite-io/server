@@ -16,12 +16,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-const (
-	SessionCtxKey = "boardsite-session"
-	SecretCtxKey  = "boardsite-session-secret"
-	UserCtxKey    = "boardsite-user"
-)
-
 type Handler interface {
 	PostCreateSession(c echo.Context) error
 	PutSessionConfig(c echo.Context) error
@@ -97,14 +91,13 @@ func (h *handler) PostUsers(c echo.Context) error {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
 
-	var userReq session.User
-
+	var userReq session.UserRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&userReq); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
 
 	// new user struct with alias and color
-	user, err := scb.NewUser(userReq.Alias, userReq.Color)
+	user, err := scb.NewUser(userReq)
 	if err != nil {
 		return err
 	}
@@ -310,20 +303,4 @@ func (h *handler) GetAttachment(c echo.Context) error {
 	}
 
 	return c.Stream(http.StatusOK, MIMEType, data)
-}
-
-func getSCB(c echo.Context) (session.Controller, error) {
-	scb, ok := c.Get(SessionCtxKey).(session.Controller)
-	if !ok {
-		return nil, apiErrors.ErrForbidden
-	}
-	return scb, nil
-}
-
-func getUser(c echo.Context) (*session.User, error) {
-	u, ok := c.Get(UserCtxKey).(*session.User)
-	if !ok {
-		return nil, apiErrors.ErrForbidden
-	}
-	return u, nil
 }

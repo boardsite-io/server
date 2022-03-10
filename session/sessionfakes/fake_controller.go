@@ -24,6 +24,17 @@ type FakeController struct {
 	addPagesReturnsOnCall map[int]struct {
 		result1 error
 	}
+	AllowStub        func(string) bool
+	allowMutex       sync.RWMutex
+	allowArgsForCall []struct {
+		arg1 string
+	}
+	allowReturns struct {
+		result1 bool
+	}
+	allowReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	AttachmentsStub        func() attachment.Handler
 	attachmentsMutex       sync.RWMutex
 	attachmentsArgsForCall []struct {
@@ -144,11 +155,10 @@ type FakeController struct {
 	kickUserReturnsOnCall map[int]struct {
 		result1 error
 	}
-	NewUserStub        func(string, string) (*session.User, error)
+	NewUserStub        func(session.UserRequest) (*session.User, error)
 	newUserMutex       sync.RWMutex
 	newUserArgsForCall []struct {
-		arg1 string
-		arg2 string
+		arg1 session.UserRequest
 	}
 	newUserReturns struct {
 		result1 *session.User
@@ -168,11 +178,12 @@ type FakeController struct {
 	numUsersReturnsOnCall map[int]struct {
 		result1 int
 	}
-	ReceiveStub        func(context.Context, *types.Message) error
+	ReceiveStub        func(context.Context, *types.Message, string) error
 	receiveMutex       sync.RWMutex
 	receiveArgsForCall []struct {
 		arg1 context.Context
 		arg2 *types.Message
+		arg3 string
 	}
 	receiveReturns struct {
 		result1 error
@@ -309,6 +320,67 @@ func (fake *FakeController) AddPagesReturnsOnCall(i int, result1 error) {
 	}
 	fake.addPagesReturnsOnCall[i] = struct {
 		result1 error
+	}{result1}
+}
+
+func (fake *FakeController) Allow(arg1 string) bool {
+	fake.allowMutex.Lock()
+	ret, specificReturn := fake.allowReturnsOnCall[len(fake.allowArgsForCall)]
+	fake.allowArgsForCall = append(fake.allowArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.AllowStub
+	fakeReturns := fake.allowReturns
+	fake.recordInvocation("Allow", []interface{}{arg1})
+	fake.allowMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeController) AllowCallCount() int {
+	fake.allowMutex.RLock()
+	defer fake.allowMutex.RUnlock()
+	return len(fake.allowArgsForCall)
+}
+
+func (fake *FakeController) AllowCalls(stub func(string) bool) {
+	fake.allowMutex.Lock()
+	defer fake.allowMutex.Unlock()
+	fake.AllowStub = stub
+}
+
+func (fake *FakeController) AllowArgsForCall(i int) string {
+	fake.allowMutex.RLock()
+	defer fake.allowMutex.RUnlock()
+	argsForCall := fake.allowArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeController) AllowReturns(result1 bool) {
+	fake.allowMutex.Lock()
+	defer fake.allowMutex.Unlock()
+	fake.AllowStub = nil
+	fake.allowReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *FakeController) AllowReturnsOnCall(i int, result1 bool) {
+	fake.allowMutex.Lock()
+	defer fake.allowMutex.Unlock()
+	fake.AllowStub = nil
+	if fake.allowReturnsOnCall == nil {
+		fake.allowReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.allowReturnsOnCall[i] = struct {
+		result1 bool
 	}{result1}
 }
 
@@ -925,19 +997,18 @@ func (fake *FakeController) KickUserReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeController) NewUser(arg1 string, arg2 string) (*session.User, error) {
+func (fake *FakeController) NewUser(arg1 session.UserRequest) (*session.User, error) {
 	fake.newUserMutex.Lock()
 	ret, specificReturn := fake.newUserReturnsOnCall[len(fake.newUserArgsForCall)]
 	fake.newUserArgsForCall = append(fake.newUserArgsForCall, struct {
-		arg1 string
-		arg2 string
-	}{arg1, arg2})
+		arg1 session.UserRequest
+	}{arg1})
 	stub := fake.NewUserStub
 	fakeReturns := fake.newUserReturns
-	fake.recordInvocation("NewUser", []interface{}{arg1, arg2})
+	fake.recordInvocation("NewUser", []interface{}{arg1})
 	fake.newUserMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -951,17 +1022,17 @@ func (fake *FakeController) NewUserCallCount() int {
 	return len(fake.newUserArgsForCall)
 }
 
-func (fake *FakeController) NewUserCalls(stub func(string, string) (*session.User, error)) {
+func (fake *FakeController) NewUserCalls(stub func(session.UserRequest) (*session.User, error)) {
 	fake.newUserMutex.Lock()
 	defer fake.newUserMutex.Unlock()
 	fake.NewUserStub = stub
 }
 
-func (fake *FakeController) NewUserArgsForCall(i int) (string, string) {
+func (fake *FakeController) NewUserArgsForCall(i int) session.UserRequest {
 	fake.newUserMutex.RLock()
 	defer fake.newUserMutex.RUnlock()
 	argsForCall := fake.newUserArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1
 }
 
 func (fake *FakeController) NewUserReturns(result1 *session.User, result2 error) {
@@ -1043,19 +1114,20 @@ func (fake *FakeController) NumUsersReturnsOnCall(i int, result1 int) {
 	}{result1}
 }
 
-func (fake *FakeController) Receive(arg1 context.Context, arg2 *types.Message) error {
+func (fake *FakeController) Receive(arg1 context.Context, arg2 *types.Message, arg3 string) error {
 	fake.receiveMutex.Lock()
 	ret, specificReturn := fake.receiveReturnsOnCall[len(fake.receiveArgsForCall)]
 	fake.receiveArgsForCall = append(fake.receiveArgsForCall, struct {
 		arg1 context.Context
 		arg2 *types.Message
-	}{arg1, arg2})
+		arg3 string
+	}{arg1, arg2, arg3})
 	stub := fake.ReceiveStub
 	fakeReturns := fake.receiveReturns
-	fake.recordInvocation("Receive", []interface{}{arg1, arg2})
+	fake.recordInvocation("Receive", []interface{}{arg1, arg2, arg3})
 	fake.receiveMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
@@ -1069,17 +1141,17 @@ func (fake *FakeController) ReceiveCallCount() int {
 	return len(fake.receiveArgsForCall)
 }
 
-func (fake *FakeController) ReceiveCalls(stub func(context.Context, *types.Message) error) {
+func (fake *FakeController) ReceiveCalls(stub func(context.Context, *types.Message, string) error) {
 	fake.receiveMutex.Lock()
 	defer fake.receiveMutex.Unlock()
 	fake.ReceiveStub = stub
 }
 
-func (fake *FakeController) ReceiveArgsForCall(i int) (context.Context, *types.Message) {
+func (fake *FakeController) ReceiveArgsForCall(i int) (context.Context, *types.Message, string) {
 	fake.receiveMutex.RLock()
 	defer fake.receiveMutex.RUnlock()
 	argsForCall := fake.receiveArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeController) ReceiveReturns(result1 error) {
@@ -1453,6 +1525,8 @@ func (fake *FakeController) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.addPagesMutex.RLock()
 	defer fake.addPagesMutex.RUnlock()
+	fake.allowMutex.RLock()
+	defer fake.allowMutex.RUnlock()
 	fake.attachmentsMutex.RLock()
 	defer fake.attachmentsMutex.RUnlock()
 	fake.broadcasterMutex.RLock()

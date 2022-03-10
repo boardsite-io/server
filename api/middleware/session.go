@@ -31,9 +31,12 @@ func Session(dispatcher session.Dispatcher) echo.MiddlewareFunc {
 				return nil
 			}
 			c.Set(sessionHttp.UserCtxKey, user)
-
-			c.Request().Header.Get(types.HeaderSessionSecret)
 			c.Set(sessionHttp.SecretCtxKey, c.Request().Header.Get(types.HeaderSessionSecret))
+
+			if !sessionHttp.AllowUser(c) {
+				c.Error(apiErrors.ErrForbidden)
+				return nil
+			}
 
 			return next(c)
 		}

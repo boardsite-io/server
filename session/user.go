@@ -35,6 +35,11 @@ func (u *User) validate() error {
 	return nil
 }
 
+type UserRequest struct {
+	Password string `json:"password"`
+	User     `json:"user"`
+}
+
 type userHostContent struct {
 	Secret string `json:"secret"`
 }
@@ -43,13 +48,16 @@ type userHostContent struct {
 // the alias and color attribute
 //
 // Does some sanitize checks.
-func (scb *controlBlock) NewUser(alias, color string) (*User, error) {
+func (scb *controlBlock) NewUser(userReq UserRequest) (*User, error) {
 	user := &User{
 		ID:    uuid.NewString(),
-		Alias: alias,
-		Color: color,
+		Alias: userReq.Alias,
+		Color: userReq.Color,
 	}
 
+	if scb.Config().Password != nil && userReq.Password != *scb.Config().Password {
+		return nil, apiErrors.From(apiErrors.WrongPassword)
+	}
 	if err := user.validate(); err != nil {
 		return nil, err
 	}
@@ -197,14 +205,6 @@ func (scb *controlBlock) KickUser(userID string) error {
 		Content:  "Kicked by host",
 	}
 	return nil
-}
-
-// IsUserConnected checks if the user with userID is an active client in the session.
-func (scb *controlBlock) isUserConnected(userID string) bool {
-	scb.muUsr.RLock()
-	defer scb.muUsr.RUnlock()
-	_, ok := scb.users[userID]
-	return ok
 }
 
 // GetUsers returns all active users/clients in the session.

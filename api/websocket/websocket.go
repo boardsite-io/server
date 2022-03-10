@@ -67,12 +67,12 @@ func Subscribe(c echo.Context, scb session.Controller, userID string) error {
 		}
 
 		// sanitize received data
-		if err := scb.Receive(ctx, msg); err != nil {
+		if err := scb.Receive(ctx, msg, userID); err != nil {
 			log.Ctx(ctx).Warnf("session %s :: error receive message from %s: %v", scb.ID(), msg.Sender, err)
 			scb.Broadcaster().Send() <- types.Message{
 				Type:     "error",
 				Receiver: userID,
-				Content:  err,
+				Content:  err.Error(),
 			}
 		}
 	}

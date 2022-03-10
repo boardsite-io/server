@@ -12,6 +12,7 @@ const (
 	AttachmentSizeExceeded
 	MaxNumberOfUsersReached
 	BadUsername
+	WrongPassword
 )
 
 // Server error codes
@@ -25,4 +26,5 @@ var codeStatusMap = map[Code]int{
 	AttachmentSizeExceeded:  http.StatusBadRequest,
 	MaxNumberOfUsersReached: http.StatusBadRequest,
 	BadUsername:             http.StatusBadRequest,
+	WrongPassword:           http.StatusBadRequest,
 }
