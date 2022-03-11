@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	apiErrors "github.com/heat1q/boardsite/api/errors"
-
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
@@ -71,21 +69,27 @@ func (h *handler) GetCallback(c echo.Context) error {
 	)
 
 	if c.QueryParam("error") != "" {
-		return apiErrors.ErrBadGateway.Wrap(apiErrors.WithMessage(c.QueryParam("error_description")))
+		return h.queryError(c, c.QueryParam("error_description"))
 	}
 
 	if s, err := h.cache.Get(ctx, state); err != nil || s == nil || string(s.([]byte)) != state {
-		return apiErrors.ErrForbidden.Wrap(apiErrors.WithErrorf("compare states: %w", err))
+		return h.queryError(c, "mismatching states")
 	}
 	_ = h.cache.Delete(ctx, state)
 
 	tokenResp, err := h.client.PostToken(ctx, code)
 	if err != nil {
-		return err
+		return h.queryError(c, "failed to post token")
 	}
 
 	query := url.Values{}
 	query.Add("token_type", tokenResp.TokenType)
 	query.Add("token", tokenResp.AccessToken)
+	return c.Redirect(http.StatusTemporaryRedirect, h.cfg.Github.RedirectURI+"?"+query.Encode())
+}
+
+func (h *handler) queryError(c echo.Context, message string) error {
+	query := url.Values{}
+	query.Add("error", message)
 	return c.Redirect(http.StatusTemporaryRedirect, h.cfg.Github.RedirectURI+"?"+query.Encode())
 }

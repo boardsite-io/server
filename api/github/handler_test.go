@@ -74,7 +74,6 @@ func Test_handler_GetCallback(t *testing.T) {
 		tokenResp       github.TokenResponse
 		tokenErr        error
 		wantRedirectUrl string
-		wantErr         bool
 	}{
 		{
 			name:     "successful redirect",
@@ -86,15 +85,15 @@ func Test_handler_GetCallback(t *testing.T) {
 			wantRedirectUrl: "https://boardsite.io?token=abcd1234&token_type=bearer",
 		},
 		{
-			name:     "mismatching state returns error",
-			cacheGet: []byte("5678"),
-			wantErr:  true,
+			name:            "mismatching state returns error",
+			cacheGet:        []byte("5678"),
+			wantRedirectUrl: "https://boardsite.io?error=",
 		},
 		{
-			name:     "failing token response returns error",
-			cacheGet: []byte(mockState),
-			tokenErr: assert.AnError,
-			wantErr:  true,
+			name:            "failing token response returns error",
+			cacheGet:        []byte(mockState),
+			tokenErr:        assert.AnError,
+			wantRedirectUrl: "https://boardsite.io?error=",
 		},
 	}
 	for _, tt := range tests {
@@ -110,12 +109,8 @@ func Test_handler_GetCallback(t *testing.T) {
 
 			err := handler.GetCallback(c)
 
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Contains(t, rr.Header().Get(echo.HeaderLocation), tt.wantRedirectUrl)
-			}
+			assert.NoError(t, err)
+			assert.Contains(t, rr.Header().Get(echo.HeaderLocation), tt.wantRedirectUrl)
 		})
 	}
 }
