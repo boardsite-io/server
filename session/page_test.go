@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/heat1q/boardsite/redis"
+
 	"github.com/heat1q/boardsite/api/types"
 
 	"github.com/heat1q/boardsite/attachment/attachmentfakes"
@@ -28,7 +30,7 @@ func Test_controlBlock_AddPages(t *testing.T) {
 		session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 	assert.NoError(t, err)
 
-	broadcast := make(chan types.Message, 1)
+	broadcast := make(chan types.Message, 999)
 	defer close(broadcast)
 	fakeBroadcaster.BroadcastReturns(broadcast)
 
@@ -44,6 +46,36 @@ func Test_controlBlock_AddPages(t *testing.T) {
 			assert.Equal(t, "pid1", pid)
 			assert.Equal(t, -1, index)
 			assert.Equal(t, pageRequest.Meta["pid1"], meta)
+			return nil
+		})
+
+		err := scb.AddPages(ctx, pageRequest)
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("successful with strokes", func(t *testing.T) {
+		mockStroke := &session.Stroke{ID: "stroke1"}
+		meta := &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Style: "ruled"}}
+		pageRequest := session.PageRequest{
+			PageID: []string{"pid1"},
+			Index:  []int{-1},
+			Meta:   map[string]*session.PageMeta{"pid1": meta},
+			Strokes: &map[string]map[string]*session.Stroke{
+				"pid1": {"stroke1": mockStroke},
+			},
+		}
+		fakeCache.AddPageCalls(func(_ context.Context, sid string, pid string, index int, meta interface{}) error {
+			assert.Equal(t, sessionId, sid)
+			assert.Equal(t, "pid1", pid)
+			assert.Equal(t, -1, index)
+			assert.Equal(t, pageRequest.Meta["pid1"], meta)
+			return nil
+		})
+
+		fakeCache.UpdateStrokesCalls(func(_ context.Context, sid string, stroke ...redis.Stroke) error {
+			assert.Equal(t, sessionId, sid)
+			assert.Equal(t, []redis.Stroke{mockStroke}, stroke)
 			return nil
 		})
 

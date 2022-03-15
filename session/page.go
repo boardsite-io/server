@@ -52,9 +52,10 @@ type Page struct {
 
 // PageRequest declares the message content for page requests.
 type PageRequest struct {
-	PageID []string             `json:"pageId"`
-	Index  []int                `json:"index,omitempty"`
-	Meta   map[string]*PageMeta `json:"meta"`
+	PageID  []string                       `json:"pageId"`
+	Index   []int                          `json:"index,omitempty"`
+	Meta    map[string]*PageMeta           `json:"meta"`
+	Strokes *map[string]map[string]*Stroke `json:"strokes,omitempty"`
 }
 
 type PageSync struct {
@@ -98,7 +99,7 @@ func (scb *controlBlock) AddPages(ctx context.Context, pageRequest PageRequest) 
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("some pages already exist"))
 	}
 
-	defer scb.broadcastPageSync(ctx, pageRequest.PageID, false)
+	defer scb.broadcastPageSync(ctx, pageRequest.PageID, pageRequest.Strokes != nil)
 
 	for i, pid := range pageRequest.PageID {
 		pMeta, ok := pageRequest.Meta[pid]
@@ -107,6 +108,19 @@ func (scb *controlBlock) AddPages(ctx context.Context, pageRequest PageRequest) 
 		}
 		if err := scb.cache.AddPage(ctx, scb.cfg.ID, pid, pageRequest.Index[i], pMeta); err != nil {
 			return errors.New("cannot add page")
+		}
+		if pageRequest.Strokes != nil {
+			strokeMap, ok := (*pageRequest.Strokes)[pid]
+			if !ok {
+				continue
+			}
+			strokes := make([]redis.Stroke, 0, len(strokeMap))
+			for _, s := range strokeMap {
+				strokes = append(strokes, s)
+			}
+			if err := scb.cache.UpdateStrokes(ctx, scb.cfg.ID, strokes...); err != nil {
+				return fmt.Errorf("update page strokes: %w", err)
+			}
 		}
 	}
 
