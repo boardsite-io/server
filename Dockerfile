@@ -4,11 +4,8 @@ WORKDIR /app
 COPY . .
 RUN go build -o boardsite .
 
-FROM builder AS deploy
-ENV B_PORT=8000
-ENV B_CORS_ORIGINS="*"
+FROM alpine:latest AS deploy
+WORKDIR /app
+COPY --from=builder /app/boardsite .
 EXPOSE 8000
-CMD ["/app/boardsite"]
-
-FROM scratch AS bin
-COPY --from=builder /app/boardsite /
+CMD ["./boardsite"]

@@ -1,15 +1,13 @@
-version: "3.8"
+version: "3.9"
 services:
   api:
     build:
       context: .
       target: deploy
-    environment: 
-      - B_REDIS_HOST=redis
-      - B_REDIS_PORT=6379
-      - B_CORS_ORIGINS=*
     ports:
       - "8000:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
     depends_on:
       - redis
   redis:
