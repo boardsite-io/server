@@ -57,7 +57,7 @@ type Controller interface {
 	// NewUser creates a new ready user for the session
 	NewUser(userReq UserRequest) (*User, error)
 	// UpdateUser updates a user alias or color
-	UpdateUser(user, userReq *User) error
+	UpdateUser(user User, userReq UserRequest) error
 	// UserConnect connects a ready user to the session
 	UserConnect(userID string, conn *gws.Conn) error
 	// UserDisconnect disconnects a user from the session

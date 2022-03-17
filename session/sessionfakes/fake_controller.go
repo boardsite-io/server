@@ -227,11 +227,11 @@ type FakeController struct {
 	updatePagesReturnsOnCall map[int]struct {
 		result1 error
 	}
-	UpdateUserStub        func(*session.User, *session.User) error
+	UpdateUserStub        func(session.User, session.UserRequest) error
 	updateUserMutex       sync.RWMutex
 	updateUserArgsForCall []struct {
-		arg1 *session.User
-		arg2 *session.User
+		arg1 session.User
+		arg2 session.UserRequest
 	}
 	updateUserReturns struct {
 		result1 error
@@ -1363,12 +1363,12 @@ func (fake *FakeController) UpdatePagesReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeController) UpdateUser(arg1 *session.User, arg2 *session.User) error {
+func (fake *FakeController) UpdateUser(arg1 session.User, arg2 session.UserRequest) error {
 	fake.updateUserMutex.Lock()
 	ret, specificReturn := fake.updateUserReturnsOnCall[len(fake.updateUserArgsForCall)]
 	fake.updateUserArgsForCall = append(fake.updateUserArgsForCall, struct {
-		arg1 *session.User
-		arg2 *session.User
+		arg1 session.User
+		arg2 session.UserRequest
 	}{arg1, arg2})
 	stub := fake.UpdateUserStub
 	fakeReturns := fake.updateUserReturns
@@ -1389,13 +1389,13 @@ func (fake *FakeController) UpdateUserCallCount() int {
 	return len(fake.updateUserArgsForCall)
 }
 
-func (fake *FakeController) UpdateUserCalls(stub func(*session.User, *session.User) error) {
+func (fake *FakeController) UpdateUserCalls(stub func(session.User, session.UserRequest) error) {
 	fake.updateUserMutex.Lock()
 	defer fake.updateUserMutex.Unlock()
 	fake.UpdateUserStub = stub
 }
 
-func (fake *FakeController) UpdateUserArgsForCall(i int) (*session.User, *session.User) {
+func (fake *FakeController) UpdateUserArgsForCall(i int) (session.User, session.UserRequest) {
 	fake.updateUserMutex.RLock()
 	defer fake.updateUserMutex.RUnlock()
 	argsForCall := fake.updateUserArgsForCall[i]

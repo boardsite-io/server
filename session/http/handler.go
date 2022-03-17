@@ -126,12 +126,12 @@ func (h *handler) PutUser(c echo.Context) error {
 		return err
 	}
 
-	var userReq session.User
+	var userReq session.UserRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&userReq); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
 
-	if err := scb.UpdateUser(u, &userReq); err != nil {
+	if err := scb.UpdateUser(*u, userReq); err != nil {
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)

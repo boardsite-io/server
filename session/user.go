@@ -70,7 +70,7 @@ func (scb *controlBlock) NewUser(userReq UserRequest) (*User, error) {
 	return user, nil
 }
 
-func (scb *controlBlock) UpdateUser(user, userReq *User) error {
+func (scb *controlBlock) UpdateUser(user User, userReq UserRequest) error {
 	if userReq.Alias == "" {
 		userReq.Alias = user.Alias
 	}
