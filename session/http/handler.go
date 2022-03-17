@@ -27,6 +27,7 @@ type Handler interface {
 	PutSessionConfig(c echo.Context) error
 	GetSessionConfig(c echo.Context) error
 	PostUsers(c echo.Context) error
+	PutKickUser(c echo.Context) error
 	PutUser(c echo.Context) error
 	GetSocket(c echo.Context) error
 	GetPageRank(c echo.Context) error
@@ -111,12 +112,33 @@ func (h *handler) PostUsers(c echo.Context) error {
 	return c.JSON(http.StatusCreated, user)
 }
 
-func (h *handler) PutUser(c echo.Context) error {
+func (h *handler) PutKickUser(c echo.Context) error {
 	scb, err := getSCB(c)
 	if err != nil {
 		return err
 	}
 	if err := scb.KickUser(c.Param("userId")); err != nil {
+		return err
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *handler) PutUser(c echo.Context) error {
+	scb, err := getSCB(c)
+	if err != nil {
+		return err
+	}
+	u, err := getUser(c)
+	if err != nil {
+		return err
+	}
+
+	var userReq session.User
+	if err := json.NewDecoder(c.Request().Body).Decode(&userReq); err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
+	}
+
+	if err := scb.UpdateUser(u, &userReq); err != nil {
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -296,4 +318,12 @@ func getSCB(c echo.Context) (session.Controller, error) {
 		return nil, apiErrors.ErrForbidden
 	}
 	return scb, nil
+}
+
+func getUser(c echo.Context) (*session.User, error) {
+	u, ok := c.Get(UserCtxKey).(*session.User)
+	if !ok {
+		return nil, apiErrors.ErrForbidden
+	}
+	return u, nil
 }

@@ -5,8 +5,7 @@ import (
 	"errors"
 	"regexp"
 
-	gonanoid "github.com/matoous/go-nanoid/v2"
-
+	"github.com/google/uuid"
 	gws "github.com/gorilla/websocket"
 
 	apiErrors "github.com/heat1q/boardsite/api/errors"
@@ -26,6 +25,16 @@ type User struct {
 	Conn  *gws.Conn `json:"-"`
 }
 
+func (u *User) validate() error {
+	if !aliasExp.MatchString(u.Alias) {
+		return apiErrors.From(apiErrors.BadUsername)
+	}
+	if !htmlColor.MatchString(u.Color) {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("incorrect html color"))
+	}
+	return nil
+}
+
 type userHostContent struct {
 	Secret string `json:"secret"`
 }
@@ -35,24 +44,47 @@ type userHostContent struct {
 //
 // Does some sanitize checks.
 func (scb *controlBlock) NewUser(alias, color string) (*User, error) {
-	if !aliasExp.MatchString(alias) {
-		return nil, apiErrors.From(apiErrors.BadUsername)
-	}
-	if !htmlColor.MatchString(color) {
-		return nil, apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("incorrect html color"))
-	}
-
 	user := &User{
-		ID:    gonanoid.Must(24),
+		ID:    uuid.NewString(),
 		Alias: alias,
 		Color: color,
 	}
+
+	if err := user.validate(); err != nil {
+		return nil, err
+	}
+
 	// set user waiting
 	err := scb.userReady(user)
 	if err != nil {
 		return nil, err
 	}
 	return user, nil
+}
+
+func (scb *controlBlock) UpdateUser(user, userReq *User) error {
+	if userReq.Alias == "" {
+		userReq.Alias = user.Alias
+	}
+	if userReq.Color == "" {
+		userReq.Color = user.Color
+	}
+
+	if err := userReq.validate(); err != nil {
+		return err
+	}
+
+	scb.muUsr.Lock()
+	scb.users[user.ID].Alias = userReq.Alias
+	scb.users[user.ID].Color = userReq.Color
+	scb.muUsr.Unlock()
+
+	scb.broadcaster.Broadcast() <- types.Message{
+		Type:    MessageTypeUserSync,
+		Content: scb.GetUsers(),
+	}
+
+	return nil
 }
 
 // UserReady adds an user to the usersReady map.
