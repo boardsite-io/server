@@ -24,11 +24,12 @@ func (s *Server) setRoutes() {
 		middleware.Host(),
 		middleware.GithubAuth(&s.cfg.Github, s.validator))
 	hostGroup.PUT("/:id/config", s.session.PutSessionConfig)
-	hostGroup.PUT("/:id/users/:userId", s.session.PutUser)
+	hostGroup.PUT("/:id/users/:userId", s.session.PutKickUser)
 
 	usersGroup := boardGroup.Group("/:id/users")
 	usersGroup.POST( /* */ "", s.session.PostUsers)
 	usersGroup.GET( /*  */ "/:userId/socket", s.session.GetSocket)
+	usersGroup.PUT( /*  */ "", s.session.PutUser, middleware.Session(s.dispatcher))
 
 	pagesGroup := boardGroup.Group("/:id/pages", middleware.Session(s.dispatcher))
 	pagesGroup.GET( /*  */ "", s.session.GetPageRank)

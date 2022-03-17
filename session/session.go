@@ -15,6 +15,7 @@ const (
 	MessageTypeStroke           = "stroke"
 	MessageTypeUserHost         = "userhost"
 	MessageTypeUserConnected    = "userconn"
+	MessageTypeUserSync         = "usersync"
 	MessageTypeUserDisconnected = "userdisc"
 	MessageTypeUserKick         = "userkick"
 	MessageTypePageSync         = "pagesync"
