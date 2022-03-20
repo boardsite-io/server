@@ -9,3 +9,6 @@ WORKDIR /app
 COPY --from=builder /app/boardsite .
 EXPOSE 8000
 CMD ["./boardsite"]
+
+FROM scratch AS bin
+COPY --from=builder /app/boardsite /
