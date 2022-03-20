@@ -19,7 +19,7 @@ func TestNew(t *testing.T) {
 	want.Server.Metrics.User = "admin"
 	want.Server.Metrics.Password = "admin"
 	want.Server.RPM = 10
-	want.Cache.Host = "redis"
+	want.Cache.Host = "localhost"
 	want.Cache.Port = 6379
 	want.Session.MaxUsers = 4
 	want.Session.ReadOnly = &readOnly
