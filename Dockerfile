@@ -2,7 +2,7 @@ FROM golang:1.18-alpine AS builder
 ENV CGO_ENABLED=0
 WORKDIR /app
 COPY . .
-RUN go build -o boardsite .
+RUN go build -buildvcs=false -o boardsite .
 
 FROM alpine:latest AS deploy
 WORKDIR /app
