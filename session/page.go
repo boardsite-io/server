@@ -28,7 +28,7 @@ const (
 // PageStyle declares the style of the page background.
 type PageBackground struct {
 	// page background
-	Style    string `json:"style,omitempty"`
+	Paper    string `json:"paper,omitempty"`
 	PageNum  int    `json:"documentPageNum"`
 	AttachId string `json:"attachId"`
 }

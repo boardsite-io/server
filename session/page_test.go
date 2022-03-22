@@ -35,7 +35,7 @@ func Test_controlBlock_AddPages(t *testing.T) {
 	fakeBroadcaster.BroadcastReturns(broadcast)
 
 	t.Run("successful", func(t *testing.T) {
-		meta := &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Style: "ruled"}}
+		meta := &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Paper: "ruled"}}
 		pageRequest := session.PageRequest{
 			PageID: []string{"pid1"},
 			Index:  []int{-1},
@@ -56,7 +56,7 @@ func Test_controlBlock_AddPages(t *testing.T) {
 
 	t.Run("successful with strokes", func(t *testing.T) {
 		mockStroke := &session.Stroke{ID: "stroke1"}
-		meta := &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Style: "ruled"}}
+		meta := &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Paper: "ruled"}}
 		pageRequest := session.PageRequest{
 			PageID: []string{"pid1"},
 			Index:  []int{-1},
@@ -103,12 +103,12 @@ func Test_controlBlock_GetPageSync(t *testing.T) {
 			Pages: map[string]*session.Page{
 				"pid1": {
 					PageId:  "pid1",
-					Meta:    &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Style: "ruled"}},
+					Meta:    &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Paper: "ruled"}},
 					Strokes: &[]*session.Stroke{{ID: "stroke1"}},
 				},
 				"pid2": {
 					PageId:  "pid2",
-					Meta:    &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Style: "ruled"}},
+					Meta:    &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Paper: "ruled"}},
 					Strokes: &[]*session.Stroke{{ID: "stroke2"}},
 				},
 			},
@@ -120,12 +120,12 @@ func Test_controlBlock_GetPageSync(t *testing.T) {
 			meta := i.(*session.PageMeta)
 			if calls == 0 {
 				meta.PageSize = session.PageSize{768, 1024}
-				meta.Background.Style = "ruled"
+				meta.Background.Paper = "ruled"
 				return nil
 			}
 			if calls == 1 {
 				meta.PageSize = session.PageSize{768, 1024}
-				meta.Background.Style = "ruled"
+				meta.Background.Paper = "ruled"
 				return nil
 			}
 			return assert.AnError
@@ -165,7 +165,7 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 				"pid1": {PageSize: session.PageSize{1234, 5678}},
 			},
 		}
-		want := &session.PageMeta{PageSize: session.PageSize{1234, 5678}, Background: session.PageBackground{Style: "ruled"}}
+		want := &session.PageMeta{PageSize: session.PageSize{1234, 5678}, Background: session.PageBackground{Paper: "ruled"}}
 
 		fakeCache.GetPageRankReturns([]string{"pid1"}, nil)
 		calls := 0
@@ -173,7 +173,7 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 			calls++
 			meta := i.(*session.PageMeta)
 			meta.PageSize = session.PageSize{768, 1024}
-			meta.Background.Style = "ruled"
+			meta.Background.Paper = "ruled"
 			return nil
 		})
 
@@ -276,12 +276,12 @@ func Test_controlBlock_SyncSession(t *testing.T) {
 		Pages: map[string]*session.Page{
 			"pid1": {
 				PageId:  "pid1",
-				Meta:    &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Style: "ruled"}},
+				Meta:    &session.PageMeta{PageSize: session.PageSize{768, 1024}, Background: session.PageBackground{Paper: "ruled"}},
 				Strokes: &[]*session.Stroke{{ID: "stroke1"}},
 			},
 			"pid2": {
 				PageId:  "pid2",
-				Meta:    &session.PageMeta{PageSize: session.PageSize{1234, 5678}, Background: session.PageBackground{Style: "checkered"}},
+				Meta:    &session.PageMeta{PageSize: session.PageSize{1234, 5678}, Background: session.PageBackground{Paper: "checkered"}},
 				Strokes: &[]*session.Stroke{{ID: "stroke2"}},
 			},
 		},

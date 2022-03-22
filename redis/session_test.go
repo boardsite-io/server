@@ -166,7 +166,7 @@ func Test_handler_Get_SetPageMeta(t *testing.T) {
 			Height: 1024,
 		},
 		Background: session.PageBackground{
-			Style:    "doc",
+			Paper:    "doc",
 			PageNum:  0,
 			AttachId: "attachId",
 		},
