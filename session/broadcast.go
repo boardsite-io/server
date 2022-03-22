@@ -2,7 +2,9 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"runtime"
 
 	gws "github.com/gorilla/websocket"
 
@@ -10,6 +12,8 @@ import (
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/redis"
 )
+
+var ErrBroadcasterClosed = errors.New("broadcaster: closed")
 
 //counterfeiter:generate . Broadcaster
 type Broadcaster interface {
@@ -94,38 +98,55 @@ func (b *broadcaster) getUsers() map[string]*User {
 func (b *broadcaster) broadcastLoop() {
 	for {
 		users := b.getUsers()
-		select {
-		case data := <-b.broadcast:
-			for userID, user := range users { // Send to all connected clients
-				// except the origin, i.e. the initiator of message
-				if userID != data.Sender {
-					if err := user.Conn.WriteJSON(data); err != nil {
-						log.Global().Warnf("cannot broadcast to %s: %v",
-							user.Conn.RemoteAddr(), err)
-					}
-				}
-			}
-		case data := <-b.send:
-			u, ok := users[data.Receiver]
-			if !ok {
-				log.Global().Warnf("broadcastLoop: unknown receiver %v", data.Receiver)
-				continue
-			}
-			if err := u.Conn.WriteJSON(data); err != nil {
-				log.Global().Warnf("broadcastLoop: %v", err)
-			}
-		case data := <-b.control:
-			u, ok := users[data.Receiver]
-			if !ok {
-				log.Global().Warnf("broadcastLoop: unknown receiver %v", data.Receiver)
-				continue
-			}
-			msg := gws.FormatCloseMessage(gws.CloseNormalClosure, fmt.Sprintf("%v", data.Content))
-			_ = u.Conn.WriteMessage(gws.CloseMessage, msg)
-		case <-b.close:
+		err := b.broadcastToUser(users)
+		if errors.Is(err, ErrBroadcasterClosed) {
 			return
 		}
+		if err != nil {
+			log.Global().Warnf("broadcastLoop: %v", err)
+		}
 	}
+}
+
+func (b *broadcaster) broadcastToUser(users map[string]*User) error {
+	defer func() {
+		if r := recover(); r != nil {
+			stack := make([]byte, 2<<12)
+			length := runtime.Stack(stack, true)
+			log.Global().Errorf("[PANIC RECOVER] %v %s", r, stack[:length])
+		}
+	}()
+
+	select {
+	case data := <-b.broadcast:
+		for userID, user := range users { // Send to all connected clients
+			// except the origin, i.e. the initiator of message
+			if userID != data.Sender {
+				if err := user.Conn.WriteJSON(data); err != nil {
+					log.Global().Warnf("cannot broadcast to %s: %v",
+						user.Conn.RemoteAddr(), err)
+				}
+			}
+		}
+	case data := <-b.send:
+		u, ok := users[data.Receiver]
+		if !ok {
+			return fmt.Errorf("send: unkown receiver: %v", data.Receiver)
+		}
+		if err := u.Conn.WriteJSON(data); err != nil {
+			return fmt.Errorf("send: writeJSON: %w", err)
+		}
+	case data := <-b.control:
+		u, ok := users[data.Receiver]
+		if !ok {
+			return fmt.Errorf("control: unkown receiver: %v", data.Receiver)
+		}
+		msg := gws.FormatCloseMessage(gws.CloseNormalClosure, fmt.Sprintf("%v", data.Content))
+		_ = u.Conn.WriteMessage(gws.CloseMessage, msg)
+	case <-b.close:
+		return ErrBroadcasterClosed
+	}
+	return nil
 }
 
 // dbUpdateLoop updates database according to given Stroke values
