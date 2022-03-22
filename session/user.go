@@ -164,9 +164,11 @@ func (scb *controlBlock) UserConnect(userID string, conn *gws.Conn) error {
 // Broadcast that user has disconnected from session.
 func (scb *controlBlock) UserDisconnect(ctx context.Context, userID string) {
 	scb.muUsr.Lock()
-	u := scb.users[userID]
-	delete(scb.users, u.ID)
-	scb.numUsers--
+	u, ok := scb.users[userID]
+	if ok {
+		delete(scb.users, u.ID)
+		scb.numUsers--
+	}
 	numCl := scb.numUsers
 	scb.muUsr.Unlock()
 
@@ -181,6 +183,11 @@ func (scb *controlBlock) UserDisconnect(ctx context.Context, userID string) {
 	scb.broadcaster.Broadcast() <- types.Message{
 		Type:    MessageTypeUserDisconnected,
 		Content: u,
+	}
+
+	scb.broadcaster.Control() <- types.Message{
+		Receiver: userID,
+		Content:  "Closed by server",
 	}
 }
 

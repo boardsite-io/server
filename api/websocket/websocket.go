@@ -38,7 +38,6 @@ func onClientConnect(ctx context.Context, scb session.Controller, userID string,
 func onClientDisconnect(ctx context.Context, scb session.Controller, userID string, conn *gws.Conn) {
 	scb.UserDisconnect(ctx, userID)
 	log.Ctx(ctx).Infof("session %s :: %s (%s) disconnected", scb.ID(), userID, conn.RemoteAddr().String())
-	closeWS(conn, nil)
 }
 
 // Subscribe subscribes to the websocket connection
@@ -50,7 +49,8 @@ func Subscribe(c echo.Context, scb session.Controller, userID string) error {
 	}
 
 	if err := onClientConnect(ctx, scb, userID, conn); err != nil {
-		closeWS(conn, gws.FormatCloseMessage(gws.CloseNormalClosure, fmt.Sprintf("%v", err)))
+		_ = conn.WriteMessage(gws.CloseMessage, gws.FormatCloseMessage(gws.CloseNormalClosure, fmt.Sprintf("%v", err)))
+		_ = conn.Close()
 		return err
 	}
 	defer onClientDisconnect(ctx, scb, userID, conn)
@@ -77,9 +77,4 @@ func Subscribe(c echo.Context, scb session.Controller, userID string) error {
 		}
 	}
 	return nil
-}
-
-func closeWS(conn *gws.Conn, message []byte) {
-	_ = conn.WriteMessage(gws.CloseMessage, message)
-	_ = conn.Close()
 }
