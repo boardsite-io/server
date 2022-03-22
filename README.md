@@ -5,7 +5,7 @@ Websocket backend for [boardsite.io](https://boardsite.io).
 
 
 ### Build from source
-* With Go tool (requires `go >=1.17` installed)
+* With Go tool (requires `go >=1.18` installed)
 ```
 go build -o boardsite
 ```
