@@ -30,8 +30,8 @@ type ContentMouseMove struct {
 
 // Receive is the entry point when a message is received in
 // the session via the websocket.
-func (scb *controlBlock) Receive(ctx context.Context, msg *types.Message) error {
-	if !scb.isUserConnected(msg.Sender) {
+func (scb *controlBlock) Receive(ctx context.Context, msg *types.Message, userID string) error {
+	if msg.Sender != userID { // cannot spoof another user
 		return errors.New("invalid sender userId")
 	}
 
@@ -53,6 +53,10 @@ func (scb *controlBlock) Receive(ctx context.Context, msg *types.Message) error 
 //
 // It further checks if the strokes have a valid pageId and userId.
 func (scb *controlBlock) sanitizeStrokes(ctx context.Context, msg *types.Message) error {
+	if !scb.Allow(msg.Sender) {
+		return errors.New("not allowed")
+	}
+
 	var strokes []*Stroke
 	if err := msg.UnmarshalContent(&strokes); err != nil {
 		return err

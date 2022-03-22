@@ -55,9 +55,9 @@ type Controller interface {
 	IsValidPage(ctx context.Context, pageID ...string) bool
 
 	// NewUser creates a new ready user for the session
-	NewUser(alias string, color string) (*User, error)
+	NewUser(userReq UserRequest) (*User, error)
 	// UpdateUser updates a user alias or color
-	UpdateUser(user, userReq *User) error
+	UpdateUser(user User, userReq UserRequest) error
 	// UserConnect connects a ready user to the session
 	UserConnect(userID string, conn *gws.Conn) error
 	// UserDisconnect disconnects a user from the session
@@ -70,13 +70,15 @@ type Controller interface {
 	// Close closes a session
 	Close()
 	// Receive handles data received in the session
-	Receive(ctx context.Context, msg *types.Message) error
+	Receive(ctx context.Context, msg *types.Message, userID string) error
 	// Attachments returns the session's attachment handler
 	Attachments() attachment.Handler
 	// Broadcaster returns the session's broadcaster
 	Broadcaster() Broadcaster
 	// NumUsers returns the number of active users in the session
 	NumUsers() int
+	// Allow checks whether a user is allowed to modify the session
+	Allow(userID string) bool
 }
 
 type Config struct {
@@ -242,4 +244,11 @@ func (scb *controlBlock) SetConfig(incoming Config) error {
 	}
 
 	return nil
+}
+
+func (scb *controlBlock) Allow(userID string) bool {
+	if scb.Config().ReadOnly != nil && *scb.Config().ReadOnly && userID != scb.Config().Host {
+		return false
+	}
+	return true
 }

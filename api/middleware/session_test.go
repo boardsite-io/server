@@ -25,6 +25,7 @@ func TestSession(t *testing.T) {
 		scb.GetUsersReturns(map[string]*session.User{
 			userId: {ID: userId},
 		})
+		scb.AllowReturns(true)
 		dispatcher := &sessionfakes.FakeDispatcher{}
 		dispatcher.GetSCBReturns(scb, nil)
 
@@ -80,6 +81,7 @@ func TestSession(t *testing.T) {
 		scb := &sessionfakes.FakeController{}
 		scb.IDReturns(sessionId)
 		scb.GetUsersReturns(map[string]*session.User{})
+		scb.AllowReturns(true)
 		dispatcher := &sessionfakes.FakeDispatcher{}
 		dispatcher.GetSCBReturns(scb, nil)
 
