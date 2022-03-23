@@ -18,7 +18,7 @@ func RequestLogger() func(echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// measure response time
 			start := time.Now()
-			meta := make(map[string]interface{}, 32)
+			meta := make(map[string]any, 32)
 
 			var reqBody, respBody []byte
 			cfg := middleware.BodyDumpConfig{
@@ -59,7 +59,7 @@ func RequestLogger() func(echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func setRequestMeta(c echo.Context, reqBody []byte, meta map[string]interface{}) {
+func setRequestMeta(c echo.Context, reqBody []byte, meta map[string]any) {
 	meta["Req.HttpMethod"] = c.Request().Method
 	meta["Req.Path"] = c.Request().RequestURI
 
@@ -80,7 +80,7 @@ func setRequestMeta(c echo.Context, reqBody []byte, meta map[string]interface{})
 	}
 }
 
-func setResponseMeta(c echo.Context, respBody []byte, meta map[string]interface{}) {
+func setResponseMeta(c echo.Context, respBody []byte, meta map[string]any) {
 	for k, v := range c.Response().Header() {
 		if k == echo.HeaderAuthorization || k == echo.HeaderLocation {
 			continue

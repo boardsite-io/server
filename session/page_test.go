@@ -41,7 +41,7 @@ func Test_controlBlock_AddPages(t *testing.T) {
 			Index:  []int{-1},
 			Meta:   map[string]*session.PageMeta{"pid1": meta},
 		}
-		fakeCache.AddPageCalls(func(_ context.Context, sid string, pid string, index int, meta interface{}) error {
+		fakeCache.AddPageCalls(func(_ context.Context, sid string, pid string, index int, meta any) error {
 			assert.Equal(t, sessionId, sid)
 			assert.Equal(t, "pid1", pid)
 			assert.Equal(t, -1, index)
@@ -65,7 +65,7 @@ func Test_controlBlock_AddPages(t *testing.T) {
 				"pid1": {"stroke1": mockStroke},
 			},
 		}
-		fakeCache.AddPageCalls(func(_ context.Context, sid string, pid string, index int, meta interface{}) error {
+		fakeCache.AddPageCalls(func(_ context.Context, sid string, pid string, index int, meta any) error {
 			assert.Equal(t, sessionId, sid)
 			assert.Equal(t, "pid1", pid)
 			assert.Equal(t, -1, index)
@@ -115,7 +115,7 @@ func Test_controlBlock_GetPageSync(t *testing.T) {
 		}
 		fakeCache.GetPageRankReturns(want.PageRank, nil)
 		calls := 0
-		fakeCache.GetPageMetaCalls(func(_ context.Context, sid string, pid string, i interface{}) error {
+		fakeCache.GetPageMetaCalls(func(_ context.Context, sid string, pid string, i any) error {
 			defer func() { calls++ }()
 			meta := i.(*session.PageMeta)
 			if calls == 0 {
@@ -169,7 +169,7 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 
 		fakeCache.GetPageRankReturns([]string{"pid1"}, nil)
 		calls := 0
-		fakeCache.GetPageMetaCalls(func(_ context.Context, _ string, _ string, i interface{}) error {
+		fakeCache.GetPageMetaCalls(func(_ context.Context, _ string, _ string, i any) error {
 			calls++
 			meta := i.(*session.PageMeta)
 			meta.PageSize = session.PageSize{768, 1024}
@@ -177,7 +177,7 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 			return nil
 		})
 
-		fakeCache.SetPageMetaCalls(func(_ context.Context, sid string, pid string, meta interface{}) error {
+		fakeCache.SetPageMetaCalls(func(_ context.Context, sid string, pid string, meta any) error {
 			assert.Equal(t, sessionId, sid)
 			assert.Equal(t, "pid1", pid)
 			assert.Equal(t, *want, meta)

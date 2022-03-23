@@ -54,7 +54,7 @@ func WithError(err error) ErrorOption {
 	}
 }
 
-func WithErrorf(format string, a ...interface{}) ErrorOption {
+func WithErrorf(format string, a ...any) ErrorOption {
 	return WithError(fmt.Errorf(format, a...))
 }
 

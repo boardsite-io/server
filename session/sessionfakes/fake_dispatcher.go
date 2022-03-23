@@ -79,7 +79,7 @@ type FakeDispatcher struct {
 	numUsersReturnsOnCall map[int]struct {
 		result1 int
 	}
-	invocations      map[string][][]interface{}
+	invocations      map[string][][]any
 	invocationsMutex sync.RWMutex
 }
 
@@ -92,7 +92,7 @@ func (fake *FakeDispatcher) Close(arg1 context.Context, arg2 string) error {
 	}{arg1, arg2})
 	stub := fake.CloseStub
 	fakeReturns := fake.closeReturns
-	fake.recordInvocation("Close", []interface{}{arg1, arg2})
+	fake.recordInvocation("Close", []any{arg1, arg2})
 	fake.closeMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -154,7 +154,7 @@ func (fake *FakeDispatcher) Create(arg1 context.Context, arg2 session.Config) (s
 	}{arg1, arg2})
 	stub := fake.CreateStub
 	fakeReturns := fake.createReturns
-	fake.recordInvocation("Create", []interface{}{arg1, arg2})
+	fake.recordInvocation("Create", []any{arg1, arg2})
 	fake.createMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -218,7 +218,7 @@ func (fake *FakeDispatcher) GetSCB(arg1 string) (session.Controller, error) {
 	}{arg1})
 	stub := fake.GetSCBStub
 	fakeReturns := fake.getSCBReturns
-	fake.recordInvocation("GetSCB", []interface{}{arg1})
+	fake.recordInvocation("GetSCB", []any{arg1})
 	fake.getSCBMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -282,7 +282,7 @@ func (fake *FakeDispatcher) IsValid(arg1 string) bool {
 	}{arg1})
 	stub := fake.IsValidStub
 	fakeReturns := fake.isValidReturns
-	fake.recordInvocation("IsValid", []interface{}{arg1})
+	fake.recordInvocation("IsValid", []any{arg1})
 	fake.isValidMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -342,7 +342,7 @@ func (fake *FakeDispatcher) NumSessions() int {
 	}{})
 	stub := fake.NumSessionsStub
 	fakeReturns := fake.numSessionsReturns
-	fake.recordInvocation("NumSessions", []interface{}{})
+	fake.recordInvocation("NumSessions", []any{})
 	fake.numSessionsMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -395,7 +395,7 @@ func (fake *FakeDispatcher) NumUsers() int {
 	}{})
 	stub := fake.NumUsersStub
 	fakeReturns := fake.numUsersReturns
-	fake.recordInvocation("NumUsers", []interface{}{})
+	fake.recordInvocation("NumUsers", []any{})
 	fake.numUsersMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -441,7 +441,7 @@ func (fake *FakeDispatcher) NumUsersReturnsOnCall(i int, result1 int) {
 	}{result1}
 }
 
-func (fake *FakeDispatcher) Invocations() map[string][][]interface{} {
+func (fake *FakeDispatcher) Invocations() map[string][][]any {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.closeMutex.RLock()
@@ -456,21 +456,21 @@ func (fake *FakeDispatcher) Invocations() map[string][][]interface{} {
 	defer fake.numSessionsMutex.RUnlock()
 	fake.numUsersMutex.RLock()
 	defer fake.numUsersMutex.RUnlock()
-	copiedInvocations := map[string][][]interface{}{}
+	copiedInvocations := map[string][][]any{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
 	}
 	return copiedInvocations
 }
 
-func (fake *FakeDispatcher) recordInvocation(key string, args []interface{}) {
+func (fake *FakeDispatcher) recordInvocation(key string, args []any) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
-		fake.invocations = map[string][][]interface{}{}
+		fake.invocations = map[string][][]any{}
 	}
 	if fake.invocations[key] == nil {
-		fake.invocations[key] = [][]interface{}{}
+		fake.invocations[key] = [][]any{}
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }

@@ -77,7 +77,7 @@ func TestMarshalMessage(t *testing.T) {
 	tests := []struct {
 		msgType string
 		sender  string
-		content interface{}
+		content any
 		want    string
 	}{
 		{"", "", []string{}, `{"type":"","content":[]}`},

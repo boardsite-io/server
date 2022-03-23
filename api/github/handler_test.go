@@ -69,7 +69,7 @@ func Test_handler_GetCallback(t *testing.T) {
 	handler := github.NewHandler(cfg, cache, client)
 	tests := []struct {
 		name            string
-		cacheGet        interface{}
+		cacheGet        any
 		cacheGetErr     error
 		tokenResp       github.TokenResponse
 		tokenErr        error

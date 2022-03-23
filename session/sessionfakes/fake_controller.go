@@ -257,7 +257,7 @@ type FakeController struct {
 		arg1 context.Context
 		arg2 string
 	}
-	invocations      map[string][][]interface{}
+	invocations      map[string][][]any
 	invocationsMutex sync.RWMutex
 }
 
@@ -270,7 +270,7 @@ func (fake *FakeController) AddPages(arg1 context.Context, arg2 session.PageRequ
 	}{arg1, arg2})
 	stub := fake.AddPagesStub
 	fakeReturns := fake.addPagesReturns
-	fake.recordInvocation("AddPages", []interface{}{arg1, arg2})
+	fake.recordInvocation("AddPages", []any{arg1, arg2})
 	fake.addPagesMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -331,7 +331,7 @@ func (fake *FakeController) Allow(arg1 string) bool {
 	}{arg1})
 	stub := fake.AllowStub
 	fakeReturns := fake.allowReturns
-	fake.recordInvocation("Allow", []interface{}{arg1})
+	fake.recordInvocation("Allow", []any{arg1})
 	fake.allowMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -391,7 +391,7 @@ func (fake *FakeController) Attachments() attachment.Handler {
 	}{})
 	stub := fake.AttachmentsStub
 	fakeReturns := fake.attachmentsReturns
-	fake.recordInvocation("Attachments", []interface{}{})
+	fake.recordInvocation("Attachments", []any{})
 	fake.attachmentsMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -444,7 +444,7 @@ func (fake *FakeController) Broadcaster() session.Broadcaster {
 	}{})
 	stub := fake.BroadcasterStub
 	fakeReturns := fake.broadcasterReturns
-	fake.recordInvocation("Broadcaster", []interface{}{})
+	fake.recordInvocation("Broadcaster", []any{})
 	fake.broadcasterMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -495,7 +495,7 @@ func (fake *FakeController) Close() {
 	fake.closeArgsForCall = append(fake.closeArgsForCall, struct {
 	}{})
 	stub := fake.CloseStub
-	fake.recordInvocation("Close", []interface{}{})
+	fake.recordInvocation("Close", []any{})
 	fake.closeMutex.Unlock()
 	if stub != nil {
 		fake.CloseStub()
@@ -521,7 +521,7 @@ func (fake *FakeController) Config() session.Config {
 	}{})
 	stub := fake.ConfigStub
 	fakeReturns := fake.configReturns
-	fake.recordInvocation("Config", []interface{}{})
+	fake.recordInvocation("Config", []any{})
 	fake.configMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -577,7 +577,7 @@ func (fake *FakeController) GetPage(arg1 context.Context, arg2 string, arg3 bool
 	}{arg1, arg2, arg3})
 	stub := fake.GetPageStub
 	fakeReturns := fake.getPageReturns
-	fake.recordInvocation("GetPage", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("GetPage", []any{arg1, arg2, arg3})
 	fake.getPageMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3)
@@ -641,7 +641,7 @@ func (fake *FakeController) GetPageRank(arg1 context.Context) ([]string, error) 
 	}{arg1})
 	stub := fake.GetPageRankStub
 	fakeReturns := fake.getPageRankReturns
-	fake.recordInvocation("GetPageRank", []interface{}{arg1})
+	fake.recordInvocation("GetPageRank", []any{arg1})
 	fake.getPageRankMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -712,7 +712,7 @@ func (fake *FakeController) GetPageSync(arg1 context.Context, arg2 []string, arg
 	}{arg1, arg2Copy, arg3})
 	stub := fake.GetPageSyncStub
 	fakeReturns := fake.getPageSyncReturns
-	fake.recordInvocation("GetPageSync", []interface{}{arg1, arg2Copy, arg3})
+	fake.recordInvocation("GetPageSync", []any{arg1, arg2Copy, arg3})
 	fake.getPageSyncMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3)
@@ -775,7 +775,7 @@ func (fake *FakeController) GetUsers() map[string]*session.User {
 	}{})
 	stub := fake.GetUsersStub
 	fakeReturns := fake.getUsersReturns
-	fake.recordInvocation("GetUsers", []interface{}{})
+	fake.recordInvocation("GetUsers", []any{})
 	fake.getUsersMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -828,7 +828,7 @@ func (fake *FakeController) ID() string {
 	}{})
 	stub := fake.IDStub
 	fakeReturns := fake.iDReturns
-	fake.recordInvocation("ID", []interface{}{})
+	fake.recordInvocation("ID", []any{})
 	fake.iDMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -883,7 +883,7 @@ func (fake *FakeController) IsValidPage(arg1 context.Context, arg2 ...string) bo
 	}{arg1, arg2})
 	stub := fake.IsValidPageStub
 	fakeReturns := fake.isValidPageReturns
-	fake.recordInvocation("IsValidPage", []interface{}{arg1, arg2})
+	fake.recordInvocation("IsValidPage", []any{arg1, arg2})
 	fake.isValidPageMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2...)
@@ -944,7 +944,7 @@ func (fake *FakeController) KickUser(arg1 string) error {
 	}{arg1})
 	stub := fake.KickUserStub
 	fakeReturns := fake.kickUserReturns
-	fake.recordInvocation("KickUser", []interface{}{arg1})
+	fake.recordInvocation("KickUser", []any{arg1})
 	fake.kickUserMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -1005,7 +1005,7 @@ func (fake *FakeController) NewUser(arg1 session.UserRequest) (*session.User, er
 	}{arg1})
 	stub := fake.NewUserStub
 	fakeReturns := fake.newUserReturns
-	fake.recordInvocation("NewUser", []interface{}{arg1})
+	fake.recordInvocation("NewUser", []any{arg1})
 	fake.newUserMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -1068,7 +1068,7 @@ func (fake *FakeController) NumUsers() int {
 	}{})
 	stub := fake.NumUsersStub
 	fakeReturns := fake.numUsersReturns
-	fake.recordInvocation("NumUsers", []interface{}{})
+	fake.recordInvocation("NumUsers", []any{})
 	fake.numUsersMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -1124,7 +1124,7 @@ func (fake *FakeController) Receive(arg1 context.Context, arg2 *types.Message, a
 	}{arg1, arg2, arg3})
 	stub := fake.ReceiveStub
 	fakeReturns := fake.receiveReturns
-	fake.recordInvocation("Receive", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("Receive", []any{arg1, arg2, arg3})
 	fake.receiveMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3)
@@ -1185,7 +1185,7 @@ func (fake *FakeController) SetConfig(arg1 session.Config) error {
 	}{arg1})
 	stub := fake.SetConfigStub
 	fakeReturns := fake.setConfigReturns
-	fake.recordInvocation("SetConfig", []interface{}{arg1})
+	fake.recordInvocation("SetConfig", []any{arg1})
 	fake.setConfigMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -1247,7 +1247,7 @@ func (fake *FakeController) SyncSession(arg1 context.Context, arg2 session.PageS
 	}{arg1, arg2})
 	stub := fake.SyncSessionStub
 	fakeReturns := fake.syncSessionReturns
-	fake.recordInvocation("SyncSession", []interface{}{arg1, arg2})
+	fake.recordInvocation("SyncSession", []any{arg1, arg2})
 	fake.syncSessionMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -1310,7 +1310,7 @@ func (fake *FakeController) UpdatePages(arg1 context.Context, arg2 session.PageR
 	}{arg1, arg2, arg3})
 	stub := fake.UpdatePagesStub
 	fakeReturns := fake.updatePagesReturns
-	fake.recordInvocation("UpdatePages", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("UpdatePages", []any{arg1, arg2, arg3})
 	fake.updatePagesMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3)
@@ -1372,7 +1372,7 @@ func (fake *FakeController) UpdateUser(arg1 session.User, arg2 session.UserReque
 	}{arg1, arg2})
 	stub := fake.UpdateUserStub
 	fakeReturns := fake.updateUserReturns
-	fake.recordInvocation("UpdateUser", []interface{}{arg1, arg2})
+	fake.recordInvocation("UpdateUser", []any{arg1, arg2})
 	fake.updateUserMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -1434,7 +1434,7 @@ func (fake *FakeController) UserConnect(arg1 string, arg2 *websocket.Conn) error
 	}{arg1, arg2})
 	stub := fake.UserConnectStub
 	fakeReturns := fake.userConnectReturns
-	fake.recordInvocation("UserConnect", []interface{}{arg1, arg2})
+	fake.recordInvocation("UserConnect", []any{arg1, arg2})
 	fake.userConnectMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -1494,7 +1494,7 @@ func (fake *FakeController) UserDisconnect(arg1 context.Context, arg2 string) {
 		arg2 string
 	}{arg1, arg2})
 	stub := fake.UserDisconnectStub
-	fake.recordInvocation("UserDisconnect", []interface{}{arg1, arg2})
+	fake.recordInvocation("UserDisconnect", []any{arg1, arg2})
 	fake.userDisconnectMutex.Unlock()
 	if stub != nil {
 		fake.UserDisconnectStub(arg1, arg2)
@@ -1520,7 +1520,7 @@ func (fake *FakeController) UserDisconnectArgsForCall(i int) (context.Context, s
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeController) Invocations() map[string][][]interface{} {
+func (fake *FakeController) Invocations() map[string][][]any {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.addPagesMutex.RLock()
@@ -1567,21 +1567,21 @@ func (fake *FakeController) Invocations() map[string][][]interface{} {
 	defer fake.userConnectMutex.RUnlock()
 	fake.userDisconnectMutex.RLock()
 	defer fake.userDisconnectMutex.RUnlock()
-	copiedInvocations := map[string][][]interface{}{}
+	copiedInvocations := map[string][][]any{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
 	}
 	return copiedInvocations
 }
 
-func (fake *FakeController) recordInvocation(key string, args []interface{}) {
+func (fake *FakeController) recordInvocation(key string, args []any) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
-		fake.invocations = map[string][][]interface{}{}
+		fake.invocations = map[string][][]any{}
 	}
 	if fake.invocations[key] == nil {
-		fake.invocations[key] = [][]interface{}{}
+		fake.invocations[key] = [][]any{}
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }

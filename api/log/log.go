@@ -44,8 +44,8 @@ func Global() *zap.SugaredLogger {
 }
 
 // WithMeta sets logger meta tags
-func WithMeta(meta map[string]interface{}) []interface{} {
-	args := make([]interface{}, 0, 2*len(meta))
+func WithMeta(meta map[string]any) []any {
+	args := make([]any, 0, 2*len(meta))
 	for k, v := range meta {
 		args = append(args, k, v)
 	}
@@ -53,6 +53,6 @@ func WithMeta(meta map[string]interface{}) []interface{} {
 }
 
 // WrapCtx wraps the current logger in a context
-func WrapCtx(ctx context.Context, meta map[string]interface{}) context.Context {
+func WrapCtx(ctx context.Context, meta map[string]any) context.Context {
 	return context.WithValue(ctx, ContextKey, logger.With(WithMeta(meta)...))
 }

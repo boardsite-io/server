@@ -15,15 +15,15 @@ const (
 // Message declares the generic message envelope
 // of any API JSON encoded message.
 type Message struct {
-	Type     string      `json:"type"`
-	Sender   string      `json:"sender,omitempty"`
-	Receiver string      `json:"-"`
-	Content  interface{} `json:"content,omitempty"`
+	Type     string `json:"type"`
+	Sender   string `json:"sender,omitempty"`
+	Receiver string `json:"-"`
+	Content  any    `json:"content,omitempty"`
 }
 
 // NewMessage creates a new Message with any JSON encodable content,
 // a message type and an optional sender.
-func NewMessage(content interface{}, msgType string, sender ...string) *Message {
+func NewMessage(content any, msgType string, sender ...string) *Message {
 	var s string
 	if len(sender) == 1 {
 		s = sender[0]
@@ -37,7 +37,7 @@ func NewMessage(content interface{}, msgType string, sender ...string) *Message 
 
 // DecodeMsgContent is a shorthand wrapper to directly decode
 // the content of generic API JSON messages.
-func DecodeMsgContent(r io.Reader, v interface{}) error {
+func DecodeMsgContent(r io.Reader, v any) error {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func DecodeMsgContent(r io.Reader, v interface{}) error {
 
 // UnmarshalMsgContent is a shorthand wrapper to directly unmarshal
 // the content of generic API JSON messages.
-func UnmarshalMsgContent(data []byte, v interface{}) error {
+func UnmarshalMsgContent(data []byte, v any) error {
 	m, err := UnmarshalMessage(data)
 	if err != nil {
 		return err
@@ -71,7 +71,7 @@ func UnmarshalMessage(data []byte) (*Message, error) {
 
 // UnmarshalContent parses the JSON-encoded content of a Message and
 // stores the result in the value pointed to by v.
-func (m *Message) UnmarshalContent(v interface{}) error {
+func (m *Message) UnmarshalContent(v any) error {
 	c, ok := (m.Content.(*json.RawMessage))
 	if !ok {
 		return errors.New("cannot unmarshal content")

@@ -114,12 +114,12 @@ func TestHost(t *testing.T) {
 	scb.ConfigReturns(cfg)
 	tests := []struct {
 		name    string
-		store   map[string]interface{}
+		store   map[string]any
 		wantErr bool
 	}{
 		{
 			name: "happy path",
-			store: map[string]interface{}{
+			store: map[string]any{
 				sessionHttp.SessionCtxKey: scb,
 				sessionHttp.UserCtxKey:    &session.User{ID: "userId"},
 				sessionHttp.SecretCtxKey:  "secret",
@@ -127,12 +127,12 @@ func TestHost(t *testing.T) {
 		},
 		{
 			name:    "missing context",
-			store:   map[string]interface{}{},
+			store:   map[string]any{},
 			wantErr: true,
 		},
 		{
 			name: "missing user",
-			store: map[string]interface{}{
+			store: map[string]any{
 				sessionHttp.SessionCtxKey: scb,
 				sessionHttp.SecretCtxKey:  "secret",
 			},
@@ -140,7 +140,7 @@ func TestHost(t *testing.T) {
 		},
 		{
 			name: "wrong user",
-			store: map[string]interface{}{
+			store: map[string]any{
 				sessionHttp.SessionCtxKey: scb,
 				sessionHttp.UserCtxKey:    &session.User{ID: "userId1234"},
 				sessionHttp.SecretCtxKey:  "secret",
@@ -149,7 +149,7 @@ func TestHost(t *testing.T) {
 		},
 		{
 			name: "wrong secret",
-			store: map[string]interface{}{
+			store: map[string]any{
 				sessionHttp.SessionCtxKey: scb,
 				sessionHttp.UserCtxKey:    &session.User{ID: "userId"},
 				sessionHttp.SecretCtxKey:  "1234",

@@ -32,7 +32,7 @@ func Test_validator_Validate(t *testing.T) {
 		name        string
 		respEmails  []github.UserEmail
 		respErr     error
-		cacheGet    interface{}
+		cacheGet    any
 		cacheGetErr error
 		cachePutErr error
 		wantErr     bool

@@ -37,7 +37,7 @@ type FakeClient struct {
 		result1 *github.TokenResponse
 		result2 error
 	}
-	invocations      map[string][][]interface{}
+	invocations      map[string][][]any
 	invocationsMutex sync.RWMutex
 }
 
@@ -50,7 +50,7 @@ func (fake *FakeClient) GetUserEmails(arg1 context.Context, arg2 string) ([]gith
 	}{arg1, arg2})
 	stub := fake.GetUserEmailsStub
 	fakeReturns := fake.getUserEmailsReturns
-	fake.recordInvocation("GetUserEmails", []interface{}{arg1, arg2})
+	fake.recordInvocation("GetUserEmails", []any{arg1, arg2})
 	fake.getUserEmailsMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -115,7 +115,7 @@ func (fake *FakeClient) PostToken(arg1 context.Context, arg2 string) (*github.To
 	}{arg1, arg2})
 	stub := fake.PostTokenStub
 	fakeReturns := fake.postTokenReturns
-	fake.recordInvocation("PostToken", []interface{}{arg1, arg2})
+	fake.recordInvocation("PostToken", []any{arg1, arg2})
 	fake.postTokenMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -171,28 +171,28 @@ func (fake *FakeClient) PostTokenReturnsOnCall(i int, result1 *github.TokenRespo
 	}{result1, result2}
 }
 
-func (fake *FakeClient) Invocations() map[string][][]interface{} {
+func (fake *FakeClient) Invocations() map[string][][]any {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.getUserEmailsMutex.RLock()
 	defer fake.getUserEmailsMutex.RUnlock()
 	fake.postTokenMutex.RLock()
 	defer fake.postTokenMutex.RUnlock()
-	copiedInvocations := map[string][][]interface{}{}
+	copiedInvocations := map[string][][]any{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
 	}
 	return copiedInvocations
 }
 
-func (fake *FakeClient) recordInvocation(key string, args []interface{}) {
+func (fake *FakeClient) recordInvocation(key string, args []any) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
-		fake.invocations = map[string][][]interface{}{}
+		fake.invocations = map[string][][]any{}
 	}
 	if fake.invocations[key] == nil {
-		fake.invocations[key] = [][]interface{}{}
+		fake.invocations[key] = [][]any{}
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }

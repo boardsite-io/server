@@ -66,7 +66,7 @@ func (h *handler) GetPageStrokes(ctx context.Context, sessionId, pageId string) 
 		return [][]byte{}, nil
 	}
 
-	query := make([]interface{}, 1, len(keys)+1)
+	query := make([]any, 1, len(keys)+1)
 	query[0] = pid
 	for _, key := range keys {
 		query = append(query, key)
@@ -83,7 +83,7 @@ func (h *handler) GetPageRank(ctx context.Context, sessionId string) ([]string, 
 	return pages, nil
 }
 
-func (h *handler) GetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error {
+func (h *handler) GetPageMeta(ctx context.Context, sessionId, pageId string, meta any) error {
 	resp, err := redis.Bytes(h.Do(ctx, "GET", getPageMetaKey(sessionId, pageId)))
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func (h *handler) GetPageMeta(ctx context.Context, sessionId, pageId string, met
 	return nil
 }
 
-func (h *handler) SetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error {
+func (h *handler) SetPageMeta(ctx context.Context, sessionId, pageId string, meta any) error {
 	pMeta, err := json.Marshal(meta)
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func (h *handler) SetPageMeta(ctx context.Context, sessionId, pageId string, met
 	return err
 }
 
-func (h *handler) AddPage(ctx context.Context, sessionId, newpageId string, index int, meta interface{}) error {
+func (h *handler) AddPage(ctx context.Context, sessionId, newpageId string, index int, meta any) error {
 	conn, err := h.pool.GetContext(ctx)
 	if err != nil {
 		return err
@@ -199,7 +199,7 @@ func (h *handler) ClearSession(ctx context.Context, sessionId string) error {
 		return nil
 	}
 
-	query := make([]interface{}, 1, len(pageRank)*2+1)
+	query := make([]any, 1, len(pageRank)*2+1)
 	query[0] = getPageRankKey(sessionId)
 	for _, pid := range pageRank {
 		query = append(query, getStrokesKey(sessionId, pid), getPageMetaKey(sessionId, pid))

@@ -18,9 +18,9 @@ const (
 //counterfeiter:generate . Handler
 type Handler interface {
 	// Put adds a value with key to the cache which will expire after a specified ttl.
-	Put(ctx context.Context, key string, v interface{}, ttl time.Duration) error
+	Put(ctx context.Context, key string, v any, ttl time.Duration) error
 	// Get fetches a value from the cache with given key.
-	Get(ctx context.Context, key string) (interface{}, error)
+	Get(ctx context.Context, key string) (any, error)
 	// Delete deletes a value with given key from the cache.
 	Delete(ctx context.Context, key string) error
 	// ClearSession wipes the session from Redis. Removes all pages and the respective strokes on the pages
@@ -41,14 +41,14 @@ type Handler interface {
 	// The PageIDs are maintained in a list in redis since the ordering is important
 	GetPageRank(ctx context.Context, sessionID string) ([]string, error)
 	// GetPageMeta returns a slice of all page meta data.
-	GetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error
+	GetPageMeta(ctx context.Context, sessionId, pageId string, meta any) error
 	// SetPageMeta sets the page meta data
-	SetPageMeta(ctx context.Context, sessionId, pageId string, meta interface{}) error
+	SetPageMeta(ctx context.Context, sessionId, pageId string, meta any) error
 	// AddPage adds a page with pageID at position index.
 	//
 	// Other pages are moved and their score is reassigned
 	// when pages are added in between
-	AddPage(ctx context.Context, sessionID, newPageID string, index int, meta interface{}) error
+	AddPage(ctx context.Context, sessionID, newPageID string, index int, meta any) error
 	// DeletePage deletes a page and the respective strokes on the page and remove the PageID from the list.
 	DeletePage(ctx context.Context, sessionID, pageID string) error
 	// ClearPage removes all strokes with given pageID.
@@ -99,7 +99,7 @@ func (h *handler) Ping() error {
 	return nil
 }
 
-func (h *handler) Do(ctx context.Context, cmd string, args ...interface{}) (interface{}, error) {
+func (h *handler) Do(ctx context.Context, cmd string, args ...any) (any, error) {
 	conn, err := h.pool.GetContext(ctx)
 	if err != nil {
 		return nil, err
@@ -109,8 +109,8 @@ func (h *handler) Do(ctx context.Context, cmd string, args ...interface{}) (inte
 	return conn.Do(cmd, args...)
 }
 
-func (h *handler) Put(ctx context.Context, key string, v interface{}, ttl time.Duration) error {
-	args := []interface{}{key, v}
+func (h *handler) Put(ctx context.Context, key string, v any, ttl time.Duration) error {
+	args := []any{key, v}
 	ex := int(ttl / time.Second)
 	if ex > 0 {
 		args = append(args, "EX", strconv.Itoa(ex))
@@ -119,7 +119,7 @@ func (h *handler) Put(ctx context.Context, key string, v interface{}, ttl time.D
 	return err
 }
 
-func (h *handler) Get(ctx context.Context, key string) (interface{}, error) {
+func (h *handler) Get(ctx context.Context, key string) (any, error) {
 	return h.Do(ctx, "GET", key)
 }
 

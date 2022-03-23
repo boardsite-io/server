@@ -11,7 +11,7 @@ import (
 func Monitoring(metrics metrics.Handler) func(echo.HandlerFunc) echo.HandlerFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			meta := make(map[string]interface{}, 2)
+			meta := make(map[string]any, 2)
 
 			meta[log.TagTraceID] = newTraceID()
 			if sessionID := c.Param("id"); sessionID != "" {
