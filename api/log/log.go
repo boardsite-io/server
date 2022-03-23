@@ -2,6 +2,9 @@ package log
 
 import (
 	"context"
+	"time"
+
+	"go.uber.org/zap/zapcore"
 
 	"go.uber.org/zap"
 )
@@ -23,6 +26,9 @@ func init() {
 	cfg := zap.NewProductionConfig()
 	cfg.DisableStacktrace = true
 	cfg.DisableCaller = true
+	cfg.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(t.Format("2006-01-02T15:04:05Z"))
+	}
 	l, err := cfg.Build()
 	if err != nil {
 		panic(err)

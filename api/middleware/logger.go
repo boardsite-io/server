@@ -4,14 +4,28 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
+
+	"github.com/heat1q/boardsite/api/types"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/heat1q/boardsite/api/log"
 )
+
+var loggedHeaders = map[string]struct{}{
+	echo.HeaderXForwardedFor: {},
+	echo.HeaderContentType:   {},
+	echo.HeaderContentLength: {},
+	echo.HeaderOrigin:        {},
+	"User-Agent":             {},
+	types.HeaderUserID:       {},
+}
+
+var jsonBody = regexp.MustCompile("^application/json.*")
 
 func RequestLogger() func(echo.HandlerFunc) echo.HandlerFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -41,8 +55,10 @@ func RequestLogger() func(echo.HandlerFunc) echo.HandlerFunc {
 				c.Request().RequestURI,
 			))
 
-			setRequestMeta(c, reqBody, meta)
-			setResponseMeta(c, respBody, meta)
+			meta["Req.HttpMethod"] = c.Request().Method
+			meta["Req.Path"] = c.Path()
+			setMeta(c, reqBody, meta, "Req")
+			setMeta(c, respBody, meta, "Resp")
 
 			elapsed := time.Since(start)
 			meta["duration"] = elapsed.String()
@@ -59,43 +75,16 @@ func RequestLogger() func(echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func setRequestMeta(c echo.Context, reqBody []byte, meta map[string]any) {
-	meta["Req.HttpMethod"] = c.Request().Method
-	meta["Req.Path"] = c.Request().RequestURI
-
-	for k, v := range c.Request().Header {
-		if k == echo.HeaderAuthorization {
-			continue
-		}
-		meta[fmt.Sprintf("Req.Header.%s", k)] = strings.Join(v, ";")
-	}
-
-	if len(reqBody) > 0 {
-		var body bytes.Buffer
-		if err := json.Compact(&body, reqBody); err == nil {
-			meta["Req.Body"] = body.String()
-		} else {
-			meta["Req.ContentLength"] = c.Request().ContentLength
-		}
-	}
-}
-
-func setResponseMeta(c echo.Context, respBody []byte, meta map[string]any) {
+func setMeta(c echo.Context, body []byte, meta map[string]any, prefix string) {
 	for k, v := range c.Response().Header() {
-		if k == echo.HeaderAuthorization || k == echo.HeaderLocation {
-			continue
+		if _, ok := loggedHeaders[k]; ok {
+			meta[fmt.Sprintf("%s.Header.%s", prefix, k)] = strings.Join(v, ";")
 		}
-		meta[fmt.Sprintf("Resp.Header.%s", k)] = strings.Join(v, ";")
 	}
-
-	if len(respBody) > 0 {
-		// dont spam the logs with huge responses
-		if len(respBody) < 2<<10 && json.Valid(respBody) {
-			var body bytes.Buffer
-			_ = json.Compact(&body, respBody)
-			meta["Resp.Body"] = body.String()
-		} else {
-			meta["Resp.ContentLength"] = c.Response().Size
-		}
+	contentType := c.Request().Header.Get(echo.HeaderContentType)
+	if len(body) > 0 && len(body) < 2<<10 && jsonBody.MatchString(contentType) {
+		var buf bytes.Buffer
+		_ = json.Compact(&buf, body)
+		meta[prefix+".Body"] = buf.String()
 	}
 }
