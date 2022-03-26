@@ -50,12 +50,12 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	// set up session dispatcher/handler
 	s.session = sessionHttp.NewHandler(s.cfg.Session, s.dispatcher)
 
-	s.metrics = metrics.NewHandler(s.dispatcher)
+	if s.cfg.Metrics.Enabled {
+		s.metrics = metrics.NewHandler(s.dispatcher)
+	}
 
 	if s.cfg.Github.Enabled {
-		githubClient := github.NewClient(&s.cfg.Github, cache)
-		s.github = github.NewHandler(s.cfg, cache, githubClient)
-		s.validator = github.NewValidator(&s.cfg.Github, cache, githubClient)
+		s.setupGithub(cache)
 	}
 
 	s.echo.Use(
@@ -78,4 +78,14 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 			_ = cache.ClosePool()
 			return s.echo.Shutdown(ctx)
 		}
+}
+
+func (s *Server) setupMetrics() {
+	s.metrics = metrics.NewHandler(s.dispatcher)
+}
+
+func (s *Server) setupGithub(cache redis.Handler) {
+	githubClient := github.NewClient(&s.cfg.Github, cache)
+	s.github = github.NewHandler(s.cfg, cache, githubClient)
+	s.validator = github.NewValidator(&s.cfg.Github, cache, githubClient)
 }

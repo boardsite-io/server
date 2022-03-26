@@ -16,6 +16,13 @@ import (
 type RateLimitingOption func(cfg *echomw.RateLimiterConfig)
 
 func RateLimiting(rpm uint16, options ...RateLimitingOption) echo.MiddlewareFunc {
+	if rpm == 0 {
+		return func(next echo.HandlerFunc) echo.HandlerFunc {
+			return func(c echo.Context) error {
+				return next(c)
+			}
+		}
+	}
 	memstoreCfg := echomw.RateLimiterMemoryStoreConfig{
 		Rate:      rate.Limit(float64(rpm) / 60),
 		Burst:     int(rpm),

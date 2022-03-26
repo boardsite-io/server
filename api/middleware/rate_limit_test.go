@@ -65,4 +65,14 @@ func TestRateLimiting(t *testing.T) {
 		_ = fn(c)
 		assert.Equal(t, http.StatusTooManyRequests, rr.Code)
 	})
+
+	t.Run("with rpm 0", func(t *testing.T) {
+		fn := middleware.RateLimiting(0, middleware.WithIP())(handler)
+		const tries = 5
+		for i := 0; i < tries; i++ {
+			rr, c := getContext(e)
+			_ = fn(c)
+			assert.Equal(t, http.StatusOK, rr.Code)
+		}
+	})
 }

@@ -5,9 +5,9 @@ server:
   base_url: http://localhost
   port: 8000
   origins: "*"
-  rpm: 10
+  rpm: 0
   metrics:
-    enabled: true
+    enabled: false
     route: /metrics
     user: admin
     password: admin
