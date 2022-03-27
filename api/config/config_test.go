@@ -14,11 +14,11 @@ func TestNew(t *testing.T) {
 	want.Server.BaseURL = "http://localhost"
 	want.Server.Port = 8000
 	want.Server.AllowedOrigins = "*"
-	want.Server.Metrics.Enabled = true
+	want.Server.Metrics.Enabled = false
 	want.Server.Metrics.Route = "/metrics"
 	want.Server.Metrics.User = "admin"
 	want.Server.Metrics.Password = "admin"
-	want.Server.RPM = 10
+	want.Server.RPM = 0
 	want.Cache.Host = "localhost"
 	want.Cache.Port = 6379
 	want.Session.MaxUsers = 4
