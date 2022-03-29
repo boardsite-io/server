@@ -18,7 +18,6 @@ func Test_controlBlock_NewUser(t *testing.T) {
 	cache := &redisfakes.FakeHandler{}
 	broadcaster := &sessionfakes.FakeBroadcaster{}
 	broadcaster.BroadcastReturns(make(chan types.Message, 999))
-	password := "password"
 
 	tests := []struct {
 		name    string
@@ -30,7 +29,7 @@ func Test_controlBlock_NewUser(t *testing.T) {
 		{
 			name: "happy path",
 			cfg: session.Config{
-				Password: &password,
+				Password: "password",
 				Session:  config.Session{MaxUsers: 10},
 			},
 			userReq: session.UserRequest{
@@ -53,7 +52,7 @@ func Test_controlBlock_NewUser(t *testing.T) {
 		{
 			name: "wrong password",
 			cfg: session.Config{
-				Password: &password,
+				Password: "password",
 				Session:  config.Session{MaxUsers: 10},
 			},
 			userReq: session.UserRequest{

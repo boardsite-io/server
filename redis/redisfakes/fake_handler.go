@@ -183,7 +183,7 @@ type FakeHandler struct {
 	updateStrokesReturnsOnCall map[int]struct {
 		result1 error
 	}
-	invocations      map[string][][]any
+	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
@@ -199,7 +199,7 @@ func (fake *FakeHandler) AddPage(arg1 context.Context, arg2 string, arg3 string,
 	}{arg1, arg2, arg3, arg4, arg5})
 	stub := fake.AddPageStub
 	fakeReturns := fake.addPageReturns
-	fake.recordInvocation("AddPage", []any{arg1, arg2, arg3, arg4, arg5})
+	fake.recordInvocation("AddPage", []interface{}{arg1, arg2, arg3, arg4, arg5})
 	fake.addPageMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3, arg4, arg5)
@@ -262,7 +262,7 @@ func (fake *FakeHandler) ClearPage(arg1 context.Context, arg2 string, arg3 strin
 	}{arg1, arg2, arg3})
 	stub := fake.ClearPageStub
 	fakeReturns := fake.clearPageReturns
-	fake.recordInvocation("ClearPage", []any{arg1, arg2, arg3})
+	fake.recordInvocation("ClearPage", []interface{}{arg1, arg2, arg3})
 	fake.clearPageMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3)
@@ -324,7 +324,7 @@ func (fake *FakeHandler) ClearSession(arg1 context.Context, arg2 string) error {
 	}{arg1, arg2})
 	stub := fake.ClearSessionStub
 	fakeReturns := fake.clearSessionReturns
-	fake.recordInvocation("ClearSession", []any{arg1, arg2})
+	fake.recordInvocation("ClearSession", []interface{}{arg1, arg2})
 	fake.clearSessionMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -384,7 +384,7 @@ func (fake *FakeHandler) ClosePool() error {
 	}{})
 	stub := fake.ClosePoolStub
 	fakeReturns := fake.closePoolReturns
-	fake.recordInvocation("ClosePool", []any{})
+	fake.recordInvocation("ClosePool", []interface{}{})
 	fake.closePoolMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -439,7 +439,7 @@ func (fake *FakeHandler) Delete(arg1 context.Context, arg2 string) error {
 	}{arg1, arg2})
 	stub := fake.DeleteStub
 	fakeReturns := fake.deleteReturns
-	fake.recordInvocation("Delete", []any{arg1, arg2})
+	fake.recordInvocation("Delete", []interface{}{arg1, arg2})
 	fake.deleteMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -502,7 +502,7 @@ func (fake *FakeHandler) DeletePage(arg1 context.Context, arg2 string, arg3 stri
 	}{arg1, arg2, arg3})
 	stub := fake.DeletePageStub
 	fakeReturns := fake.deletePageReturns
-	fake.recordInvocation("DeletePage", []any{arg1, arg2, arg3})
+	fake.recordInvocation("DeletePage", []interface{}{arg1, arg2, arg3})
 	fake.deletePageMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3)
@@ -564,7 +564,7 @@ func (fake *FakeHandler) Get(arg1 context.Context, arg2 string) (any, error) {
 	}{arg1, arg2})
 	stub := fake.GetStub
 	fakeReturns := fake.getReturns
-	fake.recordInvocation("Get", []any{arg1, arg2})
+	fake.recordInvocation("Get", []interface{}{arg1, arg2})
 	fake.getMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -631,7 +631,7 @@ func (fake *FakeHandler) GetPageMeta(arg1 context.Context, arg2 string, arg3 str
 	}{arg1, arg2, arg3, arg4})
 	stub := fake.GetPageMetaStub
 	fakeReturns := fake.getPageMetaReturns
-	fake.recordInvocation("GetPageMeta", []any{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("GetPageMeta", []interface{}{arg1, arg2, arg3, arg4})
 	fake.getPageMetaMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3, arg4)
@@ -693,7 +693,7 @@ func (fake *FakeHandler) GetPageRank(arg1 context.Context, arg2 string) ([]strin
 	}{arg1, arg2})
 	stub := fake.GetPageRankStub
 	fakeReturns := fake.getPageRankReturns
-	fake.recordInvocation("GetPageRank", []any{arg1, arg2})
+	fake.recordInvocation("GetPageRank", []interface{}{arg1, arg2})
 	fake.getPageRankMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
@@ -759,7 +759,7 @@ func (fake *FakeHandler) GetPageStrokes(arg1 context.Context, arg2 string, arg3 
 	}{arg1, arg2, arg3})
 	stub := fake.GetPageStrokesStub
 	fakeReturns := fake.getPageStrokesReturns
-	fake.recordInvocation("GetPageStrokes", []any{arg1, arg2, arg3})
+	fake.recordInvocation("GetPageStrokes", []interface{}{arg1, arg2, arg3})
 	fake.getPageStrokesMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3)
@@ -826,7 +826,7 @@ func (fake *FakeHandler) Put(arg1 context.Context, arg2 string, arg3 any, arg4 t
 	}{arg1, arg2, arg3, arg4})
 	stub := fake.PutStub
 	fakeReturns := fake.putReturns
-	fake.recordInvocation("Put", []any{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("Put", []interface{}{arg1, arg2, arg3, arg4})
 	fake.putMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3, arg4)
@@ -890,7 +890,7 @@ func (fake *FakeHandler) SetPageMeta(arg1 context.Context, arg2 string, arg3 str
 	}{arg1, arg2, arg3, arg4})
 	stub := fake.SetPageMetaStub
 	fakeReturns := fake.setPageMetaReturns
-	fake.recordInvocation("SetPageMeta", []any{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("SetPageMeta", []interface{}{arg1, arg2, arg3, arg4})
 	fake.setPageMetaMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3, arg4)
@@ -953,7 +953,7 @@ func (fake *FakeHandler) UpdateStrokes(arg1 context.Context, arg2 string, arg3 .
 	}{arg1, arg2, arg3})
 	stub := fake.UpdateStrokesStub
 	fakeReturns := fake.updateStrokesReturns
-	fake.recordInvocation("UpdateStrokes", []any{arg1, arg2, arg3})
+	fake.recordInvocation("UpdateStrokes", []interface{}{arg1, arg2, arg3})
 	fake.updateStrokesMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1006,7 +1006,7 @@ func (fake *FakeHandler) UpdateStrokesReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeHandler) Invocations() map[string][][]any {
+func (fake *FakeHandler) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.addPageMutex.RLock()
@@ -1035,21 +1035,21 @@ func (fake *FakeHandler) Invocations() map[string][][]any {
 	defer fake.setPageMetaMutex.RUnlock()
 	fake.updateStrokesMutex.RLock()
 	defer fake.updateStrokesMutex.RUnlock()
-	copiedInvocations := map[string][][]any{}
+	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
 	}
 	return copiedInvocations
 }
 
-func (fake *FakeHandler) recordInvocation(key string, args []any) {
+func (fake *FakeHandler) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
-		fake.invocations = map[string][][]any{}
+		fake.invocations = map[string][][]interface{}{}
 	}
 	if fake.invocations[key] == nil {
-		fake.invocations[key] = [][]any{}
+		fake.invocations[key] = [][]interface{}{}
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }

@@ -17,11 +17,10 @@ import (
 )
 
 func Test_handler_PostCreateSession(t *testing.T) {
-	readonly := true
 	cfg := session.Config{
 		Session: config.Session{
 			MaxUsers: 20,
-			ReadOnly: &readonly,
+			ReadOnly: true,
 		},
 	}
 	scb := &sessionfakes.FakeController{}

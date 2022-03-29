@@ -50,19 +50,20 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 	// set up session dispatcher/handler
 	s.session = sessionHttp.NewHandler(s.cfg.Session, s.dispatcher)
 
+	s.echo.Use(
+		middleware.Recover(),
+		middleware.Secure(),
+		apimw.CORS(s.cfg.Server.AllowedOrigins),
+		apimw.Monitoring())
+
 	if s.cfg.Metrics.Enabled {
 		s.metrics = metrics.NewHandler(s.dispatcher)
+		s.echo.Use(apimw.Metrics(s.metrics))
 	}
 
 	if s.cfg.Github.Enabled {
 		s.setupGithub(cache)
 	}
-
-	s.echo.Use(
-		middleware.Recover(),
-		middleware.Secure(),
-		apimw.CORS(s.cfg.Server.AllowedOrigins),
-		apimw.Monitoring(s.metrics))
 
 	// set routes
 	s.setRoutes()
