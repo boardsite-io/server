@@ -36,8 +36,8 @@ type Server struct {
 }
 
 type Session struct {
-	MaxUsers int   `yaml:"max_users" json:"maxUsers"`
-	ReadOnly *bool `yaml:"read_only" json:"readOnly,omitempty"`
+	MaxUsers int  `yaml:"max_users" json:"maxUsers"`
+	ReadOnly bool `yaml:"read_only" json:"readOnly"`
 }
 
 type Github struct {

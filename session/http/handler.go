@@ -49,7 +49,16 @@ func NewHandler(cfg config.Session, dispatcher session.Dispatcher) Handler {
 // PostCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
 func (h *handler) PostCreateSession(c echo.Context) error {
-	scb, err := h.dispatcher.Create(c.Request().Context(), session.NewConfig(h.cfg))
+	cfg := session.NewConfig(h.cfg)
+	var req session.CreateSessionRequest
+	if err := c.Bind(&req); err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
+	}
+	if err := cfg.Update(req.ConfigRequest); err != nil {
+		return err
+	}
+
+	scb, err := h.dispatcher.Create(c.Request().Context(), cfg)
 	if err != nil {
 		return err
 	}
@@ -65,12 +74,12 @@ func (h *handler) PutSessionConfig(c echo.Context) error {
 		return err
 	}
 
-	var cfg session.Config
+	var cfg session.ConfigRequest
 	if err := c.Bind(&cfg); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
 
-	if err := scb.SetConfig(cfg); err != nil {
+	if err := scb.SetConfig(&cfg); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("setConfig: %w", err))
 	}
 

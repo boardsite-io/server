@@ -27,7 +27,7 @@ func AllowUser(c echo.Context) bool {
 	secret, _ := c.Get(SecretCtxKey).(string)
 
 	// request additionally need to check for correct secret
-	if scb.Config().ReadOnly != nil && *scb.Config().ReadOnly && c.Request().Method != http.MethodGet &&
+	if scb.Config().ReadOnly && c.Request().Method != http.MethodGet &&
 		(user.ID != scb.Config().Host || secret != scb.Config().Secret) {
 		return false
 	}

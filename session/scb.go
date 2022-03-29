@@ -3,25 +3,23 @@ package session
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	gws "github.com/gorilla/websocket"
 
-	"github.com/google/uuid"
-
 	"github.com/heat1q/boardsite/api/config"
-	apiErrors "github.com/heat1q/boardsite/api/errors"
 	"github.com/heat1q/boardsite/api/types"
 	"github.com/heat1q/boardsite/attachment"
 	"github.com/heat1q/boardsite/redis"
 )
 
-// TODO move to config
-const maxUsers = 50
+type CreateSessionRequest struct {
+	ConfigRequest *ConfigRequest `json:"config,omitempty"`
+}
 
 type CreateSessionResponse struct {
-	Config `json:"config"`
+	Config Config `json:"config"`
 }
 
 type GetConfigResponse struct {
@@ -36,7 +34,7 @@ type Controller interface {
 	// Config returns the session config
 	Config() Config
 	// SetConfig sets the session config
-	SetConfig(cfg Config) error
+	SetConfig(cfg *ConfigRequest) error
 
 	// GetPageRank returns the current page rank of a session
 	GetPageRank(ctx context.Context) ([]string, error)
@@ -81,27 +79,11 @@ type Controller interface {
 	Allow(userID string) bool
 }
 
-type Config struct {
-	ID     string `json:"id"`
-	Host   string `json:"host"`
-	Secret string `json:"-"`
-
-	config.Session
-	Password *string `json:"password,omitempty"`
-}
-
 func NewConfig(sessionCfg config.Session) Config {
 	return Config{
 		Session: sessionCfg,
 		Secret:  uuid.NewString(),
 	}
-}
-
-func (c *Config) validate() error {
-	if c.MaxUsers > maxUsers {
-		return fmt.Errorf("invalid MaxUsers")
-	}
-	return nil
 }
 
 // controlBlock holds the information and channels for sessions
@@ -220,34 +202,19 @@ func (scb *controlBlock) Config() Config {
 	return scb.cfg
 }
 
-func (scb *controlBlock) SetConfig(incoming Config) error {
-	if err := incoming.validate(); err != nil {
-		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("validate config: %w", err))
+func (scb *controlBlock) SetConfig(incoming *ConfigRequest) error {
+	if err := scb.cfg.Update(incoming); err != nil {
+		return err
 	}
-	// TODO replace only non-nil
-	//if incoming.Host != "" {
-	//	scb.cfg.Host = incoming.Host
-	//}
-	if incoming.MaxUsers > 0 {
-		scb.cfg.MaxUsers = incoming.MaxUsers
-	}
-	if incoming.ReadOnly != nil {
-		scb.cfg.ReadOnly = incoming.ReadOnly
-	}
-	if incoming.Password != nil {
-		scb.cfg.Password = incoming.Password
-	}
-
 	scb.broadcaster.Broadcast() <- types.Message{
 		Type:    MessageTypeSessionConfig,
 		Content: CreateSessionResponse{Config: scb.cfg},
 	}
-
 	return nil
 }
 
 func (scb *controlBlock) Allow(userID string) bool {
-	if scb.Config().ReadOnly != nil && *scb.Config().ReadOnly && userID != scb.Config().Host {
+	if scb.Config().ReadOnly && userID != scb.Config().Host {
 		return false
 	}
 	return true

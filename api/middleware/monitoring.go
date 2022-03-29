@@ -8,7 +8,7 @@ import (
 	"github.com/heat1q/boardsite/api/metrics"
 )
 
-func Monitoring(metrics metrics.Handler) func(echo.HandlerFunc) echo.HandlerFunc {
+func Monitoring() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			meta := make(map[string]any, 2)
@@ -22,10 +22,13 @@ func Monitoring(metrics metrics.Handler) func(echo.HandlerFunc) echo.HandlerFunc
 			ctx := log.WrapCtx(c.Request().Context(), meta)
 			c.SetRequest(c.Request().WithContext(ctx))
 
-			// collect prometheus metrics
-			return metrics.MiddlewareFunc()(next)(c)
+			return next(c)
 		}
 	}
+}
+
+func Metrics(metrics metrics.Handler) echo.MiddlewareFunc {
+	return metrics.MiddlewareFunc()
 }
 
 func newTraceID() string {

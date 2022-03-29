@@ -71,7 +71,7 @@ type FakeBroadcaster struct {
 	sendReturnsOnCall map[int]struct {
 		result1 chan<- types.Message
 	}
-	invocations      map[string][][]any
+	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
@@ -83,7 +83,7 @@ func (fake *FakeBroadcaster) Bind(arg1 session.Controller) session.Broadcaster {
 	}{arg1})
 	stub := fake.BindStub
 	fakeReturns := fake.bindReturns
-	fake.recordInvocation("Bind", []any{arg1})
+	fake.recordInvocation("Bind", []interface{}{arg1})
 	fake.bindMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -143,7 +143,7 @@ func (fake *FakeBroadcaster) Broadcast() chan<- types.Message {
 	}{})
 	stub := fake.BroadcastStub
 	fakeReturns := fake.broadcastReturns
-	fake.recordInvocation("Broadcast", []any{})
+	fake.recordInvocation("Broadcast", []interface{}{})
 	fake.broadcastMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -196,7 +196,7 @@ func (fake *FakeBroadcaster) Cache() chan<- []redis.Stroke {
 	}{})
 	stub := fake.CacheStub
 	fakeReturns := fake.cacheReturns
-	fake.recordInvocation("Cache", []any{})
+	fake.recordInvocation("Cache", []interface{}{})
 	fake.cacheMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -249,7 +249,7 @@ func (fake *FakeBroadcaster) Close() chan<- struct{} {
 	}{})
 	stub := fake.CloseStub
 	fakeReturns := fake.closeReturns
-	fake.recordInvocation("Close", []any{})
+	fake.recordInvocation("Close", []interface{}{})
 	fake.closeMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -302,7 +302,7 @@ func (fake *FakeBroadcaster) Control() chan<- types.Message {
 	}{})
 	stub := fake.ControlStub
 	fakeReturns := fake.controlReturns
-	fake.recordInvocation("Control", []any{})
+	fake.recordInvocation("Control", []interface{}{})
 	fake.controlMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -355,7 +355,7 @@ func (fake *FakeBroadcaster) Send() chan<- types.Message {
 	}{})
 	stub := fake.SendStub
 	fakeReturns := fake.sendReturns
-	fake.recordInvocation("Send", []any{})
+	fake.recordInvocation("Send", []interface{}{})
 	fake.sendMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -401,7 +401,7 @@ func (fake *FakeBroadcaster) SendReturnsOnCall(i int, result1 chan<- types.Messa
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) Invocations() map[string][][]any {
+func (fake *FakeBroadcaster) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.bindMutex.RLock()
@@ -416,21 +416,21 @@ func (fake *FakeBroadcaster) Invocations() map[string][][]any {
 	defer fake.controlMutex.RUnlock()
 	fake.sendMutex.RLock()
 	defer fake.sendMutex.RUnlock()
-	copiedInvocations := map[string][][]any{}
+	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
 	}
 	return copiedInvocations
 }
 
-func (fake *FakeBroadcaster) recordInvocation(key string, args []any) {
+func (fake *FakeBroadcaster) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
-		fake.invocations = map[string][][]any{}
+		fake.invocations = map[string][][]interface{}{}
 	}
 	if fake.invocations[key] == nil {
-		fake.invocations[key] = [][]any{}
+		fake.invocations[key] = [][]interface{}{}
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }

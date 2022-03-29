@@ -55,7 +55,7 @@ func (scb *controlBlock) NewUser(userReq UserRequest) (*User, error) {
 		Color: userReq.Color,
 	}
 
-	if scb.Config().Password != nil && userReq.Password != *scb.Config().Password {
+	if scb.Config().Password != "" && userReq.Password != scb.Config().Password {
 		return nil, apiErrors.From(apiErrors.WrongPassword)
 	}
 	if err := user.validate(); err != nil {

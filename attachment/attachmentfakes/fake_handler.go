@@ -47,7 +47,7 @@ type FakeHandler struct {
 		result1 string
 		result2 error
 	}
-	invocations      map[string][][]any
+	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
@@ -58,7 +58,7 @@ func (fake *FakeHandler) Clear() error {
 	}{})
 	stub := fake.ClearStub
 	fakeReturns := fake.clearReturns
-	fake.recordInvocation("Clear", []any{})
+	fake.recordInvocation("Clear", []interface{}{})
 	fake.clearMutex.Unlock()
 	if stub != nil {
 		return stub()
@@ -112,7 +112,7 @@ func (fake *FakeHandler) Get(arg1 string) (io.Reader, string, error) {
 	}{arg1})
 	stub := fake.GetStub
 	fakeReturns := fake.getReturns
-	fake.recordInvocation("Get", []any{arg1})
+	fake.recordInvocation("Get", []interface{}{arg1})
 	fake.getMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -184,7 +184,7 @@ func (fake *FakeHandler) Upload(arg1 []byte) (string, error) {
 	}{arg1Copy})
 	stub := fake.UploadStub
 	fakeReturns := fake.uploadReturns
-	fake.recordInvocation("Upload", []any{arg1Copy})
+	fake.recordInvocation("Upload", []interface{}{arg1Copy})
 	fake.uploadMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
@@ -240,7 +240,7 @@ func (fake *FakeHandler) UploadReturnsOnCall(i int, result1 string, result2 erro
 	}{result1, result2}
 }
 
-func (fake *FakeHandler) Invocations() map[string][][]any {
+func (fake *FakeHandler) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.clearMutex.RLock()
@@ -249,21 +249,21 @@ func (fake *FakeHandler) Invocations() map[string][][]any {
 	defer fake.getMutex.RUnlock()
 	fake.uploadMutex.RLock()
 	defer fake.uploadMutex.RUnlock()
-	copiedInvocations := map[string][][]any{}
+	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
 	}
 	return copiedInvocations
 }
 
-func (fake *FakeHandler) recordInvocation(key string, args []any) {
+func (fake *FakeHandler) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
-		fake.invocations = map[string][][]any{}
+		fake.invocations = map[string][][]interface{}{}
 	}
 	if fake.invocations[key] == nil {
-		fake.invocations[key] = [][]any{}
+		fake.invocations[key] = [][]interface{}{}
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
