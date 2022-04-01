@@ -153,6 +153,10 @@ func (h *handler) GetSocket(c echo.Context) error {
 	if err != nil {
 		return apiErrors.ErrNotFound.Wrap(apiErrors.WithError(err))
 	}
+	userID := c.Param("userId")
+	if err := scb.UserCanJoin(userID); err != nil {
+		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("user cannot join: %w", err))
+	}
 	err = websocket.Subscribe(c, scb, c.Param("userId"))
 	if err != nil {
 		log.Ctx(c.Request().Context()).Errorf("websocket subscribe: %v", err)
