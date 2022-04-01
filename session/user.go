@@ -13,6 +13,12 @@ import (
 )
 
 var (
+	ErrReadyUser      = errors.New("ready user not found")
+	ErrUserConnected  = errors.New("user already connected")
+	ErrMaxUserReached = errors.New("maximum number of connected users reached")
+)
+
+var (
 	htmlColor = regexp.MustCompile("^#[a-fA-F0-9]{6}$")
 	aliasExp  = regexp.MustCompile("^[a-zA-Z0-9-_]{4,32}$")
 )
@@ -101,7 +107,7 @@ func (scb *controlBlock) userReady(u *User) error {
 	defer scb.muUsr.RUnlock()
 	if scb.numUsers >= scb.cfg.MaxUsers {
 		return apiErrors.From(apiErrors.MaxNumberOfUsersReached).Wrap(
-			apiErrors.WithErrorf("maximum number of connected users reached"))
+			apiErrors.WithError(ErrMaxUserReached))
 	}
 
 	if scb.numUsers == 0 {
@@ -120,9 +126,28 @@ func (scb *controlBlock) getUserReady(userID string) (*User, error) {
 	defer scb.muRdyUsr.RUnlock()
 	u, ok := scb.usersReady[userID]
 	if !ok {
-		return nil, errors.New("ready user not found")
+		return nil, ErrReadyUser
 	}
 	return u, nil
+}
+
+func (scb *controlBlock) UserCanJoin(userID string) error {
+	scb.muRdyUsr.RLock()
+	defer scb.muRdyUsr.RUnlock()
+	if _, ok := scb.usersReady[userID]; !ok {
+		return ErrReadyUser
+	}
+	scb.muUsr.RLock()
+	defer scb.muUsr.RUnlock()
+	if _, ok := scb.users[userID]; ok {
+		return ErrUserConnected
+	}
+	if scb.numUsers >= scb.cfg.MaxUsers {
+		return apiErrors.From(apiErrors.MaxNumberOfUsersReached).Wrap(
+			apiErrors.WithError(ErrMaxUserReached))
+	}
+
+	return nil
 }
 
 // UserConnect adds user from the userReady state to clients.
@@ -203,6 +228,12 @@ func (scb *controlBlock) KickUser(userID string) error {
 	if _, ok := scb.GetUsers()[userID]; !ok {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithErrorf("user not found"))
 	}
+
+	// delete user from registered ones to prevent rejoin with same config
+	scb.muRdyUsr.Lock()
+	delete(scb.usersReady, userID)
+	scb.muRdyUsr.Unlock()
+
 	scb.broadcaster.Send() <- types.Message{
 		Type:     MessageTypeUserKick,
 		Receiver: userID,

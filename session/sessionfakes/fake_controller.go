@@ -239,6 +239,17 @@ type FakeController struct {
 	updateUserReturnsOnCall map[int]struct {
 		result1 error
 	}
+	UserCanJoinStub        func(string) error
+	userCanJoinMutex       sync.RWMutex
+	userCanJoinArgsForCall []struct {
+		arg1 string
+	}
+	userCanJoinReturns struct {
+		result1 error
+	}
+	userCanJoinReturnsOnCall map[int]struct {
+		result1 error
+	}
 	UserConnectStub        func(string, *websocket.Conn) error
 	userConnectMutex       sync.RWMutex
 	userConnectArgsForCall []struct {
@@ -1425,6 +1436,67 @@ func (fake *FakeController) UpdateUserReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeController) UserCanJoin(arg1 string) error {
+	fake.userCanJoinMutex.Lock()
+	ret, specificReturn := fake.userCanJoinReturnsOnCall[len(fake.userCanJoinArgsForCall)]
+	fake.userCanJoinArgsForCall = append(fake.userCanJoinArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.UserCanJoinStub
+	fakeReturns := fake.userCanJoinReturns
+	fake.recordInvocation("UserCanJoin", []interface{}{arg1})
+	fake.userCanJoinMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeController) UserCanJoinCallCount() int {
+	fake.userCanJoinMutex.RLock()
+	defer fake.userCanJoinMutex.RUnlock()
+	return len(fake.userCanJoinArgsForCall)
+}
+
+func (fake *FakeController) UserCanJoinCalls(stub func(string) error) {
+	fake.userCanJoinMutex.Lock()
+	defer fake.userCanJoinMutex.Unlock()
+	fake.UserCanJoinStub = stub
+}
+
+func (fake *FakeController) UserCanJoinArgsForCall(i int) string {
+	fake.userCanJoinMutex.RLock()
+	defer fake.userCanJoinMutex.RUnlock()
+	argsForCall := fake.userCanJoinArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeController) UserCanJoinReturns(result1 error) {
+	fake.userCanJoinMutex.Lock()
+	defer fake.userCanJoinMutex.Unlock()
+	fake.UserCanJoinStub = nil
+	fake.userCanJoinReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeController) UserCanJoinReturnsOnCall(i int, result1 error) {
+	fake.userCanJoinMutex.Lock()
+	defer fake.userCanJoinMutex.Unlock()
+	fake.UserCanJoinStub = nil
+	if fake.userCanJoinReturnsOnCall == nil {
+		fake.userCanJoinReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.userCanJoinReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeController) UserConnect(arg1 string, arg2 *websocket.Conn) error {
 	fake.userConnectMutex.Lock()
 	ret, specificReturn := fake.userConnectReturnsOnCall[len(fake.userConnectArgsForCall)]
@@ -1563,6 +1635,8 @@ func (fake *FakeController) Invocations() map[string][][]interface{} {
 	defer fake.updatePagesMutex.RUnlock()
 	fake.updateUserMutex.RLock()
 	defer fake.updateUserMutex.RUnlock()
+	fake.userCanJoinMutex.RLock()
+	defer fake.userCanJoinMutex.RUnlock()
 	fake.userConnectMutex.RLock()
 	defer fake.userConnectMutex.RUnlock()
 	fake.userDisconnectMutex.RLock()

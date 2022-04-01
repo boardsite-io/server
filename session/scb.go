@@ -56,6 +56,8 @@ type Controller interface {
 	NewUser(userReq UserRequest) (*User, error)
 	// UpdateUser updates a user alias or color
 	UpdateUser(user User, userReq UserRequest) error
+	// UserCanJoin check if a user can join the session
+	UserCanJoin(userID string) error
 	// UserConnect connects a ready user to the session
 	UserConnect(userID string, conn *gws.Conn) error
 	// UserDisconnect disconnects a user from the session
