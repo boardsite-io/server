@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
@@ -16,6 +17,8 @@ const (
 	alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
+const closeAfter = 5 * time.Minute
+
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
 //counterfeiter:generate . Dispatcher
 type Dispatcher interface {
@@ -23,8 +26,8 @@ type Dispatcher interface {
 	GetSCB(sessionID string) (Controller, error)
 	// Create creates and initializes a new SessionControl struct
 	Create(ctx context.Context, cfg Config) (Controller, error)
-	// Close removes the SCB from the activesession map and closes the session.
-	Close(ctx context.Context, sessionID string) error
+	// Close removes the SCB from the active session map and closes the session.
+	Close(sessionID string) error
 	// IsValid checks if session with sessionID exists.
 	IsValid(sessionID string) bool
 	// NumSessions returns the number of active sessions
@@ -84,21 +87,23 @@ func (d *sessionsDispatcher) Create(ctx context.Context, cfg Config) (Controller
 	return scb, nil
 }
 
-func (d *sessionsDispatcher) Close(ctx context.Context, sessionID string) error {
+func (d *sessionsDispatcher) Close(sessionID string) error {
 	scb, err := d.GetSCB(sessionID)
 	if err != nil {
 		return err
 	}
-	scb.Close()
-	d.mu.Lock()
-	delete(d.activeSession, sessionID)
-	d.mu.Unlock()
 
-	if err := scb.Attachments().Clear(); err != nil {
-		log.Ctx(ctx).Warnf("cannot clear attachment for %s: %v\n", scb.ID(), err)
-	}
+	scb.CloseAfter(closeAfter, func() {
+		d.mu.Lock()
+		delete(d.activeSession, sessionID)
+		d.mu.Unlock()
 
-	log.Ctx(ctx).Infof("Close session %s", scb.ID())
+		if err := scb.Attachments().Clear(); err != nil {
+			log.Global().Warnf("cannot clear attachment for %s: %v\n", scb.ID(), err)
+		}
+
+		log.Global().Infof("Close session %s", scb.ID())
+	})
 
 	return nil
 }

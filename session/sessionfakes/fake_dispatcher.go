@@ -9,11 +9,10 @@ import (
 )
 
 type FakeDispatcher struct {
-	CloseStub        func(context.Context, string) error
+	CloseStub        func(string) error
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
-		arg1 context.Context
-		arg2 string
+		arg1 string
 	}
 	closeReturns struct {
 		result1 error
@@ -83,19 +82,18 @@ type FakeDispatcher struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeDispatcher) Close(arg1 context.Context, arg2 string) error {
+func (fake *FakeDispatcher) Close(arg1 string) error {
 	fake.closeMutex.Lock()
 	ret, specificReturn := fake.closeReturnsOnCall[len(fake.closeArgsForCall)]
 	fake.closeArgsForCall = append(fake.closeArgsForCall, struct {
-		arg1 context.Context
-		arg2 string
-	}{arg1, arg2})
+		arg1 string
+	}{arg1})
 	stub := fake.CloseStub
 	fakeReturns := fake.closeReturns
-	fake.recordInvocation("Close", []interface{}{arg1, arg2})
+	fake.recordInvocation("Close", []interface{}{arg1})
 	fake.closeMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
@@ -109,17 +107,17 @@ func (fake *FakeDispatcher) CloseCallCount() int {
 	return len(fake.closeArgsForCall)
 }
 
-func (fake *FakeDispatcher) CloseCalls(stub func(context.Context, string) error) {
+func (fake *FakeDispatcher) CloseCalls(stub func(string) error) {
 	fake.closeMutex.Lock()
 	defer fake.closeMutex.Unlock()
 	fake.CloseStub = stub
 }
 
-func (fake *FakeDispatcher) CloseArgsForCall(i int) (context.Context, string) {
+func (fake *FakeDispatcher) CloseArgsForCall(i int) string {
 	fake.closeMutex.RLock()
 	defer fake.closeMutex.RUnlock()
 	argsForCall := fake.closeArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1
 }
 
 func (fake *FakeDispatcher) CloseReturns(result1 error) {
