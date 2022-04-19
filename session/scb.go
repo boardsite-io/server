@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	gws "github.com/gorilla/websocket"
@@ -69,6 +70,8 @@ type Controller interface {
 
 	// Close closes a session
 	Close()
+	// CloseAfter closes a session after a specified timeout and executes fn
+	CloseAfter(t time.Duration, fn func())
 	// Receive handles data received in the session
 	Receive(ctx context.Context, msg *types.Message, userID string) error
 	// Attachments returns the session's attachment handler
@@ -95,6 +98,9 @@ type controlBlock struct {
 	attachments attachment.Handler
 	dispatcher  Dispatcher
 	broadcaster Broadcaster
+
+	// close timer
+	timer *time.Timer
 
 	cache redis.Handler
 
@@ -184,6 +190,19 @@ func (scb *controlBlock) Close() {
 	scb.broadcaster.Close() <- struct{}{}
 }
 
+func (scb *controlBlock) CloseAfter(t time.Duration, fn func()) {
+	if scb.timer == nil {
+		scb.timer = time.AfterFunc(t, func() {
+			if scb.NumUsers() == 0 {
+				scb.Close()
+				fn()
+			}
+		})
+		return
+	}
+	scb.timer.Reset(t)
+}
+
 func (scb *controlBlock) ID() string {
 	return scb.cfg.ID
 }
@@ -197,6 +216,8 @@ func (scb *controlBlock) Broadcaster() Broadcaster {
 }
 
 func (scb *controlBlock) NumUsers() int {
+	scb.muUsr.RLock()
+	defer scb.muUsr.RUnlock()
 	return scb.numUsers
 }
 

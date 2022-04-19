@@ -195,7 +195,7 @@ func (scb *controlBlock) UserConnect(userID string, conn *gws.Conn) error {
 // UserDisconnect removes user from clients.
 //
 // Broadcast that user has disconnected from session.
-func (scb *controlBlock) UserDisconnect(ctx context.Context, userID string) {
+func (scb *controlBlock) UserDisconnect(_ context.Context, userID string) {
 	scb.muUsr.Lock()
 	u, ok := scb.users[userID]
 	if ok {
@@ -208,7 +208,7 @@ func (scb *controlBlock) UserDisconnect(ctx context.Context, userID string) {
 	// if session is empty after client disconnect
 	// the session needs to be set to inactive
 	if numCl == 0 {
-		_ = scb.dispatcher.Close(ctx, scb.cfg.ID)
+		_ = scb.dispatcher.Close(scb.cfg.ID)
 		return
 	}
 

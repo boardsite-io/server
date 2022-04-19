@@ -4,6 +4,7 @@ package sessionfakes
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/heat1q/boardsite/api/types"
@@ -58,6 +59,12 @@ type FakeController struct {
 	CloseStub        func()
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
+	}
+	CloseAfterStub        func(time.Duration, func())
+	closeAfterMutex       sync.RWMutex
+	closeAfterArgsForCall []struct {
+		arg1 time.Duration
+		arg2 func()
 	}
 	ConfigStub        func() session.Config
 	configMutex       sync.RWMutex
@@ -523,6 +530,39 @@ func (fake *FakeController) CloseCalls(stub func()) {
 	fake.closeMutex.Lock()
 	defer fake.closeMutex.Unlock()
 	fake.CloseStub = stub
+}
+
+func (fake *FakeController) CloseAfter(arg1 time.Duration, arg2 func()) {
+	fake.closeAfterMutex.Lock()
+	fake.closeAfterArgsForCall = append(fake.closeAfterArgsForCall, struct {
+		arg1 time.Duration
+		arg2 func()
+	}{arg1, arg2})
+	stub := fake.CloseAfterStub
+	fake.recordInvocation("CloseAfter", []interface{}{arg1, arg2})
+	fake.closeAfterMutex.Unlock()
+	if stub != nil {
+		fake.CloseAfterStub(arg1, arg2)
+	}
+}
+
+func (fake *FakeController) CloseAfterCallCount() int {
+	fake.closeAfterMutex.RLock()
+	defer fake.closeAfterMutex.RUnlock()
+	return len(fake.closeAfterArgsForCall)
+}
+
+func (fake *FakeController) CloseAfterCalls(stub func(time.Duration, func())) {
+	fake.closeAfterMutex.Lock()
+	defer fake.closeAfterMutex.Unlock()
+	fake.CloseAfterStub = stub
+}
+
+func (fake *FakeController) CloseAfterArgsForCall(i int) (time.Duration, func()) {
+	fake.closeAfterMutex.RLock()
+	defer fake.closeAfterMutex.RUnlock()
+	argsForCall := fake.closeAfterArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeController) Config() session.Config {
@@ -1605,6 +1645,8 @@ func (fake *FakeController) Invocations() map[string][][]interface{} {
 	defer fake.broadcasterMutex.RUnlock()
 	fake.closeMutex.RLock()
 	defer fake.closeMutex.RUnlock()
+	fake.closeAfterMutex.RLock()
+	defer fake.closeAfterMutex.RUnlock()
 	fake.configMutex.RLock()
 	defer fake.configMutex.RUnlock()
 	fake.getPageMutex.RLock()
