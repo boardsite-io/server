@@ -49,7 +49,7 @@ func Test_controlBlock_SetConfig(t *testing.T) {
 				Host:   "beef",
 				Secret: "potato",
 				Session: config.Session{
-					MaxUsers: 10, // constant
+					MaxUsers: 42,
 					ReadOnly: false,
 				},
 				Password: "newpassword",
@@ -63,7 +63,7 @@ func Test_controlBlock_SetConfig(t *testing.T) {
 				Host:   "beef",
 				Secret: "potato",
 				Session: config.Session{
-					MaxUsers: 10, // constant
+					MaxUsers: 10,
 					ReadOnly: true,
 				},
 				Password: "",
