@@ -15,6 +15,7 @@ func (s *Server) setRoutes() {
 
 	createGroup := boardGroup.Group("/create", middleware.RateLimiting(s.cfg.Server.RPM, middleware.WithIP()))
 	createGroup.POST( /**/ "", s.session.PostCreateSession)
+	createGroup.POST( /**/ "/config", s.session.PostCreateSessionConfig, middleware.GithubAuth(&s.cfg.Github, s.validator))
 
 	configGroup := boardGroup.Group("/:id/config", middleware.Session(s.dispatcher))
 	configGroup.GET( /*  */ "", s.session.GetSessionConfig)

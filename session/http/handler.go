@@ -18,6 +18,7 @@ import (
 
 type Handler interface {
 	PostCreateSession(c echo.Context) error
+	PostCreateSessionConfig(c echo.Context) error
 	PutSessionConfig(c echo.Context) error
 	GetSessionConfig(c echo.Context) error
 	PostUsers(c echo.Context) error
@@ -49,9 +50,20 @@ func NewHandler(cfg config.Session, dispatcher session.Dispatcher) Handler {
 // PostCreateSession handles the request for creating a new session.
 // Responds with the unique sessionID of the new session.
 func (h *handler) PostCreateSession(c echo.Context) error {
+	scb, err := h.dispatcher.Create(c.Request().Context(), session.NewConfig(h.cfg))
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, session.CreateSessionResponse{
+		Config: scb.Config(),
+	})
+}
+
+func (h *handler) PostCreateSessionConfig(c echo.Context) error {
 	cfg := session.NewConfig(h.cfg)
 	var req session.CreateSessionRequest
-	if err := c.Bind(&req); err != nil {
+	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return apiErrors.ErrBadRequest.Wrap(apiErrors.WithError(err))
 	}
 	if err := cfg.Update(req.ConfigRequest); err != nil {

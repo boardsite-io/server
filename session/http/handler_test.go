@@ -41,6 +41,44 @@ func Test_handler_PostCreateSession(t *testing.T) {
 	assert.Equal(t, cfg, got.Config)
 }
 
+func Test_handler_PostCreateSessionConfig(t *testing.T) {
+	const req = `
+	{
+		"config": {
+			"maxUsers": 20,
+			"readOnly": true,
+			"password": "potato"
+		}
+	}`
+	wantCfg := session.Config{
+		Session: config.Session{
+			MaxUsers: 20,
+			ReadOnly: true,
+		},
+		Password: "potato",
+	}
+	scb := &sessionfakes.FakeController{}
+	scb.ConfigReturns(wantCfg)
+	dispatcher := &sessionfakes.FakeDispatcher{}
+	dispatcher.CreateReturns(scb, nil)
+	handler := sessionHttp.NewHandler(config.Session{}, dispatcher)
+
+	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(req))
+	rr := httptest.NewRecorder()
+	c := echo.New().NewContext(r, rr)
+
+	err := handler.PostCreateSessionConfig(c)
+
+	assert.NoError(t, err)
+	_, cfg := dispatcher.CreateArgsForCall(0)
+	assert.Equal(t, wantCfg.MaxUsers, cfg.MaxUsers)
+	assert.Equal(t, wantCfg.ReadOnly, cfg.ReadOnly)
+	assert.Equal(t, wantCfg.Password, cfg.Password)
+	var got session.CreateSessionResponse
+	_ = json.NewDecoder(rr.Body).Decode(&got)
+	assert.Equal(t, wantCfg, got.Config)
+}
+
 func Test_handler_PutSessionConfig(t *testing.T) {
 	e := echo.New()
 	cfg := session.Config{
