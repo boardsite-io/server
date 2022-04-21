@@ -1,9 +1,6 @@
 package api
 
 import (
-	"net/http"
-
-	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 
 	"github.com/boardsite-io/server/api/middleware"
@@ -15,15 +12,12 @@ func (s *Server) setRoutes() {
 
 	createGroup := boardGroup.Group("/create", middleware.RateLimiting(s.cfg.Server.RPM, middleware.WithIP()))
 	createGroup.POST( /**/ "", s.session.PostCreateSession)
-	createGroup.POST( /**/ "/config", s.session.PostCreateSessionConfig, middleware.GithubAuth(&s.cfg.Github, s.validator))
+	createGroup.POST( /**/ "/config", s.session.PostCreateSessionConfig)
 
 	configGroup := boardGroup.Group("/:id/config", middleware.Session(s.dispatcher))
 	configGroup.GET( /*  */ "", s.session.GetSessionConfig)
 
-	hostGroup := boardGroup.Group("",
-		middleware.Session(s.dispatcher),
-		middleware.Host(),
-		middleware.GithubAuth(&s.cfg.Github, s.validator))
+	hostGroup := boardGroup.Group("", middleware.Session(s.dispatcher), middleware.Host())
 	hostGroup.PUT("/:id/config", s.session.PutSessionConfig)
 	hostGroup.PUT("/:id/users/:userId", s.session.PutKickUser)
 
@@ -42,7 +36,6 @@ func (s *Server) setRoutes() {
 
 	attachGroup := boardGroup.Group("/:id/attachments", middleware.Session(s.dispatcher))
 	attachGroup.POST( /**/ "", s.session.PostAttachment,
-		middleware.GithubAuth(&s.cfg.Github, s.validator),
 		middleware.RateLimiting(s.cfg.Server.RPM, middleware.WithUserIP()))
 	attachGroup.GET( /* */ "/:attachId", s.session.GetAttachment)
 
@@ -50,20 +43,10 @@ func (s *Server) setRoutes() {
 		s.setMetricsRoutes()
 	}
 
-	if s.cfg.Github.Enabled {
-		s.setGithubRoutes()
-	}
 }
 
 func (s *Server) setMetricsRoutes() {
 	metricsGroup := s.echo.Group(s.cfg.Server.Metrics.Route,
 		middleware.BasicAuth(s.cfg.Server.Metrics.User, s.cfg.Server.Metrics.Password))
 	metricsGroup.GET("", s.metrics.GetMetrics)
-}
-
-func (s *Server) setGithubRoutes() {
-	githubGroup := s.echo.Group("/github/oauth", middleware.RequestLogger())
-	githubGroup.GET("/authorize", s.github.GetAuthorize)
-	githubGroup.GET("/callback", s.github.GetCallback)
-	githubGroup.GET("/validate", func(c echo.Context) error { return c.NoContent(http.StatusNoContent) }, middleware.GithubAuth(&s.cfg.Github, s.validator))
 }

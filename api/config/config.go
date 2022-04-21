@@ -19,7 +19,6 @@ type Configuration struct {
 
 	Server  `yaml:"server"`
 	Session `yaml:"session"`
-	Github  `yaml:"github"`
 }
 
 type Server struct {
@@ -40,24 +39,6 @@ type Session struct {
 	ReadOnly bool `yaml:"read_only" json:"readOnly"`
 }
 
-type Github struct {
-	Enabled           bool     `yaml:"enabled"`
-	ClientId          string   `yaml:"client_id"`
-	ClientSecret      string   `yaml:"client_secret"`
-	RedirectURI       string   `yaml:"redirect_uri"`
-	Scope             []string `yaml:"scope"`
-	Emails            []string `yaml:"whitelisted_emails"`
-	WhitelistedEmails map[string]struct{}
-}
-
-func (gh *Github) parseEmails() {
-	whitelisted := make(map[string]struct{}, len(gh.Emails))
-	for _, e := range gh.Emails {
-		whitelisted[e] = struct{}{}
-	}
-	gh.WhitelistedEmails = whitelisted
-}
-
 func New(path string) (*Configuration, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -67,6 +48,5 @@ func New(path string) (*Configuration, error) {
 
 	cfg := &Configuration{}
 	err = yaml.NewDecoder(file).Decode(cfg)
-	cfg.Github.parseEmails()
 	return cfg, err
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/boardsite-io/server/api/config"
-	"github.com/boardsite-io/server/api/github"
 	"github.com/boardsite-io/server/api/log"
 	"github.com/boardsite-io/server/api/metrics"
 	apimw "github.com/boardsite-io/server/api/middleware"
@@ -24,8 +23,6 @@ type Server struct {
 	metrics    metrics.Handler
 	session    sessionHttp.Handler
 	dispatcher session.Dispatcher
-	github     github.Handler
-	validator  github.Validator
 }
 
 func NewServer(cfg *config.Configuration) *Server {
@@ -61,10 +58,6 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 		s.echo.Use(apimw.Metrics(s.metrics))
 	}
 
-	if s.cfg.Github.Enabled {
-		s.setupGithub(cache)
-	}
-
 	// set routes
 	s.setRoutes()
 
@@ -83,10 +76,4 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 
 func (s *Server) setupMetrics() {
 	s.metrics = metrics.NewHandler(s.dispatcher)
-}
-
-func (s *Server) setupGithub(cache redis.Handler) {
-	githubClient := github.NewClient(&s.cfg.Github, cache)
-	s.github = github.NewHandler(s.cfg, cache, githubClient)
-	s.validator = github.NewValidator(&s.cfg.Github, cache, githubClient)
 }

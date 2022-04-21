@@ -17,12 +17,3 @@ cache:
 session: # default session settings
   max_users: 4
   read_only: false
-github:
-  enabled: false
-  client_id: client-Id
-  client_secret: client-Secret
-  redirect_uri: http://localhost:3000
-  scope:
-    - user:email
-  whitelisted_emails:
-    - potato@boardsite.io
