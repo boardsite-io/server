@@ -5,14 +5,14 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/heat1q/boardsite/api/log"
+	"github.com/boardsite-io/server/api/log"
 
-	"github.com/heat1q/boardsite/session"
+	"github.com/boardsite-io/server/session"
 
-	"github.com/heat1q/boardsite/api/config"
-	apiErrors "github.com/heat1q/boardsite/api/errors"
-	"github.com/heat1q/boardsite/api/websocket"
-	"github.com/heat1q/boardsite/attachment"
+	"github.com/boardsite-io/server/api/config"
+	apiErrors "github.com/boardsite-io/server/api/errors"
+	"github.com/boardsite-io/server/api/websocket"
+	"github.com/boardsite-io/server/attachment"
 	"github.com/labstack/echo/v4"
 )
 

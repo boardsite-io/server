@@ -1,5 +1,5 @@
 # Boardsite Server
-[![Go Report Card](https://goreportcard.com/badge/github.com/heat1q/boardsite)](https://goreportcard.com/report/github.com/heat1q/boardsite)
+[![Go Report Card](https://goreportcard.com/badge/github.com/boardsite-io/server)](https://goreportcard.com/report/github.com/boardsite-io/server)
 
 Websocket backend for [boardsite.io](https://boardsite.io).
 

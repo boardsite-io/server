@@ -1,4 +1,4 @@
-module github.com/heat1q/boardsite
+module github.com/boardsite-io/server
 
 go 1.18
 

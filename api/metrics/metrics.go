@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/heat1q/boardsite/session"
+	"github.com/boardsite-io/server/session"
 )
 
 type Handler interface {

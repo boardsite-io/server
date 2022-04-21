@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/heat1q/boardsite/redis"
+	"github.com/boardsite-io/server/redis"
 
-	"github.com/heat1q/boardsite/api/types"
+	"github.com/boardsite-io/server/api/types"
 
-	"github.com/heat1q/boardsite/attachment/attachmentfakes"
+	"github.com/boardsite-io/server/attachment/attachmentfakes"
 
-	"github.com/heat1q/boardsite/redis/redisfakes"
+	"github.com/boardsite-io/server/redis/redisfakes"
 
-	"github.com/heat1q/boardsite/session"
-	"github.com/heat1q/boardsite/session/sessionfakes"
+	"github.com/boardsite-io/server/session"
+	"github.com/boardsite-io/server/session/sessionfakes"
 	"github.com/stretchr/testify/assert"
 )
 

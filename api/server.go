@@ -8,14 +8,14 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/heat1q/boardsite/api/config"
-	"github.com/heat1q/boardsite/api/github"
-	"github.com/heat1q/boardsite/api/log"
-	"github.com/heat1q/boardsite/api/metrics"
-	apimw "github.com/heat1q/boardsite/api/middleware"
-	"github.com/heat1q/boardsite/redis"
-	"github.com/heat1q/boardsite/session"
-	sessionHttp "github.com/heat1q/boardsite/session/http"
+	"github.com/boardsite-io/server/api/config"
+	"github.com/boardsite-io/server/api/github"
+	"github.com/boardsite-io/server/api/log"
+	"github.com/boardsite-io/server/api/metrics"
+	apimw "github.com/boardsite-io/server/api/middleware"
+	"github.com/boardsite-io/server/redis"
+	"github.com/boardsite-io/server/session"
+	sessionHttp "github.com/boardsite-io/server/session/http"
 )
 
 type Server struct {

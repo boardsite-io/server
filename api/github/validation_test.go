@@ -8,12 +8,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/heat1q/boardsite/api/github/githubfakes"
-	"github.com/heat1q/boardsite/redis/redisfakes"
+	"github.com/boardsite-io/server/api/github/githubfakes"
+	"github.com/boardsite-io/server/redis/redisfakes"
 
-	"github.com/heat1q/boardsite/api/config"
+	"github.com/boardsite-io/server/api/config"
 
-	"github.com/heat1q/boardsite/api/github"
+	"github.com/boardsite-io/server/api/github"
 )
 
 func Test_validator_Validate(t *testing.T) {

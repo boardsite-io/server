@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/boardsite-io/server/api/types"
+	"github.com/boardsite-io/server/attachment"
+	"github.com/boardsite-io/server/session"
 	"github.com/gorilla/websocket"
-	"github.com/heat1q/boardsite/api/types"
-	"github.com/heat1q/boardsite/attachment"
-	"github.com/heat1q/boardsite/session"
 )
 
 type FakeController struct {

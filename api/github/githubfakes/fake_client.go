@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/heat1q/boardsite/api/github"
+	"github.com/boardsite-io/server/api/github"
 )
 
 type FakeClient struct {

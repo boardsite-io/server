@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 
-	"github.com/heat1q/boardsite/api/middleware"
+	"github.com/boardsite-io/server/api/middleware"
 )
 
 // setRoutes sets the api routes

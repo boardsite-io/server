@@ -9,9 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/heat1q/boardsite/api"
-	"github.com/heat1q/boardsite/api/config"
-	"github.com/heat1q/boardsite/api/log"
+	"github.com/boardsite-io/server/api"
+	"github.com/boardsite-io/server/api/config"
+	"github.com/boardsite-io/server/api/log"
 )
 
 func main() {

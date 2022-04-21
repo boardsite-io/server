@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	apiErrors "github.com/heat1q/boardsite/api/errors"
-	"github.com/heat1q/boardsite/api/types"
-	"github.com/heat1q/boardsite/session"
-	sessionHttp "github.com/heat1q/boardsite/session/http"
+	apiErrors "github.com/boardsite-io/server/api/errors"
+	"github.com/boardsite-io/server/api/types"
+	"github.com/boardsite-io/server/session"
+	sessionHttp "github.com/boardsite-io/server/session/http"
 	"github.com/labstack/echo/v4"
 )
 

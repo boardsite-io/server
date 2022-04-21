@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/heat1q/boardsite/api/types"
+	"github.com/boardsite-io/server/api/types"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/heat1q/boardsite/api/log"
+	"github.com/boardsite-io/server/api/log"
 )
 
 var loggedHeaders = map[string]struct{}{

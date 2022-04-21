@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/heat1q/boardsite/attachment"
+	"github.com/boardsite-io/server/attachment"
 )
 
 type FakeHandler struct {

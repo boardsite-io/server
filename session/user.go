@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	gws "github.com/gorilla/websocket"
 
-	apiErrors "github.com/heat1q/boardsite/api/errors"
-	"github.com/heat1q/boardsite/api/types"
+	apiErrors "github.com/boardsite-io/server/api/errors"
+	"github.com/boardsite-io/server/api/types"
 )
 
 var (

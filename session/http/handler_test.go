@@ -10,10 +10,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/heat1q/boardsite/api/config"
-	"github.com/heat1q/boardsite/session"
-	sessionHttp "github.com/heat1q/boardsite/session/http"
-	"github.com/heat1q/boardsite/session/sessionfakes"
+	"github.com/boardsite-io/server/api/config"
+	"github.com/boardsite-io/server/session"
+	sessionHttp "github.com/boardsite-io/server/session/http"
+	"github.com/boardsite-io/server/session/sessionfakes"
 )
 
 func Test_handler_PostCreateSession(t *testing.T) {

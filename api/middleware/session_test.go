@@ -8,11 +8,11 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/heat1q/boardsite/api/middleware"
-	"github.com/heat1q/boardsite/api/types"
-	"github.com/heat1q/boardsite/session"
-	sessionHttp "github.com/heat1q/boardsite/session/http"
-	"github.com/heat1q/boardsite/session/sessionfakes"
+	"github.com/boardsite-io/server/api/middleware"
+	"github.com/boardsite-io/server/api/types"
+	"github.com/boardsite-io/server/session"
+	sessionHttp "github.com/boardsite-io/server/session/http"
+	"github.com/boardsite-io/server/session/sessionfakes"
 )
 
 func TestSession(t *testing.T) {

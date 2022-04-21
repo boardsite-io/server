@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/heat1q/boardsite/session"
+	"github.com/boardsite-io/server/session"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/heat1q/boardsite/redis"
+	"github.com/boardsite-io/server/redis"
 )
 
 func setupHandler(t *testing.T) (*miniredis.Miniredis, redis.Handler) {

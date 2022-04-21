@@ -4,9 +4,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/heat1q/boardsite/api/types"
+	"github.com/boardsite-io/server/api/types"
 
-	apiErrors "github.com/heat1q/boardsite/api/errors"
+	apiErrors "github.com/boardsite-io/server/api/errors"
 
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"

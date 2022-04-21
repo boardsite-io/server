@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	apiErrors "github.com/heat1q/boardsite/api/errors"
-	"github.com/heat1q/boardsite/api/log"
+	apiErrors "github.com/boardsite-io/server/api/errors"
+	"github.com/boardsite-io/server/api/log"
 	"github.com/labstack/echo/v4"
 )
 

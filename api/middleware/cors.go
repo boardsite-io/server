@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/heat1q/boardsite/api/types"
+	"github.com/boardsite-io/server/api/types"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )

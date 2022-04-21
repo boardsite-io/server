@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/heat1q/boardsite/session"
+	"github.com/boardsite-io/server/session"
 )
 
 type FakeDispatcher struct {

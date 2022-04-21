@@ -3,8 +3,8 @@ package session
 import (
 	"github.com/heat1q/opt"
 
-	"github.com/heat1q/boardsite/api/config"
-	apiErrors "github.com/heat1q/boardsite/api/errors"
+	"github.com/boardsite-io/server/api/config"
+	apiErrors "github.com/boardsite-io/server/api/errors"
 )
 
 // TODO move to config

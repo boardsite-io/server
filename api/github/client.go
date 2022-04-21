@@ -8,9 +8,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/heat1q/boardsite/api/config"
-	apiErrors "github.com/heat1q/boardsite/api/errors"
-	"github.com/heat1q/boardsite/redis"
+	"github.com/boardsite-io/server/api/config"
+	apiErrors "github.com/boardsite-io/server/api/errors"
+	"github.com/boardsite-io/server/redis"
 )
 
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate

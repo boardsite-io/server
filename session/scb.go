@@ -9,10 +9,10 @@ import (
 	"github.com/google/uuid"
 	gws "github.com/gorilla/websocket"
 
-	"github.com/heat1q/boardsite/api/config"
-	"github.com/heat1q/boardsite/api/types"
-	"github.com/heat1q/boardsite/attachment"
-	"github.com/heat1q/boardsite/redis"
+	"github.com/boardsite-io/server/api/config"
+	"github.com/boardsite-io/server/api/types"
+	"github.com/boardsite-io/server/attachment"
+	"github.com/boardsite-io/server/redis"
 )
 
 type CreateSessionRequest struct {

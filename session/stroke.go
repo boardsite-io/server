@@ -1,6 +1,6 @@
 package session
 
-import "github.com/heat1q/boardsite/redis"
+import "github.com/boardsite-io/server/redis"
 
 // Style declares the stroke style.
 type Style struct {

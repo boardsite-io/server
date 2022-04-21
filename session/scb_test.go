@@ -4,18 +4,18 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/heat1q/boardsite/api/types"
+	"github.com/boardsite-io/server/api/types"
 
-	"github.com/heat1q/boardsite/redis/redisfakes"
+	"github.com/boardsite-io/server/redis/redisfakes"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/heat1q/boardsite/session/sessionfakes"
+	"github.com/boardsite-io/server/session/sessionfakes"
 
-	"github.com/heat1q/boardsite/api/config"
+	"github.com/boardsite-io/server/api/config"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/heat1q/boardsite/session"
+	"github.com/boardsite-io/server/session"
 )
 
 func Test_controlBlock_SetConfig(t *testing.T) {

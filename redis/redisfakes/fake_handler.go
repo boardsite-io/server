@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/heat1q/boardsite/redis"
+	"github.com/boardsite-io/server/redis"
 )
 
 type FakeHandler struct {

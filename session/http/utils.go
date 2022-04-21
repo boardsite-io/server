@@ -3,10 +3,10 @@ package http
 import (
 	"net/http"
 
-	apiErrors "github.com/heat1q/boardsite/api/errors"
+	apiErrors "github.com/boardsite-io/server/api/errors"
 	"github.com/labstack/echo/v4"
 
-	"github.com/heat1q/boardsite/session"
+	"github.com/boardsite-io/server/session"
 )
 
 const (

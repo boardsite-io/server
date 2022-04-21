@@ -4,9 +4,9 @@ package sessionfakes
 import (
 	"sync"
 
-	"github.com/heat1q/boardsite/api/types"
-	"github.com/heat1q/boardsite/redis"
-	"github.com/heat1q/boardsite/session"
+	"github.com/boardsite-io/server/api/types"
+	"github.com/boardsite-io/server/redis"
+	"github.com/boardsite-io/server/session"
 )
 
 type FakeBroadcaster struct {

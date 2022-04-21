@@ -6,8 +6,8 @@ import (
 	"github.com/heat1q/opt"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/heat1q/boardsite/api/config"
-	"github.com/heat1q/boardsite/session"
+	"github.com/boardsite-io/server/api/config"
+	"github.com/boardsite-io/server/session"
 )
 
 func TestConfig_Update(t *testing.T) {

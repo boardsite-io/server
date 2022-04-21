@@ -9,8 +9,8 @@ import (
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
-	"github.com/heat1q/boardsite/api/log"
-	"github.com/heat1q/boardsite/redis"
+	"github.com/boardsite-io/server/api/log"
+	"github.com/boardsite-io/server/redis"
 )
 
 const (

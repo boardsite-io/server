@@ -5,12 +5,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/heat1q/boardsite/api/types"
+	"github.com/boardsite-io/server/api/types"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/heat1q/boardsite/api/middleware"
+	"github.com/boardsite-io/server/api/middleware"
 )
 
 func getContext(e *echo.Echo) (*httptest.ResponseRecorder, echo.Context) {

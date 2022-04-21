@@ -4,7 +4,7 @@ package githubfakes
 import (
 	"sync"
 
-	"github.com/heat1q/boardsite/api/github"
+	"github.com/boardsite-io/server/api/github"
 	echo "github.com/labstack/echo/v4"
 )
 

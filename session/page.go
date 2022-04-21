@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"strings"
 
-	apiErrors "github.com/heat1q/boardsite/api/errors"
+	apiErrors "github.com/boardsite-io/server/api/errors"
 
-	"github.com/heat1q/boardsite/redis"
+	"github.com/boardsite-io/server/redis"
 
-	"github.com/heat1q/boardsite/api/log"
-	"github.com/heat1q/boardsite/api/types"
+	"github.com/boardsite-io/server/api/log"
+	"github.com/boardsite-io/server/api/types"
 )
 
 const (

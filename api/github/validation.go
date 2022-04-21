@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/heat1q/boardsite/api/config"
-	"github.com/heat1q/boardsite/redis"
+	"github.com/boardsite-io/server/api/config"
+	"github.com/boardsite-io/server/redis"
 )
 
 var ErrNotValidated = errors.New("validator: not validated")

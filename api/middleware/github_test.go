@@ -5,13 +5,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/heat1q/boardsite/api/github"
+	"github.com/boardsite-io/server/api/github"
 
-	"github.com/heat1q/boardsite/api/github/githubfakes"
-	"github.com/heat1q/boardsite/api/middleware"
+	"github.com/boardsite-io/server/api/github/githubfakes"
+	"github.com/boardsite-io/server/api/middleware"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/heat1q/boardsite/api/config"
+	"github.com/boardsite-io/server/api/config"
 	"github.com/labstack/echo/v4"
 )
 

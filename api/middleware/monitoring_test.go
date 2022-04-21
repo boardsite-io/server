@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 
-	"github.com/heat1q/boardsite/api/log"
-	"github.com/heat1q/boardsite/api/middleware"
+	"github.com/boardsite-io/server/api/log"
+	"github.com/boardsite-io/server/api/middleware"
 )
 
 func TestMonitoring(t *testing.T) {
