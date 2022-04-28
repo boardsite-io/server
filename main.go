@@ -9,9 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/boardsite-io/server/api"
-	"github.com/boardsite-io/server/api/config"
-	"github.com/boardsite-io/server/api/log"
+	"github.com/boardsite-io/server/internal/config"
+	"github.com/boardsite-io/server/internal/server"
+	"github.com/boardsite-io/server/pkg/log"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func runServer(ctx context.Context, cfgPath string) {
 		log.Global().Fatalf("parse config file: %v", err)
 	}
 
-	s := api.NewServer(cfg)
+	s := server.New(cfg)
 	run, shutdown := s.Serve(ctx)
 	defer shutdown()
 
