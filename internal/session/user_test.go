@@ -9,7 +9,6 @@ import (
 	"github.com/boardsite-io/server/internal/session"
 	"github.com/boardsite-io/server/internal/session/sessionfakes"
 	"github.com/boardsite-io/server/pkg/redis/redisfakes"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 func Test_controlBlock_NewUser(t *testing.T) {
@@ -17,7 +16,7 @@ func Test_controlBlock_NewUser(t *testing.T) {
 	dispatcher := &sessionfakes.FakeDispatcher{}
 	cache := &redisfakes.FakeHandler{}
 	broadcaster := &sessionfakes.FakeBroadcaster{}
-	broadcaster.BroadcastReturns(make(chan types.Message, 999))
+	broadcaster.BroadcastReturns(make(chan session.Message, 999))
 
 	tests := []struct {
 		name    string

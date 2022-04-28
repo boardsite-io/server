@@ -10,7 +10,6 @@ import (
 
 	"github.com/boardsite-io/server/internal/session"
 	"github.com/boardsite-io/server/pkg/log"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 var upgrader = gws.Upgrader{
@@ -61,7 +60,7 @@ func Subscribe(c echo.Context, scb session.Controller, userID string) error {
 			break // socket closed
 		}
 
-		msg, err := types.UnmarshalMessage(data)
+		msg, err := session.UnmarshalMessage(data)
 		if err != nil {
 			continue
 		}
@@ -69,7 +68,7 @@ func Subscribe(c echo.Context, scb session.Controller, userID string) error {
 		// sanitize received data
 		if err := scb.Receive(ctx, msg, userID); err != nil {
 			log.Ctx(ctx).Warnf("session %s :: error receive message from %s: %v", scb.ID(), msg.Sender, err)
-			scb.Broadcaster().Send() <- types.Message{
+			scb.Broadcaster().Send() <- session.Message{
 				Type:     "error",
 				Receiver: userID,
 				Content:  err.Error(),

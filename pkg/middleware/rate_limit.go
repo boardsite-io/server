@@ -8,8 +8,8 @@ import (
 	echomw "github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
 
+	"github.com/boardsite-io/server/pkg/constant"
 	libErr "github.com/boardsite-io/server/pkg/errors"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 type RateLimitingOption func(cfg *echomw.RateLimiterConfig)
@@ -84,7 +84,7 @@ func ipExtractor(c echo.Context) (string, error) {
 }
 
 func userIDExtractor(c echo.Context) (string, error) {
-	userId := c.Request().Header.Get(types.HeaderUserID)
+	userId := c.Request().Header.Get(constant.HeaderUserID)
 	if userId == "" {
 		// userid could also be in params
 		userId = c.Param("userId")

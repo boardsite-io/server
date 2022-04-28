@@ -8,14 +8,14 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/boardsite-io/server/pkg/constant"
 	"github.com/boardsite-io/server/pkg/middleware"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 func getContext(e *echo.Echo) (*httptest.ResponseRecorder, echo.Context) {
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Header.Set(echo.HeaderXForwardedFor, "127.0.0.1")
-	r.Header.Set(types.HeaderUserID, "1234")
+	r.Header.Set(constant.HeaderUserID, "1234")
 	rr := httptest.NewRecorder()
 	return rr, e.NewContext(r, rr)
 }

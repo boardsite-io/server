@@ -11,8 +11,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"github.com/boardsite-io/server/pkg/constant"
 	"github.com/boardsite-io/server/pkg/log"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 var loggedHeaders = map[string]struct{}{
@@ -21,7 +21,7 @@ var loggedHeaders = map[string]struct{}{
 	echo.HeaderContentLength: {},
 	echo.HeaderOrigin:        {},
 	"User-Agent":             {},
-	types.HeaderUserID:       {},
+	constant.HeaderUserID:    {},
 }
 
 var jsonBody = regexp.MustCompile("^application/json.*")

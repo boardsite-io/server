@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/boardsite-io/server/pkg/redis"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 // Message type definitions.
@@ -30,7 +29,7 @@ type ContentMouseMove struct {
 
 // Receive is the entry point when a message is received in
 // the session via the websocket.
-func (scb *controlBlock) Receive(ctx context.Context, msg *types.Message, userID string) error {
+func (scb *controlBlock) Receive(ctx context.Context, msg *Message, userID string) error {
 	if msg.Sender != userID { // cannot spoof another user
 		return errors.New("invalid sender userId")
 	}
@@ -52,7 +51,7 @@ func (scb *controlBlock) Receive(ctx context.Context, msg *types.Message, userID
 // sanitizeStrokes parses the stroke content of the message.
 //
 // It further checks if the strokes have a valid pageId and userId.
-func (scb *controlBlock) sanitizeStrokes(ctx context.Context, msg *types.Message) error {
+func (scb *controlBlock) sanitizeStrokes(ctx context.Context, msg *Message) error {
 	if !scb.Allow(msg.Sender) {
 		return errors.New("not allowed")
 	}
@@ -86,7 +85,7 @@ func (scb *controlBlock) sanitizeStrokes(ctx context.Context, msg *types.Message
 // update to Redis.
 func (scb *controlBlock) updateStrokes(userID string, strokes []redis.Stroke) {
 	// broadcast changes
-	scb.broadcaster.Broadcast() <- types.Message{
+	scb.broadcaster.Broadcast() <- Message{
 		Type:    MessageTypeStroke,
 		Sender:  userID,
 		Content: strokes,
@@ -97,12 +96,12 @@ func (scb *controlBlock) updateStrokes(userID string, strokes []redis.Stroke) {
 }
 
 // mouseMove broadcast mouse move events.
-func (scb *controlBlock) mouseMove(msg *types.Message) error {
+func (scb *controlBlock) mouseMove(msg *Message) error {
 	var mouseUpdate ContentMouseMove
 	if err := msg.UnmarshalContent(&mouseUpdate); err != nil {
 		return err
 	}
-	scb.broadcaster.Broadcast() <- types.Message{
+	scb.broadcaster.Broadcast() <- Message{
 		Type:    MessageTypeMouseMove,
 		Sender:  msg.Sender,
 		Content: mouseUpdate,

@@ -11,14 +11,13 @@ import (
 	"github.com/boardsite-io/server/internal/session"
 	"github.com/boardsite-io/server/internal/session/sessionfakes"
 	"github.com/boardsite-io/server/pkg/redis/redisfakes"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 func Test_controlBlock_SetConfig(t *testing.T) {
 	fakeDispatcher := &sessionfakes.FakeDispatcher{}
 	fakeCache := &redisfakes.FakeHandler{}
 	fakeBroadcaster := &sessionfakes.FakeBroadcaster{}
-	fakeBroadcaster.BroadcastReturns(make(chan types.Message, 100))
+	fakeBroadcaster.BroadcastReturns(make(chan session.Message, 100))
 	cfg := session.Config{
 		ID:     "1234",
 		Host:   "beef",

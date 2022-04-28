@@ -10,7 +10,6 @@ import (
 	libErr "github.com/boardsite-io/server/pkg/errors"
 	"github.com/boardsite-io/server/pkg/log"
 	"github.com/boardsite-io/server/pkg/redis"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 const (
@@ -324,7 +323,7 @@ func (scb *controlBlock) broadcastPageSync(ctx context.Context, pageIds []string
 		return
 	}
 
-	scb.broadcaster.Broadcast() <- types.Message{
+	scb.broadcaster.Broadcast() <- Message{
 		Type:    MessageTypePageSync,
 		Sender:  "", // send to all clients
 		Content: sync,

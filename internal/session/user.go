@@ -9,7 +9,6 @@ import (
 	gws "github.com/gorilla/websocket"
 
 	libErr "github.com/boardsite-io/server/pkg/errors"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 var (
@@ -93,7 +92,7 @@ func (scb *controlBlock) UpdateUser(user User, userReq UserRequest) error {
 	scb.users[user.ID].Color = userReq.Color
 	scb.muUsr.Unlock()
 
-	scb.broadcaster.Broadcast() <- types.Message{
+	scb.broadcaster.Broadcast() <- Message{
 		Type:    MessageTypeUserSync,
 		Content: scb.GetUsers(),
 	}
@@ -176,13 +175,13 @@ func (scb *controlBlock) UserConnect(userID string, conn *gws.Conn) error {
 	}
 
 	// broadcast that user has joined
-	scb.broadcaster.Broadcast() <- types.Message{
+	scb.broadcaster.Broadcast() <- Message{
 		Type:    MessageTypeUserConnected,
 		Content: u,
 	}
 
 	if scb.isHost(u) {
-		scb.broadcaster.Send() <- types.Message{
+		scb.broadcaster.Send() <- Message{
 			Type:     MessageTypeUserHost,
 			Receiver: u.ID,
 			Content:  userHostContent{Secret: scb.cfg.Secret},
@@ -213,12 +212,12 @@ func (scb *controlBlock) UserDisconnect(_ context.Context, userID string) {
 	}
 
 	// broadcast that user has left
-	scb.broadcaster.Broadcast() <- types.Message{
+	scb.broadcaster.Broadcast() <- Message{
 		Type:    MessageTypeUserDisconnected,
 		Content: u,
 	}
 
-	scb.broadcaster.Control() <- types.Message{
+	scb.broadcaster.Control() <- Message{
 		Receiver: userID,
 		Content:  "Closed by server",
 	}
@@ -234,11 +233,11 @@ func (scb *controlBlock) KickUser(userID string) error {
 	delete(scb.usersReady, userID)
 	scb.muRdyUsr.Unlock()
 
-	scb.broadcaster.Send() <- types.Message{
+	scb.broadcaster.Send() <- Message{
 		Type:     MessageTypeUserKick,
 		Receiver: userID,
 	}
-	scb.broadcaster.Control() <- types.Message{
+	scb.broadcaster.Control() <- Message{
 		Receiver: userID,
 		Content:  "Kicked by host",
 	}

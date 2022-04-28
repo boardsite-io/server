@@ -12,7 +12,6 @@ import (
 	"github.com/boardsite-io/server/internal/session/sessionfakes"
 	"github.com/boardsite-io/server/pkg/redis"
 	"github.com/boardsite-io/server/pkg/redis/redisfakes"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 func Test_controlBlock_AddPages(t *testing.T) {
@@ -27,7 +26,7 @@ func Test_controlBlock_AddPages(t *testing.T) {
 		session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 	assert.NoError(t, err)
 
-	broadcast := make(chan types.Message, 999)
+	broadcast := make(chan session.Message, 999)
 	defer close(broadcast)
 	fakeBroadcaster.BroadcastReturns(broadcast)
 
@@ -147,7 +146,7 @@ func Test_controlBlock_UpdatePages(t *testing.T) {
 	fakeBroadcaster := &sessionfakes.FakeBroadcaster{}
 	fakeAttachments := &attachmentfakes.FakeHandler{}
 
-	broadcast := make(chan types.Message, 10)
+	broadcast := make(chan session.Message, 10)
 	defer close(broadcast)
 	fakeBroadcaster.BroadcastReturns(broadcast)
 
@@ -264,7 +263,7 @@ func Test_controlBlock_SyncSession(t *testing.T) {
 		session.WithDispatcher(fakeDispatcher), session.WithBroadcaster(fakeBroadcaster))
 	assert.NoError(t, err)
 
-	broadcast := make(chan types.Message, 10)
+	broadcast := make(chan session.Message, 10)
 	defer close(broadcast)
 	fakeBroadcaster.BroadcastReturns(broadcast)
 

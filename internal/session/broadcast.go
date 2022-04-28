@@ -10,7 +10,6 @@ import (
 
 	"github.com/boardsite-io/server/pkg/log"
 	"github.com/boardsite-io/server/pkg/redis"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 var ErrBroadcasterClosed = errors.New("broadcaster: closed")
@@ -20,11 +19,11 @@ type Broadcaster interface {
 	// Bind binds the broadcaster to a session
 	Bind(scb Controller) Broadcaster
 	// Broadcast returns a channel for messages to be broadcasted
-	Broadcast() chan<- types.Message
+	Broadcast() chan<- Message
 	// Send returns a channel for messages to sent to a specific client
-	Send() chan<- types.Message
+	Send() chan<- Message
 	// Control returns a channel for close messages to sent to a specific client
-	Control() chan<- types.Message
+	Control() chan<- Message
 	// Cache returns a channel for strokes to be stored in the cache
 	Cache() chan<- []redis.Stroke
 	// Close returns a channel for closing the broadcaster and clean up all goroutines
@@ -35,9 +34,9 @@ type broadcaster struct {
 	scb   Controller
 	cache redis.Handler
 
-	broadcast   chan types.Message
-	send        chan types.Message
-	control     chan types.Message
+	broadcast   chan Message
+	send        chan Message
+	control     chan Message
 	cacheUpdate chan []redis.Stroke
 	close       chan struct{}
 }
@@ -46,9 +45,9 @@ type broadcaster struct {
 func NewBroadcaster(cache redis.Handler) Broadcaster {
 	return &broadcaster{
 		cache:       cache,
-		broadcast:   make(chan types.Message),
-		send:        make(chan types.Message),
-		control:     make(chan types.Message),
+		broadcast:   make(chan Message),
+		send:        make(chan Message),
+		control:     make(chan Message),
 		cacheUpdate: make(chan []redis.Stroke),
 		close:       make(chan struct{}),
 	}
@@ -66,15 +65,15 @@ func (b *broadcaster) Bind(scb Controller) Broadcaster {
 	return b
 }
 
-func (b *broadcaster) Broadcast() chan<- types.Message {
+func (b *broadcaster) Broadcast() chan<- Message {
 	return b.broadcast
 }
 
-func (b *broadcaster) Send() chan<- types.Message {
+func (b *broadcaster) Send() chan<- Message {
 	return b.send
 }
 
-func (b *broadcaster) Control() chan<- types.Message {
+func (b *broadcaster) Control() chan<- Message {
 	return b.control
 }
 

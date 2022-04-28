@@ -6,7 +6,6 @@ import (
 
 	"github.com/boardsite-io/server/internal/session"
 	"github.com/boardsite-io/server/pkg/redis"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 type FakeBroadcaster struct {
@@ -21,15 +20,15 @@ type FakeBroadcaster struct {
 	bindReturnsOnCall map[int]struct {
 		result1 session.Broadcaster
 	}
-	BroadcastStub        func() chan<- types.Message
+	BroadcastStub        func() chan<- session.Message
 	broadcastMutex       sync.RWMutex
 	broadcastArgsForCall []struct {
 	}
 	broadcastReturns struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}
 	broadcastReturnsOnCall map[int]struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}
 	CacheStub        func() chan<- []redis.Stroke
 	cacheMutex       sync.RWMutex
@@ -51,25 +50,25 @@ type FakeBroadcaster struct {
 	closeReturnsOnCall map[int]struct {
 		result1 chan<- struct{}
 	}
-	ControlStub        func() chan<- types.Message
+	ControlStub        func() chan<- session.Message
 	controlMutex       sync.RWMutex
 	controlArgsForCall []struct {
 	}
 	controlReturns struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}
 	controlReturnsOnCall map[int]struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}
-	SendStub        func() chan<- types.Message
+	SendStub        func() chan<- session.Message
 	sendMutex       sync.RWMutex
 	sendArgsForCall []struct {
 	}
 	sendReturns struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}
 	sendReturnsOnCall map[int]struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -136,7 +135,7 @@ func (fake *FakeBroadcaster) BindReturnsOnCall(i int, result1 session.Broadcaste
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) Broadcast() chan<- types.Message {
+func (fake *FakeBroadcaster) Broadcast() chan<- session.Message {
 	fake.broadcastMutex.Lock()
 	ret, specificReturn := fake.broadcastReturnsOnCall[len(fake.broadcastArgsForCall)]
 	fake.broadcastArgsForCall = append(fake.broadcastArgsForCall, struct {
@@ -160,32 +159,32 @@ func (fake *FakeBroadcaster) BroadcastCallCount() int {
 	return len(fake.broadcastArgsForCall)
 }
 
-func (fake *FakeBroadcaster) BroadcastCalls(stub func() chan<- types.Message) {
+func (fake *FakeBroadcaster) BroadcastCalls(stub func() chan<- session.Message) {
 	fake.broadcastMutex.Lock()
 	defer fake.broadcastMutex.Unlock()
 	fake.BroadcastStub = stub
 }
 
-func (fake *FakeBroadcaster) BroadcastReturns(result1 chan<- types.Message) {
+func (fake *FakeBroadcaster) BroadcastReturns(result1 chan<- session.Message) {
 	fake.broadcastMutex.Lock()
 	defer fake.broadcastMutex.Unlock()
 	fake.BroadcastStub = nil
 	fake.broadcastReturns = struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) BroadcastReturnsOnCall(i int, result1 chan<- types.Message) {
+func (fake *FakeBroadcaster) BroadcastReturnsOnCall(i int, result1 chan<- session.Message) {
 	fake.broadcastMutex.Lock()
 	defer fake.broadcastMutex.Unlock()
 	fake.BroadcastStub = nil
 	if fake.broadcastReturnsOnCall == nil {
 		fake.broadcastReturnsOnCall = make(map[int]struct {
-			result1 chan<- types.Message
+			result1 chan<- session.Message
 		})
 	}
 	fake.broadcastReturnsOnCall[i] = struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}{result1}
 }
 
@@ -295,7 +294,7 @@ func (fake *FakeBroadcaster) CloseReturnsOnCall(i int, result1 chan<- struct{}) 
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) Control() chan<- types.Message {
+func (fake *FakeBroadcaster) Control() chan<- session.Message {
 	fake.controlMutex.Lock()
 	ret, specificReturn := fake.controlReturnsOnCall[len(fake.controlArgsForCall)]
 	fake.controlArgsForCall = append(fake.controlArgsForCall, struct {
@@ -319,36 +318,36 @@ func (fake *FakeBroadcaster) ControlCallCount() int {
 	return len(fake.controlArgsForCall)
 }
 
-func (fake *FakeBroadcaster) ControlCalls(stub func() chan<- types.Message) {
+func (fake *FakeBroadcaster) ControlCalls(stub func() chan<- session.Message) {
 	fake.controlMutex.Lock()
 	defer fake.controlMutex.Unlock()
 	fake.ControlStub = stub
 }
 
-func (fake *FakeBroadcaster) ControlReturns(result1 chan<- types.Message) {
+func (fake *FakeBroadcaster) ControlReturns(result1 chan<- session.Message) {
 	fake.controlMutex.Lock()
 	defer fake.controlMutex.Unlock()
 	fake.ControlStub = nil
 	fake.controlReturns = struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) ControlReturnsOnCall(i int, result1 chan<- types.Message) {
+func (fake *FakeBroadcaster) ControlReturnsOnCall(i int, result1 chan<- session.Message) {
 	fake.controlMutex.Lock()
 	defer fake.controlMutex.Unlock()
 	fake.ControlStub = nil
 	if fake.controlReturnsOnCall == nil {
 		fake.controlReturnsOnCall = make(map[int]struct {
-			result1 chan<- types.Message
+			result1 chan<- session.Message
 		})
 	}
 	fake.controlReturnsOnCall[i] = struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) Send() chan<- types.Message {
+func (fake *FakeBroadcaster) Send() chan<- session.Message {
 	fake.sendMutex.Lock()
 	ret, specificReturn := fake.sendReturnsOnCall[len(fake.sendArgsForCall)]
 	fake.sendArgsForCall = append(fake.sendArgsForCall, struct {
@@ -372,32 +371,32 @@ func (fake *FakeBroadcaster) SendCallCount() int {
 	return len(fake.sendArgsForCall)
 }
 
-func (fake *FakeBroadcaster) SendCalls(stub func() chan<- types.Message) {
+func (fake *FakeBroadcaster) SendCalls(stub func() chan<- session.Message) {
 	fake.sendMutex.Lock()
 	defer fake.sendMutex.Unlock()
 	fake.SendStub = stub
 }
 
-func (fake *FakeBroadcaster) SendReturns(result1 chan<- types.Message) {
+func (fake *FakeBroadcaster) SendReturns(result1 chan<- session.Message) {
 	fake.sendMutex.Lock()
 	defer fake.sendMutex.Unlock()
 	fake.SendStub = nil
 	fake.sendReturns = struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) SendReturnsOnCall(i int, result1 chan<- types.Message) {
+func (fake *FakeBroadcaster) SendReturnsOnCall(i int, result1 chan<- session.Message) {
 	fake.sendMutex.Lock()
 	defer fake.sendMutex.Unlock()
 	fake.SendStub = nil
 	if fake.sendReturnsOnCall == nil {
 		fake.sendReturnsOnCall = make(map[int]struct {
-			result1 chan<- types.Message
+			result1 chan<- session.Message
 		})
 	}
 	fake.sendReturnsOnCall[i] = struct {
-		result1 chan<- types.Message
+		result1 chan<- session.Message
 	}{result1}
 }
 

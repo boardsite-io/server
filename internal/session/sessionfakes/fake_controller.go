@@ -10,7 +10,6 @@ import (
 
 	"github.com/boardsite-io/server/internal/attachment"
 	"github.com/boardsite-io/server/internal/session"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 type FakeController struct {
@@ -186,11 +185,11 @@ type FakeController struct {
 	numUsersReturnsOnCall map[int]struct {
 		result1 int
 	}
-	ReceiveStub        func(context.Context, *types.Message, string) error
+	ReceiveStub        func(context.Context, *session.Message, string) error
 	receiveMutex       sync.RWMutex
 	receiveArgsForCall []struct {
 		arg1 context.Context
-		arg2 *types.Message
+		arg2 *session.Message
 		arg3 string
 	}
 	receiveReturns struct {
@@ -1166,12 +1165,12 @@ func (fake *FakeController) NumUsersReturnsOnCall(i int, result1 int) {
 	}{result1}
 }
 
-func (fake *FakeController) Receive(arg1 context.Context, arg2 *types.Message, arg3 string) error {
+func (fake *FakeController) Receive(arg1 context.Context, arg2 *session.Message, arg3 string) error {
 	fake.receiveMutex.Lock()
 	ret, specificReturn := fake.receiveReturnsOnCall[len(fake.receiveArgsForCall)]
 	fake.receiveArgsForCall = append(fake.receiveArgsForCall, struct {
 		arg1 context.Context
-		arg2 *types.Message
+		arg2 *session.Message
 		arg3 string
 	}{arg1, arg2, arg3})
 	stub := fake.ReceiveStub
@@ -1193,13 +1192,13 @@ func (fake *FakeController) ReceiveCallCount() int {
 	return len(fake.receiveArgsForCall)
 }
 
-func (fake *FakeController) ReceiveCalls(stub func(context.Context, *types.Message, string) error) {
+func (fake *FakeController) ReceiveCalls(stub func(context.Context, *session.Message, string) error) {
 	fake.receiveMutex.Lock()
 	defer fake.receiveMutex.Unlock()
 	fake.ReceiveStub = stub
 }
 
-func (fake *FakeController) ReceiveArgsForCall(i int) (context.Context, *types.Message, string) {
+func (fake *FakeController) ReceiveArgsForCall(i int) (context.Context, *session.Message, string) {
 	fake.receiveMutex.RLock()
 	defer fake.receiveMutex.RUnlock()
 	argsForCall := fake.receiveArgsForCall[i]

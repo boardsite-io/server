@@ -12,8 +12,8 @@ import (
 	"github.com/boardsite-io/server/internal/session"
 	sessionHttp "github.com/boardsite-io/server/internal/session/http"
 	"github.com/boardsite-io/server/internal/session/sessionfakes"
+	"github.com/boardsite-io/server/pkg/constant"
 	libmw "github.com/boardsite-io/server/pkg/middleware"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 func TestSession(t *testing.T) {
@@ -43,7 +43,7 @@ func TestSession(t *testing.T) {
 		e.GET("/b/:id", handler)
 
 		r, _ := http.NewRequest(http.MethodGet, s.URL+"/b/"+sessionId, nil)
-		r.Header.Set(types.HeaderUserID, userId)
+		r.Header.Set(constant.HeaderUserID, userId)
 		resp, err := http.DefaultClient.Do(r)
 
 		assert.NoError(t, err)
@@ -68,7 +68,7 @@ func TestSession(t *testing.T) {
 		e.GET("/b/:id", handler)
 
 		r, _ := http.NewRequest(http.MethodGet, s.URL+"/b/"+sessionId, nil)
-		r.Header.Set(types.HeaderUserID, userId)
+		r.Header.Set(constant.HeaderUserID, userId)
 		resp, err := http.DefaultClient.Do(r)
 
 		assert.NoError(t, err)
@@ -97,7 +97,7 @@ func TestSession(t *testing.T) {
 		e.GET("/b/:id", handler)
 
 		r, _ := http.NewRequest(http.MethodGet, s.URL+"/b/"+sessionId, nil)
-		r.Header.Set(types.HeaderUserID, userId)
+		r.Header.Set(constant.HeaderUserID, userId)
 		resp, err := http.DefaultClient.Do(r)
 
 		assert.NoError(t, err)

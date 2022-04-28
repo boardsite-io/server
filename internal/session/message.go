@@ -1,15 +1,10 @@
-package types
+package session
 
 import (
 	"encoding/json"
 	"errors"
 	"io"
 	"io/ioutil"
-)
-
-const (
-	HeaderUserID        = "Boardsite-User-Id"
-	HeaderSessionSecret = "Boardsite-Session-Secret"
 )
 
 // Message declares the generic message envelope

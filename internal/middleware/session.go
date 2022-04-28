@@ -5,8 +5,8 @@ import (
 
 	"github.com/boardsite-io/server/internal/session"
 	sessionHttp "github.com/boardsite-io/server/internal/session/http"
+	"github.com/boardsite-io/server/pkg/constant"
 	libErr "github.com/boardsite-io/server/pkg/errors"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 func Session(dispatcher session.Dispatcher) echo.MiddlewareFunc {
@@ -25,14 +25,14 @@ func Session(dispatcher session.Dispatcher) echo.MiddlewareFunc {
 			}
 			c.Set(sessionHttp.SessionCtxKey, scb)
 
-			userId := c.Request().Header.Get(types.HeaderUserID)
+			userId := c.Request().Header.Get(constant.HeaderUserID)
 			user, ok := scb.GetUsers()[userId]
 			if !ok {
 				c.Error(libErr.ErrForbidden)
 				return nil
 			}
 			c.Set(sessionHttp.UserCtxKey, user)
-			c.Set(sessionHttp.SecretCtxKey, c.Request().Header.Get(types.HeaderSessionSecret))
+			c.Set(sessionHttp.SecretCtxKey, c.Request().Header.Get(constant.HeaderSessionSecret))
 
 			if !sessionHttp.AllowUser(c) {
 				c.Error(libErr.ErrForbidden)

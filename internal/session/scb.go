@@ -12,7 +12,6 @@ import (
 	"github.com/boardsite-io/server/internal/attachment"
 	"github.com/boardsite-io/server/internal/config"
 	"github.com/boardsite-io/server/pkg/redis"
-	"github.com/boardsite-io/server/pkg/types"
 )
 
 type CreateSessionRequest struct {
@@ -73,7 +72,7 @@ type Controller interface {
 	// CloseAfter closes a session after a specified timeout and executes fn
 	CloseAfter(t time.Duration, fn func())
 	// Receive handles data received in the session
-	Receive(ctx context.Context, msg *types.Message, userID string) error
+	Receive(ctx context.Context, msg *Message, userID string) error
 	// Attachments returns the session's attachment handler
 	Attachments() attachment.Handler
 	// Broadcaster returns the session's broadcaster
@@ -229,7 +228,7 @@ func (scb *controlBlock) SetConfig(incoming *ConfigRequest) error {
 	if err := scb.cfg.Update(incoming); err != nil {
 		return err
 	}
-	scb.broadcaster.Broadcast() <- types.Message{
+	scb.broadcaster.Broadcast() <- Message{
 		Type:    MessageTypeSessionConfig,
 		Content: CreateSessionResponse{Config: scb.cfg},
 	}
