@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
@@ -61,10 +60,6 @@ func (s *Server) Serve(ctx context.Context) (func() error, func() error) {
 
 	// set routes
 	s.setRoutes()
-
-	// configure CORS
-	origins := strings.Split(s.cfg.Server.AllowedOrigins, ",")
-	log.Global().Infof("CORS: allowed origins: %v", origins)
 
 	return func() error {
 			log.Global().Infof("Starting %s@%s listening on :%d\n", s.cfg.App.Name, s.cfg.App.Version, s.cfg.Server.Port)

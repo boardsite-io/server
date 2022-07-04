@@ -40,15 +40,9 @@ type FakeBroadcaster struct {
 	cacheReturnsOnCall map[int]struct {
 		result1 chan<- []redis.Stroke
 	}
-	CloseStub        func() chan<- struct{}
+	CloseStub        func()
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
-	}
-	closeReturns struct {
-		result1 chan<- struct{}
-	}
-	closeReturnsOnCall map[int]struct {
-		result1 chan<- struct{}
 	}
 	ControlStub        func() chan<- session.Message
 	controlMutex       sync.RWMutex
@@ -241,22 +235,16 @@ func (fake *FakeBroadcaster) CacheReturnsOnCall(i int, result1 chan<- []redis.St
 	}{result1}
 }
 
-func (fake *FakeBroadcaster) Close() chan<- struct{} {
+func (fake *FakeBroadcaster) Close() {
 	fake.closeMutex.Lock()
-	ret, specificReturn := fake.closeReturnsOnCall[len(fake.closeArgsForCall)]
 	fake.closeArgsForCall = append(fake.closeArgsForCall, struct {
 	}{})
 	stub := fake.CloseStub
-	fakeReturns := fake.closeReturns
 	fake.recordInvocation("Close", []interface{}{})
 	fake.closeMutex.Unlock()
 	if stub != nil {
-		return stub()
+		fake.CloseStub()
 	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
 }
 
 func (fake *FakeBroadcaster) CloseCallCount() int {
@@ -265,33 +253,10 @@ func (fake *FakeBroadcaster) CloseCallCount() int {
 	return len(fake.closeArgsForCall)
 }
 
-func (fake *FakeBroadcaster) CloseCalls(stub func() chan<- struct{}) {
+func (fake *FakeBroadcaster) CloseCalls(stub func()) {
 	fake.closeMutex.Lock()
 	defer fake.closeMutex.Unlock()
 	fake.CloseStub = stub
-}
-
-func (fake *FakeBroadcaster) CloseReturns(result1 chan<- struct{}) {
-	fake.closeMutex.Lock()
-	defer fake.closeMutex.Unlock()
-	fake.CloseStub = nil
-	fake.closeReturns = struct {
-		result1 chan<- struct{}
-	}{result1}
-}
-
-func (fake *FakeBroadcaster) CloseReturnsOnCall(i int, result1 chan<- struct{}) {
-	fake.closeMutex.Lock()
-	defer fake.closeMutex.Unlock()
-	fake.CloseStub = nil
-	if fake.closeReturnsOnCall == nil {
-		fake.closeReturnsOnCall = make(map[int]struct {
-			result1 chan<- struct{}
-		})
-	}
-	fake.closeReturnsOnCall[i] = struct {
-		result1 chan<- struct{}
-	}{result1}
 }
 
 func (fake *FakeBroadcaster) Control() chan<- session.Message {

@@ -26,8 +26,8 @@ type Broadcaster interface {
 	Control() chan<- Message
 	// Cache returns a channel for strokes to be stored in the cache
 	Cache() chan<- []redis.Stroke
-	// Close returns a channel for closing the broadcaster and clean up all goroutines
-	Close() chan<- struct{}
+	// Close the broadcaster and cleans up all goroutines
+	Close()
 }
 
 type broadcaster struct {
@@ -81,8 +81,8 @@ func (b *broadcaster) Cache() chan<- []redis.Stroke {
 	return b.cacheUpdate
 }
 
-func (b *broadcaster) Close() chan<- struct{} {
-	return b.close
+func (b *broadcaster) Close() {
+	close(b.close)
 }
 
 func (b *broadcaster) getUsers() map[string]*User {

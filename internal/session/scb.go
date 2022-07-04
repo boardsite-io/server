@@ -186,7 +186,7 @@ func (scb *controlBlock) Start() {
 
 // Close sends a close signal
 func (scb *controlBlock) Close() {
-	scb.broadcaster.Close() <- struct{}{}
+	scb.broadcaster.Close()
 }
 
 func (scb *controlBlock) CloseAfter(t time.Duration, fn func()) {
